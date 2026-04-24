@@ -6,6 +6,7 @@ import { z } from 'zod'
 import type { PostReactionType } from '@/types/actions'
 import { withAudit } from './audit.server'
 import { updatePostWithLock, incrementPostCounter } from '@/lib/services/posts'
+import { logger } from '@/lib/logger'
 
 // ===========================================
 // POSTS SERVER ACTIONS
@@ -74,7 +75,7 @@ export async function createPost(formData: FormData) {
   )
 
   if (error) {
-    console.error('Failed to create post:', error)
+    logger.error('Failed to create post:', error)
     return { error: 'Failed to create post' }
   }
 
@@ -138,7 +139,7 @@ export async function updatePost(postId: string, formData: FormData) {
   }
 
   if (error) {
-    console.error('Failed to update post:', error)
+    logger.error('Failed to update post:', error)
     return { error: 'Failed to update post' }
   }
 
@@ -285,7 +286,7 @@ export async function sharePost(postId: string) {
   const { error } = await incrementPostCounter(postId, 'share_count', 1)
 
   if (error) {
-    console.error('Failed to share post:', error)
+    logger.error('Failed to share post:', error)
     return { error: 'Failed to share post' }
   }
 

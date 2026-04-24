@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import type { CommentReactionType } from '@/types/actions'
 import { withAudit } from './audit.server'
+import { logger } from '@/lib/logger'
 
 // ===========================================
 // COMMENTS SERVER ACTIONS
@@ -75,7 +76,7 @@ export async function createComment(formData: FormData) {
   )
 
   if (error) {
-    console.error('Failed to create comment:', error)
+    logger.error('Failed to create comment:', error)
     return { error: 'Failed to create comment' }
   }
 

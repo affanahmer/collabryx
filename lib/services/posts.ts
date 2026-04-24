@@ -263,7 +263,7 @@ export async function fetchPostById(postId: string): Promise<{
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError) {
-      logger.api.error("Auth error fetching post", authError, { postId })
+      logger.api.error("Auth error adding attachment", authError)
       return { data: null, error: new Error("Authentication failed. Please log in again.") }
     }
 
@@ -366,7 +366,7 @@ export async function deletePost(postId: string): Promise<{ error: Error | null 
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError) {
-      console.error("Auth error:", authError)
+      logger.api.error("Auth error deleting post", authError)
       return { error: new Error("Authentication failed. Please log in again.") }
     }
 
@@ -384,7 +384,7 @@ export async function deletePost(postId: string): Promise<{ error: Error | null 
 
     return { error: null }
   } catch (error) {
-    console.error("Error deleting post:", error)
+    logger.api.error("Error deleting post", error)
     return { error: error instanceof Error ? error : new Error("Unknown error") }
   }
 }
@@ -454,7 +454,7 @@ export async function updatePostWithLock(
       return { data, error: null, conflict: false }
     } catch (error) {
       if (attempt === maxRetries) {
-        console.error("Error updating post after retries:", error)
+        logger.api.error("Error updating post after retries", error)
         return { data: null, error: error instanceof Error ? error : new Error("Unknown error") }
       }
       onRetry?.(attempt, error as Error)
@@ -498,7 +498,7 @@ export async function incrementPostCounter(
 
     return { error: null }
   } catch (error) {
-    console.error("Error incrementing counter:", error)
+    logger.api.error("Error incrementing counter", error)
     return { error: error instanceof Error ? error : new Error("Failed to update counter") }
   }
 }
@@ -575,7 +575,7 @@ export async function addReaction(
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError) {
-      console.error("Auth error:", authError)
+      logger.api.error("Auth error adding reaction", authError)
       return { data: null, error: new Error("Authentication failed. Please log in again.") }
     }
 
@@ -600,7 +600,7 @@ export async function addReaction(
 
     return { data, error: null }
   } catch (error) {
-    console.error("Error adding reaction:", error)
+    logger.api.error("Error adding reaction", error)
     return { data: null, error: error instanceof Error ? error : new Error("Unknown error") }
   }
 }
@@ -629,7 +629,7 @@ export async function removeReaction(postId: string): Promise<{ error: Error | n
 
     return { error: null }
   } catch (error) {
-    console.error("Error removing reaction:", error)
+    logger.api.error("Error removing reaction", error)
     return { error: error instanceof Error ? error : new Error("Unknown error") }
   }
 }
@@ -684,7 +684,7 @@ export async function addAttachment(
 
     return { data, error: null }
   } catch (error) {
-    console.error("Error adding attachment:", error)
+    logger.api.error("Error adding attachment", error)
     return { data: null, error: error instanceof Error ? error : new Error("Unknown error") }
   }
 }
