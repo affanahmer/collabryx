@@ -118,45 +118,45 @@ export const RATE_LIMITS = {
   SIGNUP: {
     key: "auth:signup",
     maxRequests: 3,
-    windowMS: 60 * 60 * 1000 // 1 hour
+    windowMs: 60 * 60 * 1000 // 1 hour
   },
   PASSWORD_RESET: {
     key: "auth:password-reset",
     maxRequests: 3,
-    windowMS: 60 * 60 * 1000 // 1 hour
+    windowMs: 60 * 60 * 1000 // 1 hour
   },
   
   // Messaging
   SEND_MESSAGE: {
     key: "messages:send",
     maxRequests: 60,
-    windowMS: 60 * 1000 // 1 minute
+    windowMs: 60 * 1000 // 1 minute
   },
   
   // Posts
   CREATE_POST: {
     key: "posts:create",
     maxRequests: 10,
-    windowMS: 60 * 60 * 1000 // 1 hour
+    windowMs: 60 * 60 * 1000 // 1 hour
   },
   CREATE_COMMENT: {
     key: "comments:create",
     maxRequests: 30,
-    windowMS: 60 * 60 * 1000 // 1 hour
+    windowMs: 60 * 60 * 1000 // 1 hour
   },
   
   // API endpoints
   API_EMBEDDING: {
     key: "api:embedding",
     maxRequests: 5,
-    windowMS: 60 * 60 * 1000 // 1 hour
+    windowMs: 60 * 60 * 1000 // 1 hour
   },
   
   // General
   GENERAL: {
     key: "general",
     maxRequests: 100,
-    windowMS: 60 * 1000 // 1 minute
+    windowMs: 60 * 1000 // 1 minute
   }
 }
 
