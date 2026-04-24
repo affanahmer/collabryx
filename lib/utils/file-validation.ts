@@ -1,6 +1,34 @@
 import { z } from "zod"
 
 // ===========================================
+// MAGIC BYTE SIGNATURES
+// ===========================================
+
+const IMAGE_SIGNATURES: Record<string, Array<number[] | number[][]>> = {
+  'image/jpeg': [[0xFF, 0xD8, 0xFF]],
+  'image/png': [[0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]],
+  'image/gif': [[0x47, 0x49, 0x46, 0x38, 0x37, 0x61], [0x47, 0x49, 0x46, 0x38, 0x39, 0x61]],
+  'image/webp': [[0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50]],
+}
+
+function validateMagicBytes(buffer: Buffer, mimeType: string): boolean {
+  const signatures = IMAGE_SIGNATURES[mimeType]
+  if (!signatures) return true
+
+  for (const sig of signatures) {
+    let match = true
+    for (let i = 0; i < sig.length; i++) {
+      if (buffer[i] !== sig[i]) {
+        match = false
+        break
+      }
+    }
+    if (match) return true
+  }
+  return false
+}
+
+// ===========================================
 // FILE UPLOAD VALIDATION SCHEMAS
 // ===========================================
 
@@ -119,31 +147,39 @@ export function generateSecureFileName(originalName: string): string {
  */
 export function validateImage(
   file: { name: string; type: string; size: number },
+  buffer?: Buffer,
   options: { maxSize?: number; allowAnimated?: boolean } = {}
 ): { valid: true } | { valid: false; error: string } {
   const maxSize = options.maxSize || FILE_SIZE_LIMITS.IMAGE
-  
+
+  // Validate magic bytes FIRST - before any other processing
+  // Only validate when buffer is provided (for direct uploads)
+  if (buffer && !validateMagicBytes(buffer, file.type)) {
+    return {
+      valid: false,
+      error: "File content does not match declared MIME type"
+    }
+  }
+
   // Validate type
   const typeResult = validateFileType(file.type, ALLOWED_IMAGE_TYPES)
   if (!typeResult.valid) return typeResult
-  
+
   // Validate size
   const sizeResult = validateFileSize(file.size, maxSize, "Image")
   if (!sizeResult.valid) return sizeResult
-  
+
   // Validate name
   const nameResult = validateFileName(file.name)
   if (!nameResult.valid) return nameResult
-  
+
   // Check for animated images if not allowed
   if (!options.allowAnimated) {
     if (file.type === "image/gif" || file.type === "image/webp") {
-      // Would need to check actual file content for animation
-      // This is a basic check
       console.warn("Animated image detected, may not be allowed")
     }
   }
-  
+
   return { valid: true }
 }
 
@@ -172,18 +208,20 @@ export function validateDocument(
  * Validate avatar upload
  */
 export function validateAvatar(
-  file: { name: string; type: string; size: number }
+  file: { name: string; type: string; size: number },
+  buffer?: Buffer
 ): { valid: true } | { valid: false; error: string } {
-  return validateImage(file, { maxSize: FILE_SIZE_LIMITS.AVATAR })
+  return validateImage(file, buffer, { maxSize: FILE_SIZE_LIMITS.AVATAR })
 }
 
 /**
  * Validate banner upload
  */
 export function validateBanner(
-  file: { name: string; type: string; size: number }
+  file: { name: string; type: string; size: number },
+  buffer?: Buffer
 ): { valid: true } | { valid: false; error: string } {
-  return validateImage(file, { maxSize: FILE_SIZE_LIMITS.BANNER })
+  return validateImage(file, buffer, { maxSize: FILE_SIZE_LIMITS.BANNER })
 }
 
 /**
