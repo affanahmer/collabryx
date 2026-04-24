@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import OpenAI from "openai";
 import Anthropic from "@anthropic-ai/sdk";
 import { validateCSRFRequest, requiresCSRF } from "@/lib/csrf";
+import { errorResponse, successResponse } from '@/lib/utils/api-response';
 
 export const runtime = "edge"
 export const dynamic = "force-dynamic"
@@ -48,10 +49,7 @@ export async function POST(request: NextRequest) {
         hasCookieToken: !!cookieToken,
         path: request.url,
       });
-      return NextResponse.json(
-        { success: false, error: "Invalid CSRF token" },
-        { status: 403 }
-      );
+      return errorResponse('INVALID_CSRF', 'Invalid CSRF token', 403)
     }
   }
   
@@ -60,32 +58,19 @@ export async function POST(request: NextRequest) {
   // Get current user
   const { data: { user }, error: authError } = await supabase.auth.getUser()
   if (authError || !user) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized" },
-      { status: 401 }
-    )
+    return errorResponse('UNAUTHORIZED', 'Unauthorized', 401)
   }
 
   try {
     const body = await request.json().catch(() => null)
     
     if (!body) {
-      return NextResponse.json(
-        { success: false, error: "Request body is required" },
-        { status: 400 }
-      )
+    return errorResponse('REQUEST_BODY_REQUIRED', 'Request body is required', 400)
     }
 
     const validationResult = ChatRequestSchema.safeParse(body)
     if (!validationResult.success) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: "Invalid request body",
-          details: validationResult.error.issues 
-        },
-        { status: 400 }
-      )
+    return errorResponse('INVALID_REQUEST', 'Invalid request body', 400)
     }
 
     const { message, session_id } = validationResult.data
@@ -113,10 +98,7 @@ export async function POST(request: NextRequest) {
         .single()
 
       if (sessionError || !existingSession) {
-        return NextResponse.json(
-          { success: false, error: "Session not found or access denied" },
-          { status: 404 }
-        )
+    return errorResponse('SESSION_NOT_FOUND', 'Session not found or access denied', 404)
       }
     }
 
@@ -199,24 +181,14 @@ Be concise, encouraging, and practical. Focus on actionable advice.`
       .select()
       .single()
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        message: aiMessage,
-        session_id: sessionId,
-      },
+    return successResponse({
+      message: aiMessage,
+      session_id: sessionId,
     })
 
   } catch (error) {
     console.error("Chat API error:", error)
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: "Internal server error",
-        message: error instanceof Error ? error.message : "Unknown error"
-      },
-      { status: 500 }
-    )
+    return errorResponse('CHAT_ERROR', 'Internal server error', 500)
   }
 }
 

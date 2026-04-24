@@ -8,6 +8,7 @@ import {
   generateSecureFileName
 } from '@/lib/utils/file-validation'
 import { validateCSRFRequest, requiresCSRF } from "@/lib/csrf";
+import { errorResponse, successResponse } from '@/lib/utils/api-response';
 
 export const dynamic = 'force-dynamic'
 
@@ -36,10 +37,7 @@ export async function POST(request: NextRequest) {
         hasCookieToken: !!cookieToken,
         path: request.url,
       });
-      return NextResponse.json(
-        { error: "Invalid CSRF token" },
-        { status: 403 }
-      );
+      return errorResponse('INVALID_CSRF', 'Invalid CSRF token', 403)
     }
   }
   
@@ -49,10 +47,7 @@ export async function POST(request: NextRequest) {
     // Verify authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return errorResponse('UNAUTHORIZED', 'Unauthorized', 401)
     }
 
     // Parse form data
@@ -61,11 +56,12 @@ export async function POST(request: NextRequest) {
     const uploadType = (formData.get('type') as string) || 'post'
     
     if (!file) {
-      return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
-      )
+      return errorResponse('NO_FILE', 'No file provided', 400)
     }
+
+// Read file as ArrayBuffer FIRST - needed for magic byte validation
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
 
     // Validate file
     const fileData = {
@@ -76,11 +72,11 @@ export async function POST(request: NextRequest) {
 
     let validation
     if (uploadType === 'avatar') {
-      validation = validateAvatar(fileData)
+      validation = validateAvatar(fileData, buffer)
     } else if (uploadType === 'banner') {
-      validation = validateBanner(fileData)
+      validation = validateBanner(fileData, buffer)
     } else {
-      validation = validateImage(fileData)
+      validation = validateImage(fileData, buffer)
     }
 
     if (!validation.valid) {
@@ -101,10 +97,6 @@ export async function POST(request: NextRequest) {
     const userId = user.id
     const path = `${userId}/${secureName}`
 
-    // Read file as ArrayBuffer
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-
     // Upload to Supabase Storage
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(bucket)
@@ -116,10 +108,7 @@ export async function POST(request: NextRequest) {
 
     if (uploadError) {
       console.error('Upload error:', uploadError)
-      return NextResponse.json(
-        { error: 'Failed to upload file' },
-        { status: 500 }
-      )
+      return errorResponse('UPLOAD_FAILED', 'Failed to upload file', 500)
     }
 
     // Get public URL
@@ -127,8 +116,7 @@ export async function POST(request: NextRequest) {
       .from(bucket)
       .getPublicUrl(path)
 
-    return NextResponse.json({
-      success: true,
+    return successResponse({
       url: publicUrl,
       path: uploadData.path,
       bucket: bucket
@@ -136,9 +124,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Upload error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+      return errorResponse('INTERNAL_ERROR', 'Internal server error', 500)
   }
 }

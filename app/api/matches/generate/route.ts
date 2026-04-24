@@ -9,6 +9,7 @@ import { z } from "zod";
 import { getBackendConfig, getCircuitBreakerStatus } from "@/lib/config/backend";
 import { validateCSRFRequest, requiresCSRF } from "@/lib/csrf";
 import { rateLimit } from "@/lib/rate-limit";
+import { errorResponse, successResponse } from '@/lib/utils/api-response';
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -51,10 +52,7 @@ export async function POST(request: NextRequest) {
         hasCookieToken: !!cookieToken,
         path: request.url,
       });
-      return NextResponse.json(
-        { success: false, error: "Invalid CSRF token" },
-        { status: 403 }
-      );
+      return errorResponse('INVALID_CSRF', 'Invalid CSRF token', 403)
     }
   }
   
@@ -63,10 +61,7 @@ export async function POST(request: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   
   if (authError || !user) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized" },
-      { status: 401 }
-    );
+    return errorResponse('UNAUTHORIZED', 'Unauthorized', 401)
   }
 
   // Apply rate limiting (10 requests per hour per user)
@@ -82,14 +77,7 @@ export async function POST(request: NextRequest) {
     
     const validationResult = MatchGenerationRequestSchema.safeParse(body);
     if (!validationResult.success) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: "Invalid request body",
-          details: String(validationResult.error) 
-        },
-        { status: 400 }
-      );
+      return errorResponse('INVALID_REQUEST', 'Invalid request body', 400)
     }
     
     const { user_id, limit, min_score } = validationResult.data;
@@ -97,10 +85,7 @@ export async function POST(request: NextRequest) {
     // Only allow users to generate matches for themselves
     userId = user_id || user.id;
     if (userId !== user.id) {
-      return NextResponse.json(
-        { success: false, error: "Cannot generate matches for other users" },
-        { status: 403 }
-      );
+      return errorResponse('FORBIDDEN', 'Cannot generate matches for other users', 403)
     }
 
     // Check if user has completed onboarding
@@ -111,14 +96,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!profile?.onboarding_completed) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: "Onboarding not completed",
-          message: "Please complete your profile before generating matches"
-        },
-        { status: 400 }
-      );
+      return errorResponse('ONBOARDING_INCOMPLETE', 'Please complete your profile before generating matches', 400)
     }
 
     // Check if user has vector embedding
@@ -129,15 +107,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!embedding || embedding.status !== "completed") {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: "Vector embedding not ready",
-          message: "Please wait for your profile embedding to be generated",
-          embedding_status: embedding?.status || "not_generated"
-        },
-        { status: 400 }
-      );
+      return errorResponse('EMBEDDING_NOT_READY', 'Please wait for your profile embedding to be generated', 400)
     }
 
     // Get backend configuration with circuit breaker
@@ -146,17 +116,7 @@ export async function POST(request: NextRequest) {
     
     // If backend is unavailable, return error with circuit breaker info
     if (!backendConfig.endpoint) {
-      return NextResponse.json({
-        success: false,
-        error: "Match generation service unavailable",
-        message: "Please try again later or contact support",
-        circuit_breaker_state: circuitBreakerState,
-      }, {
-        status: 503,
-        headers: {
-          'X-Circuit-Breaker-State': circuitBreakerState,
-        }
-      });
+      return errorResponse('SERVICE_UNAVAILABLE', 'Please try again later or contact support', 503)
     }
 
     // Call Python worker match generation endpoint
@@ -183,21 +143,7 @@ export async function POST(request: NextRequest) {
       // Handle rate limit response from worker
       if (workerResponse.status === 429) {
         const rateLimitData = await workerResponse.json();
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Rate limit exceeded",
-            message: rateLimitData.detail?.message || "Maximum match generation requests exceeded",
-            retry_after: rateLimitData.detail?.retry_after,
-            reset_at: rateLimitData.detail?.reset_at,
-          },
-          {
-            status: 429,
-            headers: {
-              'Retry-After': rateLimitData.detail?.retry_after?.toString() || '3600',
-            }
-          }
-        );
+        return errorResponse('RATE_LIMIT_EXCEEDED', 'Maximum match generation requests exceeded', 429)
       }
       
       if (!workerResponse.ok) {
@@ -220,30 +166,13 @@ export async function POST(request: NextRequest) {
     } catch (workerError) {
       console.error("Python worker match generation error:", workerError);
       
-      return NextResponse.json({
-        success: false,
-        error: "Match generation failed",
-        message: "Unable to connect to match generation service",
-        circuit_breaker_state: getCircuitBreakerStatus(),
-      }, {
-        status: 503,
-        headers: {
-          'X-Circuit-Breaker-State': getCircuitBreakerStatus(),
-        }
-      });
+      return errorResponse('MATCH_GENERATION_FAILED', 'Unable to connect to match generation service', 503)
     }
 
   } catch (error) {
     console.error("Error in match generation:", error);
 
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: "Internal server error",
-        circuit_breaker_state: getCircuitBreakerStatus(),
-      },
-      { status: 500 }
-    );
+    return errorResponse('INTERNAL_ERROR', 'Internal server error', 500)
   }
 }
 
