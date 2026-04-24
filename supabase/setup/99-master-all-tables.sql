@@ -3144,6 +3144,7 @@ ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own privacy settings" ON public.privacy_settings FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can update own privacy settings" ON public.privacy_settings FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert own privacy settings" ON public.privacy_settings FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can delete own privacy settings" ON public.privacy_settings FOR DELETE USING (auth.uid() = user_id);
 
 -- blocked_users RLS
 CREATE POLICY "Users can view own blocked list" ON public.blocked_users FOR SELECT USING (auth.uid() = blocker_id);
@@ -3154,6 +3155,7 @@ CREATE POLICY "Users can update own blocks" ON public.blocked_users FOR UPDATE U
 -- audit_logs RLS
 CREATE POLICY "Users can view own audit logs" ON public.audit_logs FOR SELECT USING (user_id = auth.uid());
 CREATE POLICY "System can insert audit logs" ON public.audit_logs FOR INSERT WITH CHECK ((SELECT auth.jwt() ->> 'role') = 'service_role');
+CREATE POLICY "Service role can manage audit logs" ON public.audit_logs FOR ALL USING (auth.jwt() ->> 'role' = 'service_role');
 
 -- Add new tables to realtime (ignore if already exists)
 DO $$
