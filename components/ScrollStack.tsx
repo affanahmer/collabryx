@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useRef, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import Lenis from 'lenis';
-import './ScrollStack.css';
+
 
 export interface ScrollStackItemProps {
   itemClassName?: string;
@@ -9,7 +9,10 @@ export interface ScrollStackItemProps {
 }
 
 export const ScrollStackItem: React.FC<ScrollStackItemProps> = ({ children, itemClassName = '' }) => (
-  <div className={`scroll-stack-card ${itemClassName}`.trim()}>{children}</div>
+  <div
+    className={`scroll-stack-card origin-top backface-hidden shadow-[0_0_30px_rgba(0,0,0,0.1)] h-80 w-full my-8 p-12 rounded-[40px] box-border relative ${itemClassName}`.trim()}
+    style={{ willChange: 'transform, filter', transformStyle: 'preserve-3d', WebkitTransform: 'translateZ(0)', transform: 'translateZ(0)' }}
+  >{children}</div>
 );
 
 interface ScrollStackProps {
@@ -320,11 +323,15 @@ const ScrollStack: React.FC<ScrollStackProps> = ({
   ]);
 
   return (
-    <div className={`scroll-stack-scroller ${className}`.trim()} ref={scrollerRef}>
-      <div className="scroll-stack-inner">
+    <div
+      className={`scroll-stack-scroller relative w-full h-full overflow-y-auto overflow-x-visible overscroll-contain scroll-smooth ${className}`.trim()}
+      ref={scrollerRef}
+      style={{ WebkitTransform: 'translateZ(0)', transform: 'translateZ(0)', willChange: 'scroll-position' }}
+    >
+      <div className="scroll-stack-inner py-[20vh] px-20 pb-[50rem] min-h-screen">
         {children}
         {/* Spacer so the last pin can release cleanly */}
-        <div className="scroll-stack-end" />
+        <div className="scroll-stack-end w-full h-px" />
       </div>
     </div>
   );
