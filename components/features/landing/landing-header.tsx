@@ -128,8 +128,7 @@ export const LandingHeader: React.FC = () => {
                                     const element = document.querySelector(selector);
                                     if (element) {
                                         if (typeof window !== 'undefined' && 'lenis' in window) {
-                                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                            (window as any).lenis.scrollTo(element);
+                                            window.lenis?.scrollTo(element);
                                         } else {
                                             element.scrollIntoView({ behavior: 'smooth' });
                                         }
@@ -172,8 +171,7 @@ export const LandingHeader: React.FC = () => {
                                         const element = document.querySelector(selector);
                                         if (element) {
                                             if (typeof window !== 'undefined' && 'lenis' in window) {
-                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                                (window as any).lenis.scrollTo(element);
+                                                window.lenis?.scrollTo(element);
                                             } else {
                                                 element.scrollIntoView({ behavior: 'smooth' });
                                             }

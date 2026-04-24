@@ -427,8 +427,7 @@ export const GridScan: React.FC<GridScanProps> = ({
         'requestPermission' in (DeviceOrientationEvent as unknown as { requestPermission: unknown })
       ) {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          await (DeviceOrientationEvent as any).requestPermission();
+          await (DeviceOrientationEvent as DeviceOrientationEventWithPermission).requestPermission?.();
         } catch (_error) { }
       }
     };
@@ -663,11 +662,10 @@ export const GridScan: React.FC<GridScanProps> = ({
       u.uScanDelay.value = Math.max(0.0, scanDelay);
     }
     if (bloomRef.current) {
-      bloomRef.current.blendMode.opacity.value = Math.max(0, bloomIntensity);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (bloomRef.current as any).luminanceMaterial.threshold = bloomThreshold;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (bloomRef.current as any).luminanceMaterial.smoothing = bloomSmoothing;
+      const bloom = bloomRef.current as BloomEffectWithLuminanceMaterial
+      bloom.blendMode.opacity.value = Math.max(0, bloomIntensity);
+      bloom.luminanceMaterial.threshold = bloomThreshold;
+      bloom.luminanceMaterial.smoothing = bloomSmoothing;
     }
     if (chromaRef.current) {
       chromaRef.current.offset.set(chromaticAberration, chromaticAberration);

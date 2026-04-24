@@ -79,9 +79,7 @@ export function ProfileSettingsTab({ userId }: { userId: string }) {
         const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
         if (!apiKey) return
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const w = window as any
-        if (w.google && w.google.maps && w.google.maps.places) {
+        if (window.google?.maps?.places) {
             setIsPlacesApiLoaded(true)
             return
         }
@@ -104,9 +102,7 @@ export function ProfileSettingsTab({ userId }: { userId: string }) {
     useEffect(() => {
         if (!isPlacesApiLoaded || !locationInputRef.current) return
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const w = window as any
-        const autocomplete = new w.google.maps.places.Autocomplete(locationInputRef.current, {
+        const autocomplete = new window.google.maps.places.Autocomplete(locationInputRef.current, {
             types: ['(cities)'],
         })
 
