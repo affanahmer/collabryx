@@ -7,14 +7,12 @@ vi.mock('@/lib/supabase/server', () => ({
   }))
 }))
 
-vi.mock('openai', () => {
-  const mockOpenAI = {
-    embeddings: {
-      create: vi.fn()
-    }
-  }
-  return { default: vi.fn(() => mockOpenAI) }
-})
+const mockEmbeddings = { create: vi.fn() }
+vi.mock('openai', () => ({
+  default: vi.fn().mockImplementation(() => ({
+    embeddings: mockEmbeddings
+  }))
+}))
 
 describe('vector-retriever', () => {
   describe('retrieveContextFromVectorStore', () => {
