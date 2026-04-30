@@ -112,7 +112,7 @@ export function sanitizeHtml(html: string): string {
     // Process children
     node.childNodes.forEach(processNode)
   }
-  
+
   Array.from(doc.body.childNodes).forEach(processNode)
   
   return doc.body.innerHTML
@@ -242,8 +242,11 @@ export function sanitizeMarkdown(markdown: string): string {
   // Remove script tags
   result = result.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
   
-  // Remove event handlers
-  result = result.replace(/\son\w+\s*=\s*["'][^"']*["']/gi, "")
+  // Remove event handlers in markdown (handles both quoted and unquoted attributes)
+  result = result.replace(/onerror\s*=\s*[^>\s]*/gi, "")
+  
+  // Remove empty quotes left behind
+  result = result.replace(/""/gi, "")
   
   return result
 }
