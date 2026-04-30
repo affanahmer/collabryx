@@ -1,9 +1,9 @@
 "use client"
 
 import { useCallback, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
-import { toast } from "sonner"
 import { QUERY_PRESETS } from "@/lib/query-cache"
 
 export const CHAT_CONVERSATIONS_QUERY_KEY = ["chat", "conversations"] as const
@@ -63,6 +63,7 @@ async function fetchChatConversations(): Promise<Conversation[]> {
 
 export function useChat(): UseChatReturn {
     const queryClient = useQueryClient()
+    const router = useRouter()
     const isMountedRef = useRef(false)
 
     const {
@@ -80,14 +81,12 @@ export function useChat(): UseChatReturn {
 
     const selectConversation = useCallback(
         (id: string) => {
-            const { useRouter } = require("next/navigation")
-            const router = useRouter()
             const conv = conversations.find((c) => c.id === id)
             if (conv) {
                 router.push(`/messages/${id}`)
             }
         },
-        [conversations]
+        [conversations, router]
     )
 
     const refreshConversations = useCallback(async () => {
