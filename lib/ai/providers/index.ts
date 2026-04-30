@@ -1,6 +1,5 @@
 import { ProviderRegistry } from './registry'
 import { MiniMaxProvider } from './minimax'
-import { OpenAI } from 'openai'
 
 const registry = new ProviderRegistry()
 
@@ -18,6 +17,8 @@ if (process.env.MINIMAX_API_KEY) {
 }
 
 if (process.env.OPENAI_API_KEY) {
+  // Lazy import to prevent build-time instantiation without API key
+  const { OpenAI } = require('openai')
   const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   registry.registerProvider({
     name: 'openai',

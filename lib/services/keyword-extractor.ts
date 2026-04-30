@@ -14,7 +14,7 @@ export function extractKeywords(text: string, limit = 20): KeywordResult[] {
   const words = text.toLowerCase()
     .replace(/[^\w\s]/g, ' ')
     .split(/\s+/)
-    .filter(w => w.length > 2 && !STOP_WORDS.has(w))
+    .filter(w => w.length >= 2 && !STOP_WORDS.has(w))
   
   const freq = new Map<string, number>()
   words.forEach(w => freq.set(w, (freq.get(w) || 0) + 1))

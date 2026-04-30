@@ -37,7 +37,7 @@ export function StreamingMessage({
         </p>
         {timestamp && (
           <p className="text-xs text-muted-foreground">
-            {timestamp.toLocaleTimeString()}
+            {timestamp.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </p>
         )}
       </div>
