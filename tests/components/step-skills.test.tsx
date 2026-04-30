@@ -227,7 +227,7 @@ describe('StepSkills Component', () => {
     expect(heading).toHaveAttribute('id', 'step-heading')
   })
 
-  it('should have content region with aria-labelledby', () => {
+  it('should have proper heading with step id', () => {
     const Wrapper = createWrapper()
     
     render(
@@ -236,8 +236,8 @@ describe('StepSkills Component', () => {
       </Wrapper>
     )
 
-    const region = screen.getByLabelText(/step-heading/i)
-    expect(region).toBeInTheDocument()
+    const heading = screen.getByRole('heading', { name: /your skills/i })
+    expect(heading).toHaveAttribute('id', 'step-heading')
   })
 
   it('should apply glass styling to container', () => {
