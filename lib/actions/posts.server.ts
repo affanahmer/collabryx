@@ -75,7 +75,7 @@ export async function createPost(formData: FormData) {
   )
 
   if (error) {
-    logger.error('Failed to create post:', error)
+    logger.db.error('Failed to create post:', error)
     return { error: 'Failed to create post' }
   }
 
@@ -139,7 +139,7 @@ export async function updatePost(postId: string, formData: FormData) {
   }
 
   if (error) {
-    logger.error('Failed to update post:', error)
+    logger.db.error('Failed to update post:', error)
     return { error: 'Failed to update post' }
   }
 
@@ -286,7 +286,7 @@ export async function sharePost(postId: string) {
   const { error } = await incrementPostCounter(postId, 'share_count', 1)
 
   if (error) {
-    logger.error('Failed to share post:', error)
+    logger.db.error('Failed to share post:', error)
     return { error: 'Failed to share post' }
   }
 
