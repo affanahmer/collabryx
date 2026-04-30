@@ -5,15 +5,16 @@
  */
 export function formatInitials(name: string): string {
   if (!name || name.trim() === "") {
-    return "U"
+    return ""
   }
   
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2)
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) {
+    return parts[0][0].toUpperCase()
+  }
+  
+  // For multiple names: first letter of first and last name
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 /**
