@@ -6,18 +6,37 @@ import Anthropic from '@anthropic-ai/sdk'
 import { revalidatePath } from 'next/cache'
 import { assembleAndBuildPrompt } from '@/lib/rag/context-assembler'
 
-// Initialize AI clients
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy-initialize AI clients to avoid build-time errors
+let openai: OpenAI | null = null
+let anthropic: Anthropic | null = null
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-})
+function getOpenAIClient(): OpenAI {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY environment variable is not set')
+    }
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  }
+  return openai
+}
 
-// Qwen/DashScope API (Alibaba)
-const DASHSCOPE_API_KEY = process.env.DASHSCOPE_API_KEY
-const DASHSCOPE_BASE_URL = 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'
+function getAnthropicClient(): Anthropic {
+  if (!anthropic) {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error('ANTHROPIC_API_KEY environment variable is not set')
+    }
+    anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  }
+  return anthropic
+}
+
+// Qwen/DashScope API (Alibaba) - lazy access
+function getDashScopeConfig() {
+  return {
+    apiKey: process.env.DASHSCOPE_API_KEY,
+    baseURL: 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1'
+  }
+}
 
 
 
@@ -112,7 +131,8 @@ async function callAI(messages: Array<{ role: string; content: string }>, system
         role: m.role as 'user' | 'assistant',
         content: m.content,
       }))
-      const response = await anthropic.messages.create({
+      const anthropicClient = getAnthropicClient()
+      const response = await anthropicClient.messages.create({
         model: 'claude-3-haiku-20240307',
         max_tokens: 500,
         messages: anthropicMessages,
@@ -122,11 +142,15 @@ async function callAI(messages: Array<{ role: string; content: string }>, system
     }
 
     if (provider === 'qwen') {
-      const response = await fetch(`${DASHSCOPE_BASE_URL}/chat/completions`, {
+      const { apiKey: dashscopeKey, baseURL } = getDashScopeConfig()
+      if (!dashscopeKey) {
+        throw new Error('DASHSCOPE_API_KEY environment variable is not set')
+      }
+      const response = await fetch(`${baseURL}/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${DASHSCOPE_API_KEY}`,
+          'Authorization': `Bearer ${dashscopeKey}`,
         },
         body: JSON.stringify({
           model: 'qwen-plus',
@@ -149,7 +173,8 @@ async function callAI(messages: Array<{ role: string; content: string }>, system
       role: m.role as 'system' | 'user' | 'assistant',
       content: m.content,
     }))
-    const response = await openai.chat.completions.create({
+    const openaiClient = getOpenAIClient()
+    const response = await openaiClient.chat.completions.create({
       model: 'gpt-4-turbo-preview',
       messages: openaiMessages,
       max_tokens: 500,
