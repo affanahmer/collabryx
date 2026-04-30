@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { X, AlertCircle, CheckCircle, GripVertical, Code2, Sparkles, Plus } from "lucide-react"
 import { skillsDatabase, type Skill } from "@/lib/data/skills-database"
 import { cn } from "@/lib/utils"
+import { glass } from "@/lib/utils/glass-variants"
 
 // Role-based skill suggestions database
 const ROLE_SKILL_SUGGESTIONS: Record<string, string[]> = {
@@ -154,7 +155,7 @@ export function StepSkills() {
   return (
     <div className="w-full max-w-full overflow-x-hidden space-y-6">
       <div className="space-y-2 text-center md:text-left">
-        <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Your Skills</h2>
+        <h2 id="step-heading" className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">Your Skills</h2>
         <p className="text-sm md:text-base text-muted-foreground mt-1">
           Add your skills to help us match you with the right opportunities. Proficiency level required for each skill.
         </p>
@@ -278,7 +279,8 @@ export function StepSkills() {
               {/* Add Skills Combobox - Fixed position container to prevent jumping */}
               <div className="grid gap-2" style={{ contain: 'layout', willChange: 'auto' }}>
                 <Label htmlFor="skills-combobox" className="text-sm md:text-base font-semibold text-foreground">
-                  {skills.length > 0 ? "Add more skills" : "Add Skills"} <span className="text-destructive">*</span>
+                  {skills.length > 0 ? "Add more skills" : "Add Skills"} <span className="text-destructive" aria-hidden="true">*</span>
+                  <span className="sr-only">(required)</span>
                 </Label>
                 
                 {/* Stable container with fixed minimum height to prevent layout shift */}
@@ -437,9 +439,9 @@ export function StepSkills() {
               )}
 
               {/* Helper Text */}
-              <div className="p-3 md:p-4 rounded-lg bg-muted/30 border border-border/30">
+              <div className={cn("p-3 md:p-4 rounded-lg", glass("subtle"))}>
                 <p className="text-xs md:text-sm text-muted-foreground">
-                  💡 <strong>Tip:</strong> Select from 1000+ skills or type to add custom skills. Set proficiency levels to help us match you better.
+                  💡 <strong>Tip:</strong> Select from 1000\+ skills or type to add custom skills. Set proficiency levels to help us match you better.
                 </p>
               </div>
             </div>
