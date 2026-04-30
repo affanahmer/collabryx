@@ -21,6 +21,13 @@ export function StepBasicInfo({ userName, onNameExtracted }: StepBasicInfoProps)
     const locationInputRef = useRef<HTMLInputElement | null>(null)
     const fullNameValue = watch("fullName")
 
+    // Pre-fill fullName with userName prop when provided
+    useEffect(() => {
+        if (userName) {
+            setValue("fullName", userName, { shouldDirty: false, shouldValidate: false })
+        }
+    }, [userName, setValue])
+
     // Extract display name from full name using regex
     useEffect(() => {
         if (fullNameValue && onNameExtracted) {
