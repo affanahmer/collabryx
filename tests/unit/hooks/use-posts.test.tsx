@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react'
+import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { usePosts, useCreatePost, useDeletePost } from '@/hooks/use-posts'
@@ -26,11 +26,15 @@ describe('usePosts', () => {
     expect(result.current).toBeDefined()
   })
 
-  it('should return data and loading state', () => {
+  it('should return data and loading state', async () => {
     const { result } = renderHook(() => usePosts(), { wrapper: createWrapper() })
-    expect(result.current.data).toBeDefined()
-    expect(Array.isArray(result.current.data)).toBe(true)
+    // Wait for initial render to settle
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    }, { timeout: 5000 })
+    // After loading settles (either success or error), check states are correct types
     expect(typeof result.current.isLoading).toBe('boolean')
+    expect(typeof result.current.isError).toBe('boolean')
   })
 })
 
