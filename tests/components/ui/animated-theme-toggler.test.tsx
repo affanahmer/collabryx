@@ -58,14 +58,19 @@ const mockLocalStorage = {
 let mutationCallback: MutationCallback | null = null
 const mockDisconnect = vi.fn()
 const mockObserve = vi.fn()
-const MockMutationObserver = vi.fn((cb: MutationCallback) => {
+
+// Create a proper constructor function
+const MockMutationObserverFn = function(this: { disconnect: typeof mockDisconnect, observe: typeof mockObserve, takeRecords: ReturnType<typeof vi.fn> }, cb: MutationCallback) {
   mutationCallback = cb
-  return {
-    disconnect: mockDisconnect,
-    observe: mockObserve,
-    takeRecords: vi.fn(() => []),
-  }
-})
+  this.disconnect = mockDisconnect
+  this.observe = mockObserve
+  this.takeRecords = vi.fn(() => [])
+}
+
+// Copy prototype from native MutationObserver
+MockMutationObserverFn.prototype = MutationObserver.prototype
+
+const MockMutationObserver = vi.fn(MockMutationObserverFn)
 
 // window.matchMedia mock for TC-034
 const matchMediaListeners = new Set<(e: { matches: boolean }) => void>()
@@ -124,11 +129,7 @@ describe('AnimatedThemeToggler (TC-033, TC-034)', () => {
       writable: true,
       configurable: true,
     })
-    Object.defineProperty(window, 'MutationObserver', {
-      value: MockMutationObserver,
-      writable: true,
-      configurable: true,
-    })
+    vi.stubGlobal('MutationObserver', MockMutationObserver)
   })
 
   afterEach(() => {

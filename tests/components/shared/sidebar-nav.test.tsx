@@ -13,20 +13,22 @@ import React from 'react'
 // ---------------------------------------------------------------------------
 // Mock useUser hook
 // ---------------------------------------------------------------------------
+const mockUserState = {
+  user: {
+    id: 'test-user-123',
+    email: 'test@collabryx.dev',
+  },
+  profile: {
+    full_name: 'Test User',
+    avatar_url: null,
+    headline: 'Software Engineer',
+  },
+  isLoading: false,
+  error: null,
+}
+
 vi.mock('@/hooks/use-user', () => ({
-  useUser: () => ({
-    user: {
-      id: 'test-user-123',
-      email: 'test@collabryx.dev',
-    },
-    profile: {
-      full_name: 'Test User',
-      avatar_url: null,
-      headline: 'Software Engineer',
-    },
-    isLoading: false,
-    error: null,
-  }),
+  useUser: () => mockUserState,
 }))
 
 // ---------------------------------------------------------------------------
@@ -290,16 +292,9 @@ describe('SidebarNav (TC-036)', () => {
   // Edge cases
   // -----------------------------------------------------------------------
   it('should render without profile (null user/email)', () => {
-    // Arrange – override useUser mock for this test only
-    const useUserMod = require('@/hooks/use-user')
-    const originalUseUser = useUserMod.useUser
-    useUserMod.useUser = () => ({
-      user: null,
-      profile: null,
-      isLoading: false,
-      error: null,
-    })
-
+    // Arrange – override mockUserState for this test only
+    mockUserState.user = null as any
+    mockUserState.profile = null
     mockIsCollapsed.mockReturnValue(false)
 
     // Act
@@ -310,7 +305,12 @@ describe('SidebarNav (TC-036)', () => {
     expect(fallbackText).toBeDefined()
 
     // Restore
-    useUserMod.useUser = originalUseUser
+    mockUserState.user = { id: 'test-user-123', email: 'test@collabryx.dev' } as any
+    mockUserState.profile = {
+      full_name: 'Test User',
+      avatar_url: null,
+      headline: 'Software Engineer',
+    }
   })
 
   it('should render settings and notifications in footer area', () => {
