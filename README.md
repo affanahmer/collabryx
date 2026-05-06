@@ -121,16 +121,31 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 ### Run Tests
 
+**118 test files | 750+ test cases | 10 modules (TC-001 through TC-100)**
+
 ```bash
-# Run all tests
+# Run all unit/component/integration tests (Vitest)
 npm run test
 
-# Run tests in watch mode
-npm run test:watch
+# Run with coverage
+npm run test -- --coverage
 
-# Run tests with coverage
-npm run test:coverage
+# Run in watch mode
+npm run test -- --watch
+
+# Run E2E tests (Playwright)
+npm run test:e2e
+
+# Run specific module
+npm run test -- --run tests/unit/hooks/
+npm run test -- --run tests/integration/auth/
+npm run test -- --run tests/components/features/matches/
+
+# Run specific test case by name
+npm run test -- -t "RLS blocks"
 ```
+
+📖 **Full test documentation:** [tests/README.md](./tests/README.md)
 
 ---
 
@@ -167,10 +182,43 @@ collabryx/
 │   │   ├── matches.ts         # Matching service
 │   │   └── profiles.ts        # Profile service
 │   └── utils/                 # Helper functions
-├── tests/                     # Test suite
-│   ├── components/            # Component tests
-│   ├── hooks/                 # Hook tests
-│   └── services/              # Service tests
+├── tests/                     # Test suite (118 files, 750+ tests)
+│   ├── unit/                  # Unit tests (hooks, lib, services, actions)
+│   │   ├── hooks/             # 10 hook test files
+│   │   ├── lib/               # 30+ library/utility tests
+│   │   ├── services/          # 5 service algorithm tests
+│   │   └── actions/           # Server action tests
+│   ├── components/            # Component tests (25+ files)
+│   │   ├── features/          # Domain component tests (auth, matches, messages, etc.)
+│   │   ├── ui/                # UI primitive tests (globe, theme toggler, button)
+│   │   └── shared/            # Shared component tests (sidebar, notification)
+│   ├── integration/           # Cross-layer integration tests (30+ files)
+│   │   ├── auth/              # RLS policies, session expiry
+│   │   ├── embeddings/        # Embedding pipeline, worker failure, DLQ
+│   │   ├── ai-mentor/         # Chat sessions, MVP checklist, Lean Canvas, resilience
+│   │   ├── matches/           # Match flow end-to-end
+│   │   ├── realtime/          # Chat realtime, event processing
+│   │   ├── profile/           # Onboarding flow, CRUD, optimistic updates, cascade delete
+│   │   ├── notifications/     # Notification storage flow
+│   │   ├── moderation/        # Content scanning & quarantine
+│   │   ├── analytics/         # Activity tracking, daily aggregation
+│   │   ├── ui/                # Responsive layout, keyboard nav, smooth scroll
+│   │   ├── edge-functions/    # Deno Edge function tests
+│   │   ├── environment/       # Dev server, Docker worker health
+│   │   └── seeder/            # DB seeder CLI tests
+│   ├── e2e/                   # E2E Playwright tests (6 specs)
+│   │   ├── auth-flow.spec.ts
+│   │   ├── critical-flows.spec.ts
+│   │   ├── onboarding-flow.spec.ts
+│   │   ├── ui-components.spec.ts
+│   │   └── system-health.spec.ts
+│   ├── scripts/               # Shell infrastructure tests
+│   │   └── env-setup.test.sh
+│   ├── setup/                 # Global mocks & fixtures
+│   │   ├── setup.ts           # afterEach cleanup, matchMedia, IntersectionObserver, next/navigation, motion mocks
+│   │   ├── mocks.ts           # Supabase client, sonner toast, React Query mocks
+│   │   └── fixtures.ts        # Mock data factories (User, Post, Comment, Connection, Notification, etc.)
+│   └── README.md              # Test suite documentation (100 TCs mapped)
 ├── docs/                      # Documentation
 │   ├── 01-getting-started/    # Installation, development
 │   ├── 02-architecture/       # Architecture overview

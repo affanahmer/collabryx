@@ -100,113 +100,89 @@ npm run lint -- --fix
 
 ## Testing Commands
 
+**118 test files | 750+ test cases | 10 modules (TC-001→TC-100)**
+
 ### `npm run test`
 
-Run the Vitest test suite.
+Run the full Vitest test suite (unit + component + integration).
 
 ```bash
 npm run test
 ```
 
 **Details:**
-- Runs all tests once
+- Runs all `*.test.ts` and `*.test.tsx` files
+- Excludes E2E tests
 - Outputs results to console
 - Exits with error code on failure
 
----
+### `npm run test:e2e`
 
-### `npm run test:watch`
-
-Run tests in watch mode (development).
+Run Playwright E2E browser tests.
 
 ```bash
-npm run test:watch
+npm run test:e2e
 ```
 
 **Details:**
-- Watches for file changes
-- Re-runs affected tests
-- Interactive UI
-
-**Keyboard Shortcuts:**
-- `a` - Run all tests
-- `f` - Run failed tests
-- `p` - Filter by filename
-- `t` - Filter by test name
-- `q` - Quit
+- Chromium browser
+- Auto-starts dev server
+- Screenshots on failure
+- CI retries (2x)
 
 ---
 
-### `npm run test:coverage`
-
-Run tests with coverage report.
+### Module-Specific Commands
 
 ```bash
-npm run test:coverage
+# Module 1: Environment & CLI (TC-001→010)
+npm run test -- --run tests/scripts/ tests/unit/lib/env-validation.test.ts tests/integration/environment/ tests/integration/seeder/
+
+# Module 2: Auth & Security (TC-011→020)
+npm run test -- --run tests/unit/auth/ tests/unit/lib/auth-rate-limit.test.ts tests/components/features/auth/ tests/integration/auth/
+
+# Module 3: User Profiling (TC-021→030)
+npm run test -- --run tests/unit/actions/profile-actions.test.ts tests/unit/settings-validation.test.ts tests/integration/profile/ tests/components/features/onboarding/ tests/components/features/profile/ tests/components/features/dashboard/profile-card.test.tsx
+
+# Module 4: UI & Accessibility (TC-031→040)
+npm run test -- --run tests/components/ui/ tests/components/shared/ tests/integration/ui/
+
+# Module 5: Vector Embedding (TC-041→050)
+npm run test -- --run tests/unit/lib/embedding-* tests/integration/embeddings/
+
+# Module 6: Semantic Matching (TC-051→060)
+npm run test -- --run tests/unit/services/match-* tests/unit/services/feed-scorer.test.ts tests/components/features/matches/ tests/integration/matches/
+
+# Module 7: Real-Time Networking (TC-061→075)
+npm run test -- --run tests/unit/hooks/use-connection* tests/unit/hooks/use-messages* tests/unit/hooks/use-conversations* tests/unit/hooks/use-typing* tests/components/features/connections/ tests/components/features/messages/ tests/integration/realtime/ tests/integration/messaging/
+
+# Module 8: AI Mentor (TC-076→085)
+npm run test -- --run tests/unit/lib/prompt-injection.test.ts tests/unit/lib/ai/ tests/components/features/ai-mentor/ tests/integration/ai-mentor/
+
+# Module 9: Notifications & Moderation (TC-086→095)
+npm run test -- --run tests/unit/services/notification-engine* tests/unit/services/content-moderator* tests/components/shared/notification-item* tests/components/features/dashboard/posts/ tests/integration/notifications/ tests/integration/moderation/ tests/integration/analytics/
+
+# Module 10: System Integration (TC-096→100)
+npm run test -- --run tests/integration/edge-functions/ tests/integration/analytics/aggregator.test.ts && npm run test:e2e
 ```
-
-**Output:**
-- Coverage report in console
-- HTML report in `coverage/` directory
-- LCOV report for CI integration
-
-**Coverage Thresholds:**
-- Statements: 80%
-- Branches: 75%
-- Functions: 80%
-- Lines: 80%
 
 ---
 
-### `npm run test:ui`
-
-Run tests with Vitest UI dashboard.
+### Watch & Coverage
 
 ```bash
-npm run test:ui
+# Watch mode (re-runs on file changes)
+npm run test -- --watch
+
+# Coverage report (text + HTML + JSON)
+npm run test -- --coverage
+
+# Run specific test file
+npm run test -- tests/unit/lib/sanitize.test.ts
+
+# Run specific test case by name pattern
+npm run test -- -t "RLS blocks"
 ```
-
-**Details:**
-- Opens browser UI at http://localhost:51204
-- Interactive test runner
-- Visual coverage
-- Filter and search tests
-
----
-
-### `npm run test:components`
-
-Run component tests only.
-
-```bash
-npm run test:components
-```
-
-**Pattern:** `tests/components/**/*.test.tsx`
-
----
-
-### `npm run test:hooks`
-
-Run hook tests only.
-
-```bash
-npm run test:hooks
-```
-
-**Pattern:** `tests/hooks/**/*.test.ts`
-
----
-
-### `npm run test:services`
-
-Run service tests only.
-
-```bash
-npm run test:services
-```
-
-**Pattern:** `tests/services/**/*.test.ts`
 
 ---
 

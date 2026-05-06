@@ -361,6 +361,46 @@ types/                # TypeScript types
 
 ## 🧪 Testing Guidelines
 
+### Test Suite Overview
+
+**118 test files, 750+ test cases across 10 modules (TC-001 through TC-100)**
+
+| Module | TCs | Domain |
+|--------|-----|--------|
+| 1 | TC-001→010 | Environment Setup & CLI Testing |
+| 2 | TC-011→020 | Authentication & Enterprise Security |
+| 3 | TC-021→030 | User Profiling & Data Management |
+| 4 | TC-031→040 | UI, 3D Rendering & Accessibility |
+| 5 | TC-041→050 | AI Vector Embedding & Python Worker |
+| 6 | TC-051→060 | Semantic Matching & Feed Engine |
+| 7 | TC-061→075 | Real-Time Networking & Communication |
+| 8 | TC-076→085 | AI Mentor & LLM Assistant |
+| 9 | TC-086→095 | Notifications & Content Moderation |
+| 10 | TC-096→100 | System Integration & Edge Services |
+
+See `tests/README.md` for the complete file structure and TC-to-file mapping.
+
+### AAA Pattern (Arrange-Act-Assert)
+```typescript
+// ✅ GOOD: Arrange → Act → Assert
+test('RLS blocks user from querying another user messages', () => {
+  // Arrange — Set up test data
+  const ownUserId = 'user-1'
+  const allMessages = [{ conversation_id: 'conv-2', ... }]
+  
+  // Act — Execute code under test
+  const result = rlsFilterMessages(allMessages, ownUserId)
+  
+  // Assert — Verify behavior
+  expect(result).toHaveLength(0)
+})
+
+// ❌ BAD: Unclear structure, no AAA
+test('test messages', () => {
+  expect(something()).toBe(true)
+})
+```
+
 ### Unit Test Example
 ```typescript
 import { describe, it, expect, vi } from 'vitest'
@@ -390,19 +430,45 @@ describe('Button', () => {
 })
 ```
 
+### Mock Infrastructure
+```typescript
+// Supabase client (auto-mocked in tests/setup/mocks.ts)
+import { mockSupabaseClient } from '@/../tests/setup/mocks'
+
+// Mock data factories
+import { createMockUser, createMockPost } from '@/../tests/setup/fixtures'
+
+// Mock a Supabase response
+mockSupabaseClient.single.mockResolvedValue({ data: mockUser, error: null })
+mockSupabaseClient.from('connections').insert().single.mockResolvedValue({ data: mockConnection, error: null })
+
+// Mock a Supabase error
+mockSupabaseClient.single.mockResolvedValue({ data: null, error: { code: '23505', message: 'Duplicate' } })
+```
+
 **Running Tests:**
 ```bash
-# All tests
+# All unit/component/integration tests (Vitest)
 npm run test
 
-# Specific test file
-npm run test -- sanitize.test.ts
+# Run with coverage
+npm run test -- --coverage
 
 # Watch mode
 npm run test -- --watch
 
-# Coverage
-npm run test -- --coverage
+# E2E tests (Playwright)
+npm run test:e2e
+
+# Specific test file
+npm run test -- sanitize.test.ts
+
+# Specific module
+npm run test -- --run tests/unit/lib/
+npm run test -- --run tests/integration/auth/
+
+# Specific test case by name pattern
+npm run test -- -t "RLS blocks"
 ```
 
 ---
@@ -431,6 +497,7 @@ npm run test -- --coverage
 
 ---
 
-**Last Updated:** 2026-03-19  
+**Last Updated:** 2026-05-06  
 **Phase:** 5 Complete  
+**Test Suite:** 118 files, 750+ tests, 100 TCs (TC-001→TC-100)  
 **Status:** Production Ready ✅
