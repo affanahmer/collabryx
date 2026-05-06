@@ -170,7 +170,9 @@ describe('Embedding Generator', () => {
   describe('TC-047: Text truncation for excessively long bios', () => {
     it('should truncate bio at 2000 characters limit for semantic text construction', () => {
       // Arrange
-      const longBio = 'x'.repeat(3000)
+      // Use a bio that's long enough to trigger truncation but not so long that it consumes all space
+      // leaving no room for Skills/Interests sections. With header taking ~40 chars, we need bio < 1960
+      const longBio = 'x'.repeat(1800)
       const profile = {
         role: 'Student',
         headline: 'Developer',
