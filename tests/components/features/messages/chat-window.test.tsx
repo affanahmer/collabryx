@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { ChatWindow } from '@/components/features/messages/chat-window'
-import { mockSupabaseClient } from '@/../tests/setup/mocks'
+import { mockSupabaseClient } from '@/tests/setup/mocks'
+import * as useMessagesModule from '@/hooks/use-messages'
+import * as useTypingIndicatorModule from '@/hooks/use-typing-indicator'
 
 // Mock the hooks used by ChatWindow
 vi.mock('@/hooks/use-messages', () => ({
@@ -61,8 +63,7 @@ describe('ChatWindow (TC-067, TC-072)', () => {
 
     it('shows loading state when messages are being fetched', () => {
       // Arrange
-      const useMessagesModule = require('@/hooks/use-messages')
-      useMessagesModule.useMessages.mockReturnValue({
+      vi.mocked(useMessagesModule.useMessages).mockReturnValue({
         messages: [],
         isLoading: true,
         error: null,
@@ -94,8 +95,7 @@ describe('ChatWindow (TC-067, TC-072)', () => {
 
     it('shows "No messages" when conversation is empty', () => {
       // Arrange
-      const useMessagesModule = require('@/hooks/use-messages')
-      useMessagesModule.useMessages.mockReturnValue({
+      vi.mocked(useMessagesModule.useMessages).mockReturnValue({
         messages: [],
         isLoading: false,
         error: null,
@@ -132,8 +132,7 @@ describe('ChatWindow (TC-067, TC-072)', () => {
         { id: 'msg-2', conversation_id: 'conv-123', sender_id: mockUser.id, text: 'Hi there!', is_read: false, created_at: new Date().toISOString() },
       ]
 
-      const useMessagesModule = require('@/hooks/use-messages')
-      useMessagesModule.useMessages.mockReturnValue({
+      vi.mocked(useMessagesModule.useMessages).mockReturnValue({
         messages: mockMessages,
         isLoading: false,
         error: null,
@@ -166,8 +165,7 @@ describe('ChatWindow (TC-067, TC-072)', () => {
 
     it('shows "Connected" badge when isConnected is true', () => {
       // Arrange
-      const useMessagesModule = require('@/hooks/use-messages')
-      useMessagesModule.useMessages.mockReturnValue({
+      vi.mocked(useMessagesModule.useMessages).mockReturnValue({
         messages: [],
         isLoading: false,
         error: null,
@@ -199,8 +197,7 @@ describe('ChatWindow (TC-067, TC-072)', () => {
 
     it('shows "Not Connected" badge when isConnected is false', () => {
       // Arrange
-      const useMessagesModule = require('@/hooks/use-messages')
-      useMessagesModule.useMessages.mockReturnValue({
+      vi.mocked(useMessagesModule.useMessages).mockReturnValue({
         messages: [],
         isLoading: false,
         error: null,
@@ -240,8 +237,7 @@ describe('ChatWindow (TC-067, TC-072)', () => {
         { id: 'msg-3', conversation_id: 'conv-123', sender_id: mockUser.id, text: 'From me', is_read: false, created_at: new Date().toISOString() },
       ]
 
-      const useMessagesModule = require('@/hooks/use-messages')
-      useMessagesModule.useMessages.mockReturnValue({
+      vi.mocked(useMessagesModule.useMessages).mockReturnValue({
         messages,
         isLoading: false,
         error: null,
@@ -277,8 +273,7 @@ describe('ChatWindow (TC-067, TC-072)', () => {
       // Arrange
       const markAsReadMock = vi.fn().mockResolvedValue(undefined)
 
-      const useMessagesModule = require('@/hooks/use-messages')
-      useMessagesModule.useMessages.mockReturnValue({
+      vi.mocked(useMessagesModule.useMessages).mockReturnValue({
         messages: [],
         isLoading: false,
         error: null,
@@ -312,8 +307,7 @@ describe('ChatWindow (TC-067, TC-072)', () => {
 
     it('shows typing indicator when other user is typing', () => {
       // Arrange
-      const useMessagesModule = require('@/hooks/use-messages')
-      useMessagesModule.useMessages.mockReturnValue({
+      vi.mocked(useMessagesModule.useMessages).mockReturnValue({
         messages: [],
         isLoading: false,
         error: null,
@@ -321,8 +315,7 @@ describe('ChatWindow (TC-067, TC-072)', () => {
         markAsRead: vi.fn(),
       })
 
-      const useTypingModule = require('@/hooks/use-typing-indicator')
-      useTypingModule.useTypingIndicator.mockReturnValue({
+      vi.mocked(useTypingIndicatorModule.useTypingIndicator).mockReturnValue({
         isTyping: true,
         sendTypingEvent: vi.fn(),
         clearTypingStatus: vi.fn(),
