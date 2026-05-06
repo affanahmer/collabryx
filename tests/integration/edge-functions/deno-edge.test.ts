@@ -410,15 +410,17 @@ describe('TC-097 — sync-profile-data Edge Function', () => {
     })
 
     test('should sync counts from related tables', async () => {
-      // Arrange — mock skills count
+      // Arrange — mock skills count using proper chain: select → eq → thenable
       const skillsBuilder = createMockQueryBuilder()
-      skillsBuilder.select.mockResolvedValueOnce({
+      // Make select return builder for chaining, and eq return a promise with data
+      skillsBuilder.select.mockReturnValue(skillsBuilder)
+      skillsBuilder.eq.mockResolvedValue({
         data: [{ id: 's1' }, { id: 's2' }, { id: 's3' }],
         error: null,
         count: 3,
       })
 
-      // Act
+      // Act — chain select and eq, then await the promise
       const result = await skillsBuilder
         .select('*', { count: 'exact', head: true } as never)
         .eq('user_id', 'user-1')
