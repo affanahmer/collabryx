@@ -113,7 +113,7 @@ describe('TC-049: Non-blocking embedding generation', () => {
     let backgroundError: Error | null = null
 
     // Act - the API returns successfully, but the background worker encounters an error
-    const apiResponse = await simulateApiResponse(10)
+    const apiPromise = simulateApiResponse(10)
 
     // Simulate an async embedding failure (doesn't block the response)
     const embeddingWithError = simulateEmbeddingGeneration('bad bio', 'error-user', 100).then(
@@ -127,10 +127,15 @@ describe('TC-049: Non-blocking embedding generation', () => {
       backgroundError = err
     })
 
+    // Advance timers to let promises resolve
+    vi.advanceTimersByTime(200)
+    await Promise.resolve() // Flush microtasks (then callbacks)
+
+    const apiResponse = await apiPromise
+
     // Assert
     expect(apiResponse.status).toBe('queued')
     // Background error is captured but doesn't affect the already-sent response
-    await vi.runAllTimersAsync()
     expect(backgroundError).not.toBeNull()
     expect(backgroundError?.message).toBe('Model timeout')
   })
