@@ -175,7 +175,7 @@ describe('TC-092: Flagged Post Quarantine Integration', () => {
 
     it('flags toxic posts and sets visibility to restricted', () => {
       // Arrange
-      const toxicContent = 'You are stupid and an idiot, I hate this platform'
+      const toxicContent = 'You are stupid and I hate this platform'
 
       // Act
       const post = createPost('author-2', toxicContent)
