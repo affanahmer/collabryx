@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { rateLimit } from '@/lib/rate-limit'
+import { rateLimit, __clearRateLimitStore } from '@/lib/rate-limit'
 
 function createMockRequest(ip: string = '10.0.0.1', userAgent?: string) {
   return {
@@ -30,6 +30,7 @@ function createMockRequest(ip: string = '10.0.0.1', userAgent?: string) {
 describe('Auth Rate Limiting — TC-018', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    __clearRateLimitStore()
   })
 
   describe('auth rate limit configuration', () => {
