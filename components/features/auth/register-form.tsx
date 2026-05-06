@@ -313,7 +313,7 @@ export function RegisterForm() {
                             )}
                         </div>
 
-                        <Button type="submit" className={buttonClasses} disabled={isLoading}>
+                        <Button type="submit" className={buttonClasses} disabled={isLoading} aria-label="Sign Up">
                             {isLoading ? <Loader2 className="animate-spin" /> : "Sign Up"}
                         </Button>
                     </form>
