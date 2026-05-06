@@ -153,4 +153,39 @@ test.describe('Critical User Flows - P0-21', () => {
       await expect(page.locator('#login-heading')).toBeVisible()
     })
   })
+
+  test.describe('System Health', () => {
+    test('health endpoint returns 200 with valid schema', async ({ request }) => {
+      const response = await request.get('/api/health')
+      expect(response.status()).toBe(200)
+
+      const data = await response.json()
+      expect(data).toHaveProperty('status')
+      expect(data).toHaveProperty('timestamp')
+      expect(data).toHaveProperty('checks')
+      expect(data.checks).toHaveProperty('database')
+      expect(['healthy', 'degraded', 'unhealthy']).toContain(data.status)
+    })
+
+    test('health endpoint returns valid timestamp', async ({ request }) => {
+      const response = await request.get('/api/health')
+      const data = await response.json()
+      expect(Date.parse(data.timestamp)).not.toBeNaN()
+    })
+  })
+
+  test.describe('Public Page Accessibility', () => {
+    test('landing page loads without console errors', async ({ page }) => {
+      const consoleLogs: string[] = []
+      page.on('console', (msg) => {
+        if (msg.type() === 'error') consoleLogs.push(msg.text())
+      })
+
+      await page.goto('/')
+      await page.waitForLoadState('networkidle')
+
+      const title = await page.title()
+      expect(title).toContain('Collabryx')
+    })
+  })
 })
