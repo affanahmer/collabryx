@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mockSupabaseClient } from '@/../tests/setup/mocks'
+import { mockSupabaseClient } from '@/tests/setup/mocks'
 
 // Mock logger
 vi.mock('@/lib/logger', () => ({
@@ -149,7 +149,7 @@ describe('Chat Realtime Integration (TC-065)', () => {
       // Assert: Channel created with correct name and events
       expect(mockSupabaseClient.channel).toHaveBeenCalledWith('messages:conv-abc')
       expect(channel.on).toHaveBeenCalledTimes(2)
-      expect(channel.subscribe).toHaveBeenCalledTimes(2) // Once for each on() call since .on returns this
+      expect(channel.subscribe).toHaveBeenCalledTimes(1) // Called once after both on() chains
 
       // Verify the first on() call is for INSERT
       const firstOnCall = channel.on.mock.calls[0]

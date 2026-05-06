@@ -151,20 +151,40 @@ describe('Onboarding Flow Integration (TC-021)', () => {
       const skillsInsert = vi.fn().mockResolvedValue({ data: null, error: null })
       const interestsInsert = vi.fn().mockResolvedValue({ data: null, error: null })
 
-      // Track .from() calls
-      let fromCallCount = 0
-      vi.mocked(mockSupabaseClient.from).mockImplementation(() => {
-        fromCallCount++
-        if (fromCallCount === 1) {
+      // Track .from() calls by table
+      let profilesCallCount = 0
+      vi.mocked(mockSupabaseClient.from).mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          profilesCallCount++
+          if (profilesCallCount === 1) {
+            // First call: select query
+            return {
+              select: vi.fn().mockReturnThis(),
+              eq: vi.fn().mockReturnThis(),
+              single: vi.fn().mockResolvedValue({ data: { onboarding_completed: false }, error: null }),
+              upsert: profileUpsert,
+            } as any
+          }
+          // Second call: upsert
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
-            single: vi.fn().mockResolvedValue({ data: { onboarding_completed: false }, error: null }),
+            single: vi.fn().mockResolvedValue({ data: null, error: null }),
             upsert: profileUpsert,
           } as any
         }
+        if (table === 'user_skills') {
+          return {
+            insert: skillsInsert,
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: null, error: null }),
+            upsert: vi.fn().mockResolvedValue({ data: null, error: null }),
+          } as any
+        }
+        // user_interests or other tables
         return {
-          insert: fromCallCount === 2 ? skillsInsert : interestsInsert,
+          insert: interestsInsert,
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
           single: vi.fn().mockResolvedValue({ data: null, error: null }),
