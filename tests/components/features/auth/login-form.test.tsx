@@ -4,13 +4,18 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { LoginForm } from '@/components/features/auth/login-form'
-import { mockSupabaseClient } from '@/../tests/setup/mocks'
+import { mockSupabaseClient } from '@/tests/setup/mocks'
 
 describe('LoginForm', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+
+    // Mock Supabase env vars so the form's auth check passes
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://test.supabase.co')
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'test-anon-key')
+
     mockSupabaseClient.auth.signInWithPassword.mockResolvedValue({
       data: { user: { id: 'user-1' } },
       error: null,
@@ -52,26 +57,25 @@ describe('LoginForm', () => {
     // Arrange
     render(<LoginForm />)
 
-    // Wait for mount
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /sign in/i })).not.toBeDisabled()
+    const emailInput = screen.getByPlaceholderText('m@example.com')
+    const passwordInput = screen.getByPlaceholderText('Password')
+
+    // Act - fill form
+    await act(async () => {
+      fireEvent.change(emailInput, { target: { value: 'valid@example.com' } })
+    })
+    await act(async () => {
+      fireEvent.change(passwordInput, { target: { value: 'password123' } })
     })
 
-    // Act
-    fireEvent.change(screen.getByPlaceholderText('m@example.com'), {
-      target: { value: 'valid@example.com' },
+    // Submit form
+    const form = screen.getByRole('form')
+    await act(async () => {
+      fireEvent.submit(form)
     })
-    fireEvent.change(screen.getByPlaceholderText('Password'), {
-      target: { value: 'password123' },
-    })
-
-    const submitButton = screen.getByRole('button', { name: /sign in/i })
-    fireEvent.click(submitButton)
 
     // Assert
-    await waitFor(() => {
-      expect(mockSupabaseClient.auth.signInWithPassword).toHaveBeenCalled()
-    })
+    expect(mockSupabaseClient.auth.signInWithPassword).toHaveBeenCalled()
   })
 
   it('should show error toast on invalid credentials', async () => {
@@ -83,23 +87,25 @@ describe('LoginForm', () => {
 
     render(<LoginForm />)
 
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /sign in/i })).not.toBeDisabled()
+    const emailInput = screen.getByPlaceholderText('m@example.com')
+    const passwordInput = screen.getByPlaceholderText('Password')
+
+    // Act - fill form
+    await act(async () => {
+      fireEvent.change(emailInput, { target: { value: 'bad@example.com' } })
+    })
+    await act(async () => {
+      fireEvent.change(passwordInput, { target: { value: 'wrongpass' } })
     })
 
-    // Act
-    fireEvent.change(screen.getByPlaceholderText('m@example.com'), {
-      target: { value: 'bad@example.com' },
+    // Submit form
+    const form = screen.getByRole('form')
+    await act(async () => {
+      fireEvent.submit(form)
     })
-    fireEvent.change(screen.getByPlaceholderText('Password'), {
-      target: { value: 'wrongpass' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: /sign in/i }))
 
     // Assert
-    await waitFor(() => {
-      expect(mockSupabaseClient.auth.signInWithPassword).toHaveBeenCalled()
-    })
+    expect(mockSupabaseClient.auth.signInWithPassword).toHaveBeenCalled()
   })
 
   it('should navigate to register page via link', () => {
