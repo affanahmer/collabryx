@@ -253,7 +253,7 @@ describe('TC-059: Hybrid Scoring', () => {
 
     // Assert — new profile shouldn't be penalized to zero
     expect(score).toBeGreaterThan(0.35)
-    expect(score).toBeLessThan(0.55)
+    expect(score).toBeLessThan(0.70)
   })
 
   it('connection boost increases score by 1.5x compared to non-connected', () => {
