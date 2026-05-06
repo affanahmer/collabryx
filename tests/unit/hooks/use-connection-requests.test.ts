@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
 import { useConnectionRequests } from '@/hooks/use-connection-requests'
-import { mockSupabaseClient } from '@/../tests/setup/mocks'
+import { mockSupabaseClient } from '@/tests/setup/mocks'
 
 // Mock logger to suppress console noise in tests
 vi.mock('@/lib/logger', () => ({
@@ -15,14 +15,14 @@ vi.mock('@/../tests/setup/mocks', async () => {
 })
 
 const mockReceiverUser = {
-  id: 'receiver-user-id',
+  id: '22222222-2222-2222-2222-222222222222',
   email: 'receiver@example.com',
   display_name: 'Receiver User',
   full_name: 'Receiver User',
 }
 
 const mockRequestingUser = {
-  id: 'test-user-id',
+  id: '11111111-1111-1111-1111-111111111111',
   email: 'test@example.com',
   display_name: 'Test User',
   full_name: 'Test User',
@@ -42,7 +42,7 @@ describe('useConnectionRequests', () => {
     it('calls insert on connections table with correct requester and receiver IDs', async () => {
       // Arrange
       const mockConnection = {
-        id: 'new-conn-id',
+        id: '33333333-3333-3333-3333-333333333333',
         requester_id: mockRequestingUser.id,
         receiver_id: mockReceiverUser.id,
         status: 'pending',
