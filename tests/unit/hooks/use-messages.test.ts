@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mockSupabaseClient } from '@/../tests/setup/mocks'
+import { mockSupabaseClient } from '@/tests/setup/mocks'
 
 // Mock logger
 vi.mock('@/lib/logger', () => ({
@@ -101,24 +101,11 @@ describe('useMessages — Send Messages & Offline Sync (TC-066, TC-068)', () => 
         } as unknown as ReturnType<typeof mockSupabaseClient.from>
       })
 
-      // Act: Use the sendMessageMutation function directly
+      // Act: Call the sendMessageMutation function
       const { sendMessageMutation } = await import('@/hooks/use-messages')
+      await sendMessageMutation({ conversationId: mockConversationId, text: 'Hello, world!' })
 
-      // The sendMessageMutation is not exported directly. Let's test via the sendMessageMutation
-      // which is the concrete async function inside use-messages.ts
-      const { default: useMessagesModule } = await import('@/hooks/use-messages')
-
-      // Instead, test via calling the actual internal function
-      // We need to import and call sendMessageMutation
-      // Actually, let me test at the service level since that's what the task asks for
-      // The sendMessageMutation (the function, not the hook) is not exported
-      // We can use dynamic imports to access it
-
-      // Let's just verify the insert call happened with correct data
-      // by re-importing the module and calling the internal function
-      // Actually, let me test via a simpler approach - call the real hook
-
-      // For a pure unit test, let's directly test that the Supabase insert call works
+      // Assert: verify the insert call happened with correct data
       expect(insertPayload).toMatchObject({
         conversation_id: mockConversationId,
         sender_id: mockUser.id,
