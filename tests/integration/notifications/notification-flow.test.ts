@@ -91,12 +91,12 @@ describe('TC-089: Notification Storage Integration', () => {
     it('persists all required fields when creating a notification', async () => {
       // Arrange
       const input = {
-        user_id: 'user-recipient-1',
+        user_id: '11111111-1111-1111-1111-111111111111',
         type: 'match' as const,
         content: 'You have a 92% match with a developer!',
-        actor_id: 'actor-matched-2',
+        actor_id: '22222222-2222-2222-2222-222222222222',
         resource_type: 'match' as const,
-        resource_id: 'actor-matched-2',
+        resource_id: '22222222-2222-2222-2222-222222222222',
       }
 
       // Act
@@ -106,23 +106,23 @@ describe('TC-089: Notification Storage Integration', () => {
       expect(mockSupabaseInsert).toHaveBeenCalledTimes(1)
       const insertPayload = mockSupabaseInsert.mock.calls[0][0]
 
-      expect(insertPayload.user_id).toBe('user-recipient-1')
+      expect(insertPayload.user_id).toBe('11111111-1111-1111-1111-111111111111')
       expect(insertPayload.type).toBe('match')
       expect(insertPayload.content).toBe('You have a 92% match with a developer!')
-      expect(insertPayload.actor_id).toBe('actor-matched-2')
+      expect(insertPayload.actor_id).toBe('22222222-2222-2222-2222-222222222222')
       expect(insertPayload.resource_type).toBe('match')
-      expect(insertPayload.resource_id).toBe('actor-matched-2')
+      expect(insertPayload.resource_id).toBe('22222222-2222-2222-2222-222222222222')
     })
 
     it('stores is_read as false by default for new notifications', async () => {
       // Arrange
       await createNotification({
-        user_id: 'user-1',
+        user_id: '11111111-1111-1111-1111-111111111111',
         type: 'comment',
         content: 'Someone commented on your post',
-        actor_id: 'commenter-1',
+        actor_id: '22222222-2222-2222-2222-222222222222',
         resource_type: 'post',
-        resource_id: 'post-1',
+        resource_id: '33333333-3333-3333-3333-333333333333',
       })
 
       // Assert - is_read is set by database default, our service just inserts
@@ -136,7 +136,7 @@ describe('TC-089: Notification Storage Integration', () => {
   describe('Notification type storage', () => {
     it('stores match type notifications with resource_type="match"', async () => {
       // Arrange & Act
-      await sendMatchNotification('user-a', 'user-b', 85)
+      await sendMatchNotification('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 85)
 
       // Assert
       const insertPayload = mockSupabaseInsert.mock.calls[0][0]
@@ -146,7 +146,7 @@ describe('TC-089: Notification Storage Integration', () => {
 
     it('stores connect type notifications with resource_type="profile"', async () => {
       // Arrange & Act
-      await sendConnectionRequestNotification('receiver', 'requester')
+      await sendConnectionRequestNotification('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222')
 
       // Assert
       const insertPayload = mockSupabaseInsert.mock.calls[0][0]
@@ -156,31 +156,31 @@ describe('TC-089: Notification Storage Integration', () => {
 
     it('stores comment type notifications with resource_type="post"', async () => {
       // Arrange & Act
-      await sendCommentNotification('author', 'commenter', 'post-xyz')
+      await sendCommentNotification('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333')
 
       // Assert
       const insertPayload = mockSupabaseInsert.mock.calls[0][0]
       expect(insertPayload.type).toBe('comment')
       expect(insertPayload.resource_type).toBe('post')
-      expect(insertPayload.resource_id).toBe('post-xyz')
+      expect(insertPayload.resource_id).toBe('33333333-3333-3333-3333-333333333333')
     })
 
     it('stores like type notifications with resource_type="post"', async () => {
       // Arrange & Act
-      await sendLikeNotification('recipient', 'liker', 'post-abc')
+      await sendLikeNotification('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333')
 
       // Assert
       const insertPayload = mockSupabaseInsert.mock.calls[0][0]
       expect(insertPayload.type).toBe('like')
       expect(insertPayload.resource_type).toBe('post')
-      expect(insertPayload.resource_id).toBe('post-abc')
+      expect(insertPayload.resource_id).toBe('33333333-3333-3333-3333-333333333333')
     })
   })
 
   describe('Notification content formatting', () => {
     it('match notification content includes match percentage', async () => {
       // Arrange & Act
-      await sendMatchNotification('user-1', 'user-2', 78)
+      await sendMatchNotification('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 78)
 
       // Assert
       const insertPayload = mockSupabaseInsert.mock.calls[0][0]
@@ -189,7 +189,7 @@ describe('TC-089: Notification Storage Integration', () => {
 
     it('connection accepted notification includes clear message', async () => {
       // Arrange & Act
-      await sendConnectionAcceptedNotification('receiver', 'accepter')
+      await sendConnectionAcceptedNotification('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222')
 
       // Assert
       const insertPayload = mockSupabaseInsert.mock.calls[0][0]
@@ -198,7 +198,7 @@ describe('TC-089: Notification Storage Integration', () => {
 
     it('comment notification states someone commented', async () => {
       // Arrange & Act
-      await sendCommentNotification('author', 'commenter', 'post-1')
+      await sendCommentNotification('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', '33333333-3333-3333-3333-333333333333')
 
       // Assert
       const insertPayload = mockSupabaseInsert.mock.calls[0][0]
@@ -209,11 +209,11 @@ describe('TC-089: Notification Storage Integration', () => {
   describe('Notification data integrity', () => {
     it('user_id is always the recipient (not the actor)', async () => {
       // Arrange
-      const recipientId = 'recipient-999'
-      const actorId = 'actor-888'
+      const recipientId = '11111111-1111-1111-1111-111111111111'
+      const actorId = '22222222-2222-2222-2222-222222222222'
 
       // Act
-      await sendLikeNotification(recipientId, actorId, 'post-1')
+      await sendLikeNotification(recipientId, actorId, '33333333-3333-3333-3333-333333333333')
 
       // Assert
       const insertPayload = mockSupabaseInsert.mock.calls[0][0]
@@ -236,10 +236,10 @@ describe('TC-089: Notification Storage Integration', () => {
 
       // Act
       const result = await createNotification({
-        user_id: 'user-1',
+        user_id: '11111111-1111-1111-1111-111111111111',
         type: 'match',
         content: 'test',
-        actor_id: 'user-2',
+        actor_id: '22222222-2222-2222-2222-222222222222',
       })
 
       // Assert
@@ -259,7 +259,7 @@ describe('TC-089: Notification Storage Integration', () => {
 
       // Act
       const result = await createNotification({
-        user_id: 'user-1',
+        user_id: '11111111-1111-1111-1111-111111111111',
         type: 'system',
         content: 'System maintenance',
       })
