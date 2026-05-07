@@ -61,7 +61,7 @@ vi.mock('@/hooks/use-settings', () => ({
 }))
 
 vi.mock('@/components/features/dashboard/notifications-widget', () => ({
-  NotificationsWidget: ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
+  NotificationsWidget: ({ children, ..._props }: React.PropsWithChildren<Record<string, unknown>>) => {
     // Render children directly without wrapper, preserving their accessible names
     return <>{children}</>
   },

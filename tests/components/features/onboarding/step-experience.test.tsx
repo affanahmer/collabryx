@@ -13,7 +13,7 @@ vi.mock('@/components/shared/glass-card', () => ({
 
 // Mock InlineSearchableCombobox
 vi.mock('@/components/ui/inline-searchable-combobox', () => ({
-  InlineSearchableCombobox: ({ searchPlaceholder, onChange, onAddCustom }: any) => (
+  InlineSearchableCombobox: ({ searchPlaceholder, onChange: _onChange, onAddCustom }: any) => (
     <div data-testid="inline-combobox">
       <input
         type="text"

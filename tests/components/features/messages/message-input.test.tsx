@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MessageInput } from '@/components/features/messages/message-input'
-import { messageSchema, validateMessage } from '@/lib/validations/chat'
+import { validateMessage } from '@/lib/validations/chat'
 
 // Mock useMessages hook
 vi.mock('@/hooks/use-messages', () => ({
