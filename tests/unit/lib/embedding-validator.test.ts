@@ -354,7 +354,7 @@ describe('Embedding Validator', () => {
       embedding[10] = Number.NaN
 
       // Act
-      const [fixed, result] = validateAndFix(embedding)
+      const [_fixed, result] = validateAndFix(embedding)
 
       // Assert
       expect(result.isValid).toBe(false)
@@ -366,7 +366,7 @@ describe('Embedding Validator', () => {
       const embedding = createValidEmbedding(128)
 
       // Act
-      const [fixed, result] = validateAndFix(embedding)
+      const [_fixed, result] = validateAndFix(embedding)
 
       // Assert
       expect(result.isValid).toBe(false)
@@ -391,7 +391,6 @@ describe('Embedding Validator', () => {
 
     it('should distinguish between NaN and undefined in sparse arrays', () => {
       // Arrange - sparse array with undefined hole
-      // eslint-disable-next-line no-sparse-arrays
       const embedding = createValidEmbedding(384)
       embedding[50] = Number.NaN
       // Verify the NaN is specifically at index 50
