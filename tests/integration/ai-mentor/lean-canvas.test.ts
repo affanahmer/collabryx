@@ -233,7 +233,7 @@ describe('AI Mentor Lean Canvas Generation (TC-080)', () => {
 
     it('should structure free-form ideas into canvas format', () => {
       // Simulate what the AI does: extract structured info from free text
-      const freeFormInput = 'I want to build an app that helps people find dog walkers in their neighborhood. People are always complaining about not finding reliable pet care.'
+      const _freeFormInput = 'I want to build an app that helps people find dog walkers in their neighborhood. People are always complaining about not finding reliable pet care.'
 
       // Expected structured extraction
       const extracted = {
