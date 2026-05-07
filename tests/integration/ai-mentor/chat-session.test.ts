@@ -76,8 +76,8 @@ describe('AI Mentor Chat Session Integration', () => {
       }
 
       // Act — simulate the POST to the worker
-      const expectedUrl = 'http://localhost:8000/api/ai-mentor/message'
-      const expectedHeaders = { 'Content-Type': 'application/json' }
+      const _expectedUrl = 'http://localhost:8000/api/ai-mentor/message'
+      const _expectedHeaders = { 'Content-Type': 'application/json' }
       const expectedBody = JSON.stringify(workerPayload)
 
       // Assert — verify the payload structure matches what the API route sends
