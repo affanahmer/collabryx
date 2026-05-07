@@ -1,5 +1,7 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
 import { execSync } from 'child_process'
+import { readFileSync } from 'fs'
+import { resolve } from 'path'
 
 // =============================================================================
 // TC-006: Docker worker builds and starts on port 8000
@@ -20,10 +22,10 @@ vi.mock('child_process', () => ({
 const mockedExecSync = vi.mocked(execSync)
 
 // Lazy-load package.json
-let _pkg: Record<string, { scripts: Record<string, string> }> | null = null
-function getPackageJson() {
+let _pkg: { scripts?: Record<string, string> } | null = null
+function getPackageJson(): { scripts?: Record<string, string> } {
   if (!_pkg) {
-    _pkg = require('../../../package.json')
+    _pkg = JSON.parse(readFileSync(resolve(__dirname, '../../../package.json'), 'utf-8')) as { scripts?: Record<string, string> }
   }
   return _pkg!
 }
