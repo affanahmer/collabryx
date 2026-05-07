@@ -136,8 +136,7 @@ describe('TC-049: Non-blocking embedding generation', () => {
     // Assert
     expect(apiResponse.status).toBe('queued')
     // Background error is captured but doesn't affect the already-sent response
-    expect(backgroundError).not.toBeNull()
-    expect(backgroundError?.message).toBe('Model timeout')
+    expect((backgroundError as unknown as Error).message).toBe('Model timeout')
   })
 
   it('should not timeout the Next.js route handler while embedding processes', async () => {
