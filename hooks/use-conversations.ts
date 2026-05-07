@@ -2,7 +2,6 @@
 
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
-import { logger } from "@/lib/logger"
 import { QUERY_PRESETS } from "@/lib/query-cache"
 
 export const CONVERSATIONS_QUERY_KEY = ["conversations"] as const
