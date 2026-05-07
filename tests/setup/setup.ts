@@ -43,7 +43,7 @@ global.IntersectionObserver = class IntersectionObserver {
 
 // Mock MutationObserver
 global.MutationObserver = class MutationObserver {
-  constructor(callback: MutationCallback) {
+  constructor(_callback: MutationCallback) {
     return {
       observe: vi.fn(),
       disconnect: vi.fn(),
