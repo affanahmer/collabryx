@@ -56,10 +56,10 @@ const userEvent = {
     selectOptions: (element: HTMLElement, values: string | string[]) => {
       fireEvent.change(element, { target: { value: Array.isArray(values) ? values[0] : values } })
     },
-    deselectOptions: (element: HTMLElement, values: string | string[]) => {
+    deselectOptions: (element: HTMLElement, _values: string | string[]) => {
       fireEvent.change(element, { target: { value: '' } })
     },
-    type: (element: Element, text: string, options?: { delay?: number }) => {
+    type: (element: Element, text: string, _options?: { delay?: number }) => {
       fireEvent.input(element as unknown as HTMLElement, { target: { value: text }, bubbles: true })
       return Promise.resolve()
     },
