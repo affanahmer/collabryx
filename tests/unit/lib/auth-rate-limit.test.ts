@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import type { NextRequest } from 'next/server'
 import { rateLimit, __clearRateLimitStore } from '@/lib/rate-limit'
 
 function createMockRequest(ip: string = '10.0.0.1', userAgent?: string) {
@@ -24,7 +25,7 @@ function createMockRequest(ip: string = '10.0.0.1', userAgent?: string) {
       },
     },
     nextUrl: new URL('http://localhost:3000/auth/login'),
-  } as any
+  } as unknown as NextRequest
 }
 
 describe('Auth Rate Limiting — TC-018', () => {
