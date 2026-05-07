@@ -23,7 +23,7 @@ describe('Chat Pagination Integration (TC-075)', () => {
   describe('TC-075: history pagination', () => {
     it('uses .range() with correct offset when loading older messages', async () => {
       // Arrange: Simulate fetchMessages with pagination
-      const conversationId = 'conv-pag-001'
+      const _conversationId = 'conv-pag-001'
       const pageSize = 50
       const page = 1 // 0-indexed
       const from = page * pageSize
