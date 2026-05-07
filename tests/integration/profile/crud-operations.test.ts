@@ -215,7 +215,7 @@ describe('Profile CRUD Operations Integration (TC-022-025, TC-028)', () => {
         insert: insertMock,
       } as any)
 
-      const rawProject = { user_id: USER_ID, title: 'New Project' }
+      const rawProject = { user_id: USER_ID, title: 'New Project', is_public: undefined as boolean | undefined }
       const withDefaults = { ...rawProject, is_public: rawProject.is_public ?? true }
 
       // Act
