@@ -1,4 +1,6 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest'
+import { existsSync } from 'fs'
+import { resolve } from 'path'
 
 // =============================================================================
 // TC-096: Deno Edge function calculate-matches can be executed locally
@@ -148,7 +150,7 @@ describe('TC-096 — calculate-matches Edge Function', () => {
       mockSupabase.rpc.mockResolvedValueOnce({ data: mockMatches, error: null })
 
       // Act — simulate the handler logic
-      const { data: userEmbedding } = await embedBuilder
+      const { data: userEmbedding } = await (embedBuilder as any)
         .select('embedding')
         .eq('user_id', 'user-1')
         .single()
@@ -190,7 +192,7 @@ describe('TC-096 — calculate-matches Edge Function', () => {
       mockSupabase.from.mockReturnValueOnce(embedBuilder)
 
       // Act
-      const { data: userEmbedding, error: embeddingError } = await embedBuilder
+      const { data: userEmbedding, error: embeddingError } = await (embedBuilder as any)
         .select('embedding')
         .eq('user_id', 'nonexistent-user')
         .single()
@@ -395,7 +397,7 @@ describe('TC-097 — sync-profile-data Edge Function', () => {
       mockSupabase.from.mockReturnValueOnce(profileBuilder)
 
       // Act
-      const { data: profile, error: profileError } = await profileBuilder
+      const { data: profile, error: profileError } = await (profileBuilder as any)
         .select('id, full_name, headline, bio')
         .eq('id', 'user-1')
         .single()
@@ -421,7 +423,7 @@ describe('TC-097 — sync-profile-data Edge Function', () => {
       })
 
       // Act — chain select and eq, then await the promise
-      const result = await skillsBuilder
+      const result = await (skillsBuilder as any)
         .select('*', { count: 'exact', head: true } as never)
         .eq('user_id', 'user-1')
 
@@ -706,33 +708,27 @@ describe('TC-098 — cleanup-expired-data Edge Function', () => {
     test('calculate-matches index.ts exists in supabase/functions', () => {
       // Verify the edge function source exists
       // This is a structural test — the file must exist for the edge function to be deployable
-      const fs = require('fs')
-      const path = require('path')
-      const calculateMatchesPath = path.resolve(
+      const calculateMatchesPath = resolve(
         __dirname,
         '../../../supabase/functions/calculate-matches/index.ts',
       )
-      expect(fs.existsSync(calculateMatchesPath)).toBe(true)
+      expect(existsSync(calculateMatchesPath)).toBe(true)
     })
 
     test('sync-profile-data index.ts exists in supabase/functions', () => {
-      const fs = require('fs')
-      const path = require('path')
-      const syncProfilePath = path.resolve(
+      const syncProfilePath = resolve(
         __dirname,
         '../../../supabase/functions/sync-profile-data/index.ts',
       )
-      expect(fs.existsSync(syncProfilePath)).toBe(true)
+      expect(existsSync(syncProfilePath)).toBe(true)
     })
 
     test('cleanup-expired-data index.ts exists in supabase/functions', () => {
-      const fs = require('fs')
-      const path = require('path')
-      const cleanupPath = path.resolve(
+      const cleanupPath = resolve(
         __dirname,
         '../../../supabase/functions/cleanup-expired-data/index.ts',
       )
-      expect(fs.existsSync(cleanupPath)).toBe(true)
+      expect(existsSync(cleanupPath)).toBe(true)
     })
   })
 })
