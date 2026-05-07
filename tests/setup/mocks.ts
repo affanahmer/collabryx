@@ -17,6 +17,8 @@ export const createMockSupabaseClient = () => {
     range: vi.fn().mockReturnThis(),
     execute: vi.fn().mockResolvedValue({ data: [], error: null }),
     then: vi.fn().mockImplementation((resolve) => resolve({ data: [], error: null })),
+    channel: vi.fn().mockReturnThis(),
+    removeChannel: vi.fn().mockResolvedValue(null),
     auth: {
       getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
       getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
