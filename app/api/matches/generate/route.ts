@@ -9,7 +9,7 @@ import { z } from "zod";
 import { getBackendConfig, getCircuitBreakerStatus } from "@/lib/config/backend";
 import { validateCSRFRequest, requiresCSRF } from "@/lib/csrf";
 import { rateLimit } from "@/lib/rate-limit";
-import { errorResponse, successResponse } from '@/lib/utils/api-response';
+import { errorResponse } from '@/lib/utils/api-response';
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
       
       // Handle rate limit response from worker
       if (workerResponse.status === 429) {
-        const rateLimitData = await workerResponse.json();
+        await workerResponse.json(); // Consume the response body
         return errorResponse('RATE_LIMIT_EXCEEDED', 'Maximum match generation requests exceeded', 429)
       }
       
