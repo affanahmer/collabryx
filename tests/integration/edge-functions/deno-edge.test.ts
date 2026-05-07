@@ -20,49 +20,25 @@ import { resolve } from 'path'
 // Mock helpers — replicates the Supabase client pattern used by edge functions
 // ---------------------------------------------------------------------------
 
-interface MockQueryBuilder {
-  select: ReturnType<typeof vi.fn>
-  insert: ReturnType<typeof vi.fn>
-  update: ReturnType<typeof vi.fn>
-  delete: ReturnType<typeof vi.fn>
-  eq: ReturnType<typeof vi.fn>
-  neq: ReturnType<typeof vi.fn>
-  gte: ReturnType<typeof vi.fn>
-  lt: ReturnType<typeof vi.fn>
-  order: ReturnType<typeof vi.fn>
-  limit: ReturnType<typeof vi.fn>
-  single: ReturnType<typeof vi.fn>
-  or_: ReturnType<typeof vi.fn>
-  rpc: ReturnType<typeof vi.fn>
-  count: ReturnType<typeof vi.fn>
-}
+// Use any to avoid vi.fn() type issues with method chaining
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyBuilder = any
 
-const createMockQueryBuilder = (overrides: Partial<MockQueryBuilder> = {}): MockQueryBuilder => {
-  const builder: MockQueryBuilder = {
-    select: vi.fn().mockReturnValue(undefined),
-    insert: vi.fn().mockReturnValue(undefined),
-    update: vi.fn().mockReturnValue(undefined),
-    delete: vi.fn().mockReturnValue(undefined),
-    eq: vi.fn().mockReturnValue(undefined),
-    neq: vi.fn().mockReturnValue(undefined),
-    gte: vi.fn().mockReturnValue(undefined),
-    lt: vi.fn().mockReturnValue(undefined),
-    order: vi.fn().mockReturnValue(undefined),
-    limit: vi.fn().mockReturnValue(undefined),
-    single: vi.fn().mockResolvedValue({ data: null, error: null }),
-    or_: vi.fn().mockReturnValue(undefined),
-    rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
-    count: vi.fn().mockReturnValue(undefined),
-    ...overrides,
-  }
+const createMockQueryBuilder = (): AnyBuilder => {
+  const builder: AnyBuilder = {}
 
+  // Chained methods return the builder for method chaining
   const chainMethods = ['select', 'insert', 'update', 'delete', 'eq', 'neq',
-    'gte', 'lt', 'order', 'limit', 'or_', 'count'] as const
+    'gte', 'lt', 'order', 'limit', 'or_', 'count']
   for (const method of chainMethods) {
-    if (!overrides[method]) {
-      builder[method] = vi.fn().mockReturnValue(builder)
-    }
+    builder[method] = vi.fn(function(this: AnyBuilder, ..._args: unknown[]) {
+      return builder
+    })
   }
+
+  // Terminal methods
+  builder.single = vi.fn().mockResolvedValue({ data: null, error: null })
+  builder.rpc = vi.fn().mockResolvedValue({ data: null, error: null })
 
   return builder
 }
@@ -150,7 +126,7 @@ describe('TC-096 — calculate-matches Edge Function', () => {
       mockSupabase.rpc.mockResolvedValueOnce({ data: mockMatches, error: null })
 
       // Act — simulate the handler logic
-      const { data: userEmbedding } = await (embedBuilder as unknown as MockQueryBuilder)
+      const { data: userEmbedding } = await (embedBuilder)
         .select('embedding')
         .eq('user_id', 'user-1')
         .single()
@@ -192,7 +168,7 @@ describe('TC-096 — calculate-matches Edge Function', () => {
       mockSupabase.from.mockReturnValueOnce(embedBuilder)
 
       // Act
-      const { data: userEmbedding, error: embeddingError } = await (embedBuilder as unknown as MockQueryBuilder)
+      const { data: userEmbedding, error: embeddingError } = await (embedBuilder)
         .select('embedding')
         .eq('user_id', 'nonexistent-user')
         .single()
@@ -397,7 +373,7 @@ describe('TC-097 — sync-profile-data Edge Function', () => {
       mockSupabase.from.mockReturnValueOnce(profileBuilder)
 
       // Act
-      const { data: profile, error: profileError } = await (profileBuilder as unknown as MockQueryBuilder)
+      const { data: profile, error: profileError } = await (profileBuilder)
         .select('id, full_name, headline, bio')
         .eq('id', 'user-1')
         .single()
@@ -423,7 +399,7 @@ describe('TC-097 — sync-profile-data Edge Function', () => {
       })
 
       // Act — chain select and eq, then await the promise
-      const result = await (skillsBuilder as unknown as MockQueryBuilder)
+      const result = await (skillsBuilder)
         .select('*', { count: 'exact', head: true } as never)
         .eq('user_id', 'user-1')
 

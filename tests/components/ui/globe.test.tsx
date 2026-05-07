@@ -20,8 +20,8 @@ const mockCreateGlobe = vi.fn(() => ({
 
 vi.mock('cobe', () => {
   return {
-    default: function cobeMock(..._args: unknown[]) {
-      return mockCreateGlobe()
+    default: function cobeMock(...args: Parameters<typeof mockCreateGlobe>) {
+      return mockCreateGlobe(...args)
     },
   }
 })

@@ -15,19 +15,27 @@ const createMockSupabaseClient = () => ({
   rpc: vi.fn()
 })
 
+const { mockEmbeddings, MockOpenAI } = vi.hoisted(() => {
+  const mockEmb = { create: vi.fn() }
+  return {
+    mockEmbeddings: mockEmb,
+    MockOpenAI: vi.fn().mockImplementation(function(this: { embeddings: typeof mockEmb }) {
+      return {
+        embeddings: mockEmb,
+      }
+    }),
+  }
+})
+
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => createMockSupabaseClient())
 }))
 
-const { mockEmbeddings, MockOpenAI } = vi.hoisted(() => {
-  const _mockEmbeddings = { create: vi.fn() }
-  // Use regular function, not arrow function, so it can be used as constructor
-  const MockOpenAI = vi.fn().mockImplementation(function(this: { embeddings: typeof mockEmbeddings }) {
-    return {
-      embeddings: mockEmbeddings
-    }
-  })
-  return { mockEmbeddings, MockOpenAI }
+// Use regular function, not arrow function, so it can be used as constructor
+const MockOpenAIWrapper = vi.fn().mockImplementation(function(this: { embeddings: typeof mockEmbeddings }) {
+  return {
+    embeddings: mockEmbeddings
+  }
 })
 
 vi.mock('openai', () => ({

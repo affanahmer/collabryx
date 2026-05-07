@@ -106,7 +106,7 @@ describe('useMessages — Send Messages & Offline Sync (TC-066, TC-068)', () => 
       await sendMessageMutation({ conversationId: mockConversationId, text: 'Hello, world!' })
 
       // Assert: verify the insert call happened with correct data
-      expect(insertPayload).toMatchObject({
+      expect(_insertPayload).toMatchObject({
         conversation_id: mockConversationId,
         sender_id: mockUser.id,
         text: 'Hello, world!',

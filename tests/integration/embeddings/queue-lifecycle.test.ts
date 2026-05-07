@@ -11,8 +11,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 // ============================================================
 // Mock Supabase client with query builder chaining
 // ============================================================
-function createMockQueryBuilder(returnData: unknown[] = [], returnError: unknown = null) {
-  const builder: Record<string, ReturnType<typeof vi.fn>> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyBuilder = Record<string, any>
+
+function createMockQueryBuilder(returnData: unknown[] = [], returnError: unknown = null): AnyBuilder {
+  const builder: AnyBuilder = {
     from: vi.fn().mockReturnThis(),
     select: vi.fn().mockReturnThis(),
     insert: vi.fn().mockReturnThis(),
@@ -66,8 +69,8 @@ function createSimpleBuilder() {
 let simpleBuilder = createSimpleBuilder()
 
 const mockSupabase = {
-  from: vi.fn(() => simpleBuilder),
-  table: vi.fn(() => simpleBuilder),
+  from: vi.fn((_table: string) => simpleBuilder),
+  table: vi.fn((_table: string) => simpleBuilder),
   channel: vi.fn().mockReturnValue({
     on: vi.fn().mockReturnThis(),
     subscribe: vi.fn().mockReturnValue({ unsubscribe: vi.fn() }),
@@ -174,7 +177,7 @@ describe('Embedding Queue Lifecycle', () => {
         .execute()
 
       // Assert
-      expect(mockSupabaseBuilder.from).toHaveBeenCalledWith('embedding_pending_queue')
+      expect(mockSupabase.from).toHaveBeenCalledWith('embedding_pending_queue')
       expect(mockSupabaseBuilder.insert).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: newUserId,
@@ -342,7 +345,7 @@ describe('Embedding Queue Lifecycle', () => {
         .execute()
 
       // Assert
-      expect(mockSupabaseBuilder.from).toHaveBeenCalledWith('profile_embeddings')
+      expect(mockSupabase.from).toHaveBeenCalledWith('profile_embeddings')
       const stored = result.data?.[0] as ProfileEmbedding | undefined
       expect(stored?.status).toBe('completed')
     })
