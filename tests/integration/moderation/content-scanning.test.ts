@@ -145,7 +145,7 @@ function getFlaggedPosts(): PostRecord[] {
   return mockPostDb.filter((post) => post.status === 'flagged' || post.status === 'rejected')
 }
 
-function getModerationQueue(): PostRecord[] {
+function _getModerationQueue(): PostRecord[] {
   return mockPostDb.filter(
     (post) => post.status === 'flagged' && post.visibility === 'restricted'
   )
