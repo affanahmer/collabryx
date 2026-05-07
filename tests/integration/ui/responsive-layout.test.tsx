@@ -6,7 +6,7 @@
  * Verifies that components with responsive prefixes (md:, lg:, xl:) render
  * appropriate class combinations per breakpoint.
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import React from 'react'
 
