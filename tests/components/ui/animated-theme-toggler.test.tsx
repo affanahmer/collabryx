@@ -37,7 +37,7 @@ const mockStartViewTransition = vi.fn((cb: () => void) => {
 })
 
 // document.documentElement mock
-const originalDocumentElement = document.documentElement
+const _originalDocumentElement = document.documentElement
 
 // localStorage mock
 const localStorageStore: Record<string, string> = {}
@@ -55,13 +55,13 @@ const mockLocalStorage = {
 }
 
 // MutationObserver mock
-let mutationCallback: MutationCallback | null = null
+let _mutationCallback: MutationCallback | null = null
 const mockDisconnect = vi.fn()
 const mockObserve = vi.fn()
 
 // Create a proper constructor function
 const MockMutationObserverFn = function(this: { disconnect: typeof mockDisconnect, observe: typeof mockObserve, takeRecords: ReturnType<typeof vi.fn> }, cb: MutationCallback) {
-  mutationCallback = cb
+  _mutationCallback = cb
   this.disconnect = mockDisconnect
   this.observe = mockObserve
   this.takeRecords = vi.fn(() => [])
@@ -103,7 +103,7 @@ describe('AnimatedThemeToggler (TC-033, TC-034)', () => {
     localStorageStore['theme'] = 'light'
     classListContains.mockReturnValue(false)
     viewTransitionCallback = null
-    mutationCallback = null
+    _mutationCallback = null
 
     // Apply mocks
     Object.defineProperty(document, 'documentElement', {
