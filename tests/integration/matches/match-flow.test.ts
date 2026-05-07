@@ -7,7 +7,7 @@
  * This integration test verifies the flow from match generation → DB insertion →
  * retrieval, using mocked Supabase but verifying real data shapes.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 
 // ============================================
 // DATA FACTORIES
@@ -436,7 +436,7 @@ describe('TC-060: Match Suggestions Integration', () => {
       ]
 
       // Act
-      const result = simulateMatchGeneration('user-reasons', [
+      const _result = simulateMatchGeneration('user-reasons', [
         {
           matchedUserId: 'cand-reasons', matchPercentage: 90, reasons,
           scoreBreakdown: { semantic_similarity: 0.85, skills_overlap: 80, complementary_score: 88, shared_interests: 75, activity_match: 0.9 },
