@@ -1,4 +1,4 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest'
+import { describe, test, expect } from 'vitest'
 
 // =============================================================================
 // Database Seeder CLI Tests (TC-008, TC-009, TC-010)
