@@ -11,9 +11,9 @@ import {
   CircuitBreakerOpenError,
 } from '@/lib/ai/errors'
 import { ProviderRegistry } from '@/lib/ai/providers/registry'
-import type { AIProvider, AIProviderConfig, Message, AIProviderResponse } from '@/lib/ai/providers/base'
+import type { AIProvider, Message, AIProviderResponse } from '@/lib/ai/providers/base'
 
-function createTimedMockProvider(name: string, delayMs: number, shouldFail: boolean): AIProvider {
+function _createTimedMockProvider(name: string, delayMs: number, shouldFail: boolean): AIProvider {
   return {
     config: {
       name,
@@ -93,7 +93,7 @@ describe('API Resilience — Rate Limits, Timeouts & Errors (TC-083)', () => {
       // The MiniMaxProvider.withRetry uses exponential backoff:
       // Attempt 1: immediate, Attempt 2: 2s, Attempt 3: 4s, Attempt 4: 8s (max 10s)
       const maxRetries = 3
-      const backoffDelays = [0, 2000, 4000, 8000]
+      const _backoffDelays = [0, 2000, 4000, 8000]
 
       // Verify backoff pattern follows exponential: 2^attempt * 1000, capped at 10000
       for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -279,7 +279,7 @@ describe('API Resilience — Rate Limits, Timeouts & Errors (TC-083)', () => {
 
     it('should not expose internal error details to frontend', () => {
       // Internal errors should be sanitized
-      const internalError = 'MiniMax API error at https://api.minimaxi.com/v1/chat/completions'
+      const _internalError = 'MiniMax API error at https://api.minimaxi.com/v1/chat/completions'
       const sanitizedForUser = 'AI service error. Please try again later.'
 
       expect(sanitizedForUser).not.toContain('api.minimaxi.com')
