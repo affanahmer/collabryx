@@ -230,7 +230,7 @@ describe('Keyboard Navigation – Radix UI Components (TC-037)', () => {
 
     it('should open dropdown on Space key press', async () => {
       // Arrange
-      const user = userEvent.setup()
+      const _user = userEvent.setup()
       render(<TestDropdownMenu />)
       const trigger = screen.getByTestId('dropdown-trigger')
 
@@ -325,7 +325,7 @@ describe('Keyboard Navigation – Radix UI Components (TC-037)', () => {
   describe('Tab key focus management', () => {
     it('should move focus forward with Tab', async () => {
       // Arrange
-      const user = userEvent.setup()
+      const _user = userEvent.setup()
       render(
         <div>
           <button data-testid="btn-1">First</button>
@@ -347,7 +347,7 @@ describe('Keyboard Navigation – Radix UI Components (TC-037)', () => {
 
     it('should cycle through all focusable elements', async () => {
       // Arrange
-      const user = userEvent.setup()
+      const _user = userEvent.setup()
       render(
         <div>
           <button data-testid="tab-btn-a">A</button>
