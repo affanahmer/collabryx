@@ -65,7 +65,7 @@ export class MiniMaxProvider implements AIProvider {
 
         if (!res.ok) {
           const errorBody = await res.json().catch(() => ({}))
-          const retryAfter = res.headers.get('Retry-After')
+          const _retryAfter = res.headers.get('Retry-After')
           const errorCode = (errorBody as { code?: number }).code
 
           if (res.status === 429) {
