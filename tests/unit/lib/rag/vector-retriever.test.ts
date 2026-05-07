@@ -20,7 +20,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 const { mockEmbeddings, MockOpenAI } = vi.hoisted(() => {
-  const mockEmbeddings = { create: vi.fn() }
+  const _mockEmbeddings = { create: vi.fn() }
   // Use regular function, not arrow function, so it can be used as constructor
   const MockOpenAI = vi.fn().mockImplementation(function(this: { embeddings: typeof mockEmbeddings }) {
     return {

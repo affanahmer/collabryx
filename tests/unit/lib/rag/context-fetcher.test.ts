@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { inferCareerLevel } from '@/lib/rag/context-fetcher'
 
 describe('context-fetcher', () => {

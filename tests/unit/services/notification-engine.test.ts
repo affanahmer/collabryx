@@ -58,7 +58,7 @@ interface BatchedNotification {
 
 const PRIORITY_HIGH = ['message', 'match', 'connection_accepted']
 const PRIORITY_MEDIUM = ['connection_request', 'like', 'comment']
-const PRIORITY_LOW = ['profile_view', 'weekly_summary']
+const _PRIORITY_LOW = ['profile_view', 'weekly_summary']
 
 function batchNotifications(
   batch: BatchedNotification[]
