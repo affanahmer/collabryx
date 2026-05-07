@@ -162,7 +162,7 @@ describe('validateEnvRuntime', () => {
 
   test('does not throw in non-production environment', async () => {
     // Arrange
-    process.env.NODE_ENV = 'development'
+    ;(process.env as { NODE_ENV?: string }).NODE_ENV = 'development'
 
     // Act & Assert
     await expect(validateEnvRuntime()).resolves.toBeUndefined()
@@ -170,7 +170,7 @@ describe('validateEnvRuntime', () => {
 
   test('does not throw in test environment', async () => {
     // Arrange
-    process.env.NODE_ENV = 'test'
+    ;(process.env as { NODE_ENV?: string }).NODE_ENV = 'test'
 
     // Act & Assert
     await expect(validateEnvRuntime()).resolves.toBeUndefined()
@@ -178,7 +178,7 @@ describe('validateEnvRuntime', () => {
 
   test('throws in production when required vars are missing', async () => {
     // Arrange
-    process.env.NODE_ENV = 'production'
+    ;(process.env as { NODE_ENV?: string }).NODE_ENV = 'production'
     // No Supabase vars set
 
     // Act & Assert
@@ -187,7 +187,7 @@ describe('validateEnvRuntime', () => {
 
   test('resolves in production when all required vars are present', async () => {
     // Arrange
-    process.env.NODE_ENV = 'production'
+    ;(process.env as { NODE_ENV?: string }).NODE_ENV = 'production'
     process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test-project.supabase.co'
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0In0.test'
     process.env.SUPABASE_SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXNlcnZpY2UifQ.test'
