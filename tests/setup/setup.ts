@@ -39,7 +39,7 @@ global.IntersectionObserver = class IntersectionObserver {
     return []
   }
   unobserve() {}
-} as any
+} as unknown as typeof IntersectionObserver
 
 // Mock MutationObserver
 global.MutationObserver = class MutationObserver {
@@ -50,7 +50,7 @@ global.MutationObserver = class MutationObserver {
       takeRecords: vi.fn().mockReturnValue([]),
     }
   }
-} as any
+} as unknown as typeof MutationObserver
 
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
