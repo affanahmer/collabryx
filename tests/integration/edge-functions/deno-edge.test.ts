@@ -150,7 +150,7 @@ describe('TC-096 — calculate-matches Edge Function', () => {
       mockSupabase.rpc.mockResolvedValueOnce({ data: mockMatches, error: null })
 
       // Act — simulate the handler logic
-      const { data: userEmbedding } = await (embedBuilder as any)
+      const { data: userEmbedding } = await (embedBuilder as unknown as MockQueryBuilder)
         .select('embedding')
         .eq('user_id', 'user-1')
         .single()
@@ -170,7 +170,7 @@ describe('TC-096 — calculate-matches Edge Function', () => {
 
     test('should fall back to direct query when RPC returns empty', async () => {
       // Arrange
-      const rpcBuilder = createMockQueryBuilder()
+      const _rpcBuilder = createMockQueryBuilder()
       mockSupabase.rpc.mockResolvedValueOnce({ data: [], error: null })
 
       // Act
@@ -192,7 +192,7 @@ describe('TC-096 — calculate-matches Edge Function', () => {
       mockSupabase.from.mockReturnValueOnce(embedBuilder)
 
       // Act
-      const { data: userEmbedding, error: embeddingError } = await (embedBuilder as any)
+      const { data: userEmbedding, error: embeddingError } = await (embedBuilder as unknown as MockQueryBuilder)
         .select('embedding')
         .eq('user_id', 'nonexistent-user')
         .single()
@@ -397,7 +397,7 @@ describe('TC-097 — sync-profile-data Edge Function', () => {
       mockSupabase.from.mockReturnValueOnce(profileBuilder)
 
       // Act
-      const { data: profile, error: profileError } = await (profileBuilder as any)
+      const { data: profile, error: profileError } = await (profileBuilder as unknown as MockQueryBuilder)
         .select('id, full_name, headline, bio')
         .eq('id', 'user-1')
         .single()
@@ -423,7 +423,7 @@ describe('TC-097 — sync-profile-data Edge Function', () => {
       })
 
       // Act — chain select and eq, then await the promise
-      const result = await (skillsBuilder as any)
+      const result = await (skillsBuilder as unknown as MockQueryBuilder)
         .select('*', { count: 'exact', head: true } as never)
         .eq('user_id', 'user-1')
 
