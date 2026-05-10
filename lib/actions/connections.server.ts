@@ -27,7 +27,7 @@ export async function sendConnectionRequest(targetUserId: string) {
   const { data: existing } = await supabase
     .from('connections')
     .select('id, status')
-    .or(`and(user_id.eq.${user.id},connected_to.eq.${targetUserId}),and(user_id.eq.${targetUserId},connected_to.eq.${user.id})`)
+    .or(`and(requester_id.eq.${user.id},receiver_id.eq.${targetUserId}),and(requester_id.eq.${targetUserId},receiver_id.eq.${user.id})`)
     .single()
 
   if (existing) {
@@ -40,8 +40,8 @@ export async function sendConnectionRequest(targetUserId: string) {
       const { data, error: insertError } = await supabase
         .from('connections')
         .insert({
-          user_id: user.id,
-          connected_to: targetUserId,
+          requester_id: user.id,
+          receiver_id: targetUserId,
           status: 'pending',
         })
         .select()
@@ -55,9 +55,7 @@ export async function sendConnectionRequest(targetUserId: string) {
         .insert({
           user_id: targetUserId,
           type: 'connection_request',
-          title: 'New Connection Request',
           content: `${user.id} wants to connect with you`,
-          action_url: `/requests`,
         })
       
       if (notifError) {
@@ -96,9 +94,9 @@ export async function acceptConnectionRequest(requestId: string) {
 
   const { data: request, error: fetchError } = await supabase
     .from('connections')
-    .select('user_id, connected_to')
+    .select('requester_id, receiver_id')
     .eq('id', requestId)
-    .eq('connected_to', user.id)
+    .eq('receiver_id', user.id)
     .single()
 
   if (fetchError || !request) {
@@ -119,11 +117,9 @@ export async function acceptConnectionRequest(requestId: string) {
       const { error: notifError } = await supabase
         .from('notifications')
         .insert({
-          user_id: request.user_id,
+          user_id: request.requester_id,
           type: 'connection_accepted',
-          title: 'Connection Accepted',
           content: `${user.id} accepted your connection request`,
-          action_url: `/profile/${user.id}`,
         })
       
       if (notifError) {
@@ -159,7 +155,7 @@ export async function declineConnectionRequest(requestId: string) {
     .from('connections')
     .delete()
     .eq('id', requestId)
-    .eq('connected_to', user.id)
+    .eq('receiver_id', user.id)
 
   if (error) {
     return { error: 'Failed to decline request' }
@@ -184,7 +180,7 @@ export async function removeConnection(userId: string) {
   const { error } = await supabase
     .from('connections')
     .delete()
-    .or(`and(user_id.eq.${user.id},connected_to.eq.${userId}),and(user_id.eq.${userId},connected_to.eq.${user.id})`)
+    .or(`and(requester_id.eq.${user.id},receiver_id.eq.${userId}),and(requester_id.eq.${userId},receiver_id.eq.${user.id})`)
 
   if (error) {
     return { error: 'Failed to remove connection' }

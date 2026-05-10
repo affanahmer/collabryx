@@ -3,7 +3,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import type { CommentReactionType } from '@/types/actions'
 import { withAudit } from './audit.server'
 import { logger } from '@/lib/logger'
 
@@ -200,42 +199,32 @@ export async function reactToComment(commentId: string, reactionType: string) {
 
   const { data: existingReaction } = await supabase
     .from('comment_likes')
-    .select('id, reaction_type')
+    .select('id')
     .eq('comment_id', commentId)
     .eq('user_id', user.id)
     .single()
 
   if (existingReaction) {
-    if ((existingReaction as { reaction_type: CommentReactionType }).reaction_type === reactionType) {
-      const { error } = await supabase
-        .from('comment_likes')
-        .delete()
-        .eq('id', existingReaction.id)
+    // Toggle off - remove like
+    const { error } = await supabase
+      .from('comment_likes')
+      .delete()
+      .eq('id', existingReaction.id)
 
-      if (error) {
-        return { error: 'Failed to remove reaction' }
-      }
-    } else {
-      const { error } = await supabase
-        .from('comment_likes')
-        .update({ reaction_type: reactionType })
-        .eq('id', existingReaction.id)
-
-      if (error) {
-        return { error: 'Failed to update reaction' }
-      }
+    if (error) {
+      return { error: 'Failed to remove like' }
     }
   } else {
+    // Toggle on - add like
     const { error } = await supabase
       .from('comment_likes')
       .insert({
         comment_id: commentId,
         user_id: user.id,
-        reaction_type: reactionType,
       })
 
     if (error) {
-      return { error: 'Failed to add reaction' }
+      return { error: 'Failed to add like' }
     }
   }
 

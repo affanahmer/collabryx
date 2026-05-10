@@ -39,7 +39,7 @@ function createMockQueryBuilder(returnData: unknown[] = [], returnError: unknown
 
 // Module-level builder instance so beforeEach can reset it
 let currentBuilder = createMockQueryBuilder()
-// Use any to avoid circular type reference with vi.fn()
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Test mock builder needs any type to avoid circular reference with vi.fn()
 let mockBuilder: any = currentBuilder // alias for test refs
 
 const mockSupabase = {

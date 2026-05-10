@@ -224,14 +224,14 @@ export async function reactToPost(postId: string, reactionType: string) {
   // Check if user already reacted
   const { data: existingReaction } = await supabase
     .from('post_reactions')
-    .select('id, reaction_type')
+    .select('id, emoji')
     .eq('post_id', postId)
     .eq('user_id', user.id)
     .single()
 
   if (existingReaction) {
     // Toggle off if same reaction
-    if ((existingReaction as { reaction_type: PostReactionType }).reaction_type === reactionType) {
+    if ((existingReaction as { emoji: PostReactionType }).emoji === reactionType) {
       const { error } = await supabase
         .from('post_reactions')
         .delete()
@@ -244,7 +244,7 @@ export async function reactToPost(postId: string, reactionType: string) {
       // Update to new reaction
       const { error } = await supabase
         .from('post_reactions')
-        .update({ reaction_type: reactionType })
+        .update({ emoji: reactionType })
         .eq('id', existingReaction.id)
 
       if (error) {
@@ -258,7 +258,7 @@ export async function reactToPost(postId: string, reactionType: string) {
       .insert({
         post_id: postId,
         user_id: user.id,
-        reaction_type: reactionType,
+        emoji: reactionType,
       })
 
     if (error) {

@@ -5,7 +5,7 @@
 -- Date: 2026-03-21
 -- 
 -- This file contains the COMPLETE database schema including:
--- - 34 Tables (22 core + 4 embedding + 5 ML features + 3 privacy/security)
+-- - 36 Tables (22 core + 4 embedding + 5 ML features + 5 privacy/security)
 -- - All indexes optimized for common queries (including HNSW for vectors + composite indexes)
 -- - All triggers for automation (updated_at, counts, embeddings, notifications, events, optimistic locking)
 -- - All RLS policies for security (70+ policies)

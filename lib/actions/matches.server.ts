@@ -49,8 +49,8 @@ export async function acceptMatch(matchId: string) {
       const { data: connectionData, error: connectionError } = await supabase
         .from('connections')
         .insert({
-          user_id: user.id,
-          connected_to: match.matched_user_id,
+          requester_id: user.id,
+          receiver_id: match.matched_user_id,
           status: 'accepted',
         })
         .select('id')
@@ -65,9 +65,7 @@ export async function acceptMatch(matchId: string) {
         .insert({
           user_id: match.matched_user_id,
           type: 'match_accepted',
-          title: 'Match Accepted!',
           content: `${user.id} accepted your match suggestion`,
-          action_url: `/profile/${user.id}`,
         })
 
       if (notifError) throw notifError
@@ -77,9 +75,10 @@ export async function acceptMatch(matchId: string) {
       const { error: activityError } = await supabase
         .from('match_activity')
         .insert({
-          user_id: user.id,
-          matched_user_id: match.matched_user_id,
-          activity_type: 'accepted',
+          actor_user_id: user.id,
+          target_user_id: match.matched_user_id,
+          type: 'building_match',
+          activity: 'Connected via match suggestion',
         })
 
       if (activityError) throw activityError
