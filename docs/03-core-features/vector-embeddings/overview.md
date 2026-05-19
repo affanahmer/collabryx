@@ -24,7 +24,7 @@ Collabryx uses **vector embeddings** to enable semantic matching between users b
 ### How It Works
 
 ```
-User Profile → Semantic Text → Embedding (768 dimensions) → Vector Storage → Cosine Similarity Search
+User Profile → Semantic Text → Embedding (384 dimensions) → Vector Storage → Cosine Similarity Search
 ```
 
 ### Key Benefits

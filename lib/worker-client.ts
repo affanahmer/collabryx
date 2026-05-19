@@ -44,7 +44,7 @@ export class WorkerClient {
   }
 
   async generateEmbedding(text: string, userId: string): Promise<EmbeddingResponse> {
-    const response = await fetch(`${this.baseUrl}/embeddings/generate`, {
+    const response = await fetch(`${this.baseUrl}/generate-embedding`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text, user_id: userId } satisfies EmbeddingRequest),

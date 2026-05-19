@@ -40,14 +40,19 @@ class AIMentorProcessor:
     """
 
     def __init__(
-        self, supabase_url: str, supabase_key: str, gemini_api_key: Optional[str] = None
+        self,
+        supabase_url: str,
+        supabase_key: str,
+        gemini_api_key: Optional[str] = None,
+        supabase_client: Optional[Client] = None,
     ):
         """
         Initialize AIMentorProcessor with Supabase and Gemini clients.
 
         Task: 3.1.2
         """
-        self.supabase: Client = create_client(supabase_url, supabase_key)
+        # Use shared client if provided, otherwise create new one
+        self.supabase: Client = supabase_client or create_client(supabase_url, supabase_key)
         self.gemini_api_key = gemini_api_key
         self.model = None
 

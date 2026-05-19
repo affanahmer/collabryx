@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import type { AIMessage } from '@/lib/rag/types'
 
 interface UseAIStreamOptions {
@@ -16,6 +16,12 @@ export function useAIStream(options: UseAIStreamOptions) {
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<Error | null>(null)
   const currentMessageRef = useRef<string>('')
+  const messagesRef = useRef<AIMessage[]>([])
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
 
   const sendMessage = useCallback(async (content: string) => {
     const userMessage: AIMessage = {
@@ -37,7 +43,7 @@ export function useAIStream(options: UseAIStreamOptions) {
         body: JSON.stringify({
           userId: options.userId,
           sessionId: options.sessionId || crypto.randomUUID(),
-          messages: [...messages, userMessage],
+          messages: [...messagesRef.current, userMessage],
           query: content
         })
       })
@@ -101,7 +107,7 @@ export function useAIStream(options: UseAIStreamOptions) {
     } finally {
       setIsStreaming(false)
     }
-  }, [messages, options])
+  }, [options])
 
   return {
     messages,

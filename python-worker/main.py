@@ -39,6 +39,8 @@ from services.activity_tracker import ActivityTracker
 from services.content_moderator import ContentModerator
 from services.ai_mentor_processor import AIMentorProcessor
 from services.analytics_aggregator import AnalyticsAggregator
+from services.feed_scorer import FeedScorer
+from services.event_processor import EventProcessor
 
 load_dotenv()
 
@@ -53,6 +55,7 @@ logger = logging.getLogger(__name__)
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
+WORKER_API_KEY = os.getenv("WORKER_API_KEY")
 
 # External API keys (optional - services have fallbacks)
 PERSPECTIVE_API_KEY = os.getenv("PERSPECTIVE_API_KEY")
@@ -79,6 +82,15 @@ if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY:
 
 # Initialize Rate Limiter
 rate_limiter = RateLimiter(supabase) if supabase else None
+
+# Initialize singleton services (reused across requests)
+match_generator = MatchGenerator(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) if supabase else None
+notification_engine = NotificationEngine(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) if supabase else None
+activity_tracker = ActivityTracker(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) if supabase else None
+content_moderator = ContentModerator(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, PERSPECTIVE_API_KEY) if supabase else None
+ai_mentor_processor = AIMentorProcessor(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GEMINI_API_KEY, supabase_client=supabase) if supabase else None
+analytics_aggregator = AnalyticsAggregator(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) if supabase else None
+event_processor = EventProcessor(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY) if supabase else None
 
 # In-memory queue with bounded size
 MAX_QUEUE_SIZE = 100
@@ -242,6 +254,16 @@ async def lifespan(app: FastAPI):
     dlq_processor_task = asyncio.create_task(process_dead_letter_queue())
     logger.info("Starting pending queue processor...")
     pending_queue_task = asyncio.create_task(process_pending_queue())
+
+    # Start event processing pipeline (Supabase Realtime)
+    if event_processor:
+        logger.info("Starting event processor (Supabase Realtime)...")
+        event_task = asyncio.create_task(event_processor.start_listening())
+        logger.info("✓ Event processor started")
+    else:
+        event_task = None
+        logger.warning("⚠️ Event processor not initialized (Supabase unavailable)")
+
     logger.info("✓ All background tasks started successfully")
     logger.info("=" * 60)
 
@@ -270,11 +292,19 @@ async def lifespan(app: FastAPI):
 
     # Cancel background tasks gracefully with individual timeouts
     logger.info("Cancelling background tasks...")
+
+    # Stop event processor first
+    if event_processor:
+        await event_processor.stop_listening()
+        logger.info("✓ Event processor stopped")
+
     tasks_with_names = [
         ("processor", processor_task),
         ("dlq", dlq_processor_task),
         ("pending", pending_queue_task),
     ]
+    if event_task:
+        tasks_with_names.append(("event", event_task))
 
     for task_name, task in tasks_with_names:
         if not task.done():
@@ -306,8 +336,38 @@ app.add_middleware(
     allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["POST", "GET", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_headers=["Authorization", "Content-Type", "X-Worker-API-Key"],
 )
+
+
+# =====================================================
+# API Key Authentication Middleware
+# =====================================================
+
+# Endpoints exempt from API key authentication
+AUTH_EXEMPT_PATHS = {"/health", "/metrics", "/"}
+
+
+@app.middleware("http")
+async def api_key_auth(request: Request, call_next):
+    """Middleware to verify X-Worker-API-Key header for protected endpoints."""
+    # Skip auth for health, metrics, and root endpoints
+    if request.url.path in AUTH_EXEMPT_PATHS:
+        return await call_next(request)
+
+    # If no API key is configured, allow all requests (dev mode)
+    if not WORKER_API_KEY:
+        return await call_next(request)
+
+    # Check for API key in header
+    api_key = request.headers.get("X-Worker-API-Key")
+    if not api_key or api_key != WORKER_API_KEY:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"error": "Unauthorized", "message": "Valid X-Worker-API-Key header required"},
+        )
+
+    return await call_next(request)
 
 
 # =====================================================
@@ -715,7 +775,7 @@ async def queue_processor():
 
 async def process_dead_letter_queue():
     """Process retryable items from dead letter queue with atomic claim pattern"""
-    while True:
+    while not SHUTDOWN_FLAG:
         try:
             now = datetime.utcnow().isoformat()
 
@@ -806,7 +866,7 @@ async def process_dead_letter_queue():
 
 async def process_pending_queue():
     """Process pending embedding requests from database queue with atomic claim pattern"""
-    while True:
+    while not SHUTDOWN_FLAG:
         try:
             # Get pending requests (candidates for claiming)
             response = (
@@ -1195,13 +1255,12 @@ async def generate_matches(request: MatchGenerateRequest):
     Task: 1.2.8
     """
     try:
-        if not supabase:
+        if not match_generator:
             raise HTTPException(
                 status_code=503, detail="Database connection not available"
             )
 
-        generator = MatchGenerator(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-        result = await generator.generate_matches_for_user(
+        result = await match_generator.generate_matches_for_user(
             user_id=request.user_id, limit=request.limit
         )
 
@@ -1235,7 +1294,7 @@ async def generate_matches_batch(
     Task: 1.2.9
     """
     try:
-        if not supabase:
+        if not match_generator:
             raise HTTPException(
                 status_code=503, detail="Database connection not available"
             )
@@ -1259,12 +1318,11 @@ async def generate_matches_batch(
 
         # Process in background
         async def process_batch():
-            generator = MatchGenerator(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
             total_created = 0
 
             for user_id in users_to_process:
                 try:
-                    result = await generator.generate_matches_for_user(
+                    result = await match_generator.generate_matches_for_user(
                         user_id=user_id, limit=request.limit_per_user
                     )
                     total_created += result.get("suggestions_created", 0)
@@ -1353,8 +1411,11 @@ async def send_notification(request: NotificationSendRequest):
     Task: 1.3.6
     """
     try:
-        engine = NotificationEngine(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-        result = await engine.send_notification(
+        if not notification_engine:
+            raise HTTPException(
+                status_code=503, detail="Database connection not available"
+            )
+        result = await notification_engine.send_notification(
             user_id=request.user_id,
             type=request.type,
             actor_id=request.actor_id,
@@ -1385,8 +1446,11 @@ async def send_digest(request: NotificationDigestRequest):
     Task: 1.3.6
     """
     try:
-        engine = NotificationEngine(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-        result = await engine.send_daily_digest(user_id=request.user_id)
+        if not notification_engine:
+            raise HTTPException(
+                status_code=503, detail="Database connection not available"
+            )
+        result = await notification_engine.send_daily_digest(user_id=request.user_id)
 
         if result["status"] == "failed":
             raise HTTPException(
@@ -1435,8 +1499,11 @@ async def track_profile_view(request: ActivityTrackViewRequest):
     Task: 1.4.5
     """
     try:
-        tracker = ActivityTracker(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-        result = await tracker.track_profile_view(
+        if not activity_tracker:
+            raise HTTPException(
+                status_code=503, detail="Database connection not available"
+            )
+        result = await activity_tracker.track_profile_view(
             viewer_id=request.viewer_id, target_id=request.target_id
         )
 
@@ -1461,8 +1528,11 @@ async def track_match_building(request: ActivityTrackMatchRequest):
     Task: 1.4.5
     """
     try:
-        tracker = ActivityTracker(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-        result = await tracker.track_match_building(
+        if not activity_tracker:
+            raise HTTPException(
+                status_code=503, detail="Database connection not available"
+            )
+        result = await activity_tracker.track_match_building(
             user_id=request.user_id, matched_user_id=request.matched_user_id
         )
 
@@ -1487,8 +1557,11 @@ async def get_activity_feed(user_id: str, limit: int = 20):
     Task: 1.4.5
     """
     try:
-        tracker = ActivityTracker(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-        activities = await tracker.get_activity_feed(user_id=user_id, limit=limit)
+        if not activity_tracker:
+            raise HTTPException(
+                status_code=503, detail="Database connection not available"
+            )
+        activities = await activity_tracker.get_activity_feed(user_id=user_id, limit=limit)
 
         return {"activities": activities}
 
@@ -1504,8 +1577,11 @@ async def cleanup_notifications(request: NotificationCleanupRequest):
     Task: 1.3.6
     """
     try:
-        engine = NotificationEngine(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
-        result = await engine.cleanup_old_notifications(days=request.days)
+        if not notification_engine:
+            raise HTTPException(
+                status_code=503, detail="Database connection not available"
+            )
+        result = await notification_engine.cleanup_old_notifications(days=request.days)
 
         if result["status"] == "failed":
             raise HTTPException(
@@ -1553,10 +1629,11 @@ async def moderate_content_endpoint(request: ModerateRequest):
     Uses Google Perspective API with fallback to keyword-based detection.
     """
     try:
-        moderator = ContentModerator(
-            SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, PERSPECTIVE_API_KEY
-        )
-        result = await moderator.moderate_content(
+        if not content_moderator:
+            raise HTTPException(
+                status_code=503, detail="Database connection not available"
+            )
+        result = await content_moderator.moderate_content(
             content=request.content, content_type=request.content_type
         )
 
@@ -1607,10 +1684,11 @@ async def ai_mentor_message(request: MentorMessageRequest):
     Uses Google Gemini API with fallback to predefined responses.
     """
     try:
-        processor = AIMentorProcessor(
-            SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GEMINI_API_KEY
-        )
-        result = await processor.generate_response(
+        if not ai_mentor_processor:
+            raise HTTPException(
+                status_code=503, detail="Database connection not available"
+            )
+        result = await ai_mentor_processor.generate_response(
             user_id=request.user_id,
             message=request.message,
             session_id=request.session_id,
@@ -1660,7 +1738,12 @@ async def aggregate_daily_analytics(request: AnalyticsDailyRequest):
     Calculates DAU, MAU, WAU, and other platform metrics.
     """
     try:
-        aggregator = AnalyticsAggregator(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+        if not analytics_aggregator:
+            raise HTTPException(
+                status_code=503, detail="Database connection not available"
+            )
+
+        aggregator = analytics_aggregator
 
         # Parse date if provided
         target_date = None

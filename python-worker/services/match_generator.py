@@ -10,6 +10,7 @@ Status: Complete implementation
 
 import asyncio
 import logging
+import math
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 
@@ -467,10 +468,11 @@ class MatchGenerator:
                 "activity_match": 0.0,
             }
 
-            # Semantic similarity (from embedding)
+            # Semantic similarity (from embedding) - actual cosine similarity
             if user1.get("embedding") and user2.get("embedding"):
-                # This would use actual cosine similarity in production
-                breakdown["semantic_similarity"] = 0.8  # Placeholder
+                breakdown["semantic_similarity"] = self._cosine_similarity(
+                    user1["embedding"], user2["embedding"]
+                )
 
             # Skills overlap
             user1_skills = set(user1.get("skills", []))
@@ -511,6 +513,25 @@ class MatchGenerator:
                 "profile_quality": 0.5,
                 "activity_match": 0.5,
             }
+
+    def _cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
+        """Calculate cosine similarity between two vectors."""
+        if not vec1 or not vec2:
+            return 0.0
+
+        # Ensure same length
+        min_len = min(len(vec1), len(vec2))
+        if min_len == 0:
+            return 0.0
+
+        dot_product = sum(a * b for a, b in zip(vec1[:min_len], vec2[:min_len]))
+        norm1 = math.sqrt(sum(a * a for a in vec1[:min_len]))
+        norm2 = math.sqrt(sum(b * b for b in vec2[:min_len]))
+
+        if norm1 == 0 or norm2 == 0:
+            return 0.0
+
+        return max(0.0, min(1.0, dot_product / (norm1 * norm2)))
 
     def _generate_explanation(
         self, match_percentage: float, reasons: List[Dict]

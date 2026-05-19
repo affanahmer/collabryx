@@ -186,14 +186,15 @@ class ContentModerator:
 
         except Exception as e:
             logger.error(f"Error moderating content: {str(e)}")
-            # Fail open - allow content if moderation fails
+            # Fail closed - reject content for manual review if moderation fails
             return {
-                "approved": True,
-                "flag_for_review": False,
+                "approved": False,
+                "flag_for_review": True,
                 "auto_reject": False,
-                "action": "approved",
+                "risk_score": 0.7,
+                "action": "flag_for_review",
                 "error": str(e),
-                "fail_open": True,
+                "fail_open": False,
             }
 
     async def check_toxicity(self, text: str) -> Dict[str, float]:
