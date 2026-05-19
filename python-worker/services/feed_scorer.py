@@ -133,16 +133,100 @@ class FeedScorer:
             )
 
             posts = posts_response.data or []
+            if not posts:
+                return []
 
-            # Score each post
+            # Batch fetch all author embeddings at once (fixes N+1)
+            author_ids = list(set(p["author_id"] for p in posts if p.get("author_id")))
+            embeddings_response = await asyncio.to_thread(
+                self.supabase.table("profile_embeddings")
+                .select("user_id, embedding, status")
+                .in_("user_id", author_ids + [user_id])
+                .eq("status", "completed")
+                .execute
+            )
+            embeddings_map = {
+                e["user_id"]: e["embedding"]
+                for e in (embeddings_response.data or [])
+            }
+
+            # Batch fetch connection status (fixes N+1)
+            connections_response = await asyncio.to_thread(
+                self.supabase.table("connections")
+                .select("requester_id, receiver_id")
+                .or_(f"requester_id.eq.{user_id},receiver_id.eq.{user_id}")
+                .eq("status", "accepted")
+                .execute
+            )
+            connected_ids = set()
+            for conn in (connections_response.data or []):
+                if conn["requester_id"] == user_id:
+                    connected_ids.add(conn["receiver_id"])
+                else:
+                    connected_ids.add(conn["requester_id"])
+
+            # Get user data once (fixes N+1)
+            user_data_response = await asyncio.to_thread(
+                self.supabase.table("profiles")
+                .select("id, looking_for")
+                .eq("id", user_id)
+                .single()
+                .execute
+            )
+            user_data = user_data_response.data or {}
+
+            # Score each post using cached data
             scored_posts = []
             for post in posts:
-                score = await self.calculate_feed_score(user_id, post)
+                author_id = post.get("author_id")
+                user_embedding = embeddings_map.get(user_id)
+                post_embedding = embeddings_map.get(author_id)
 
-                # Cache score in feed_scores table
-                await self._cache_score(user_id, post["id"], score)
+                # Semantic score from cached embeddings
+                semantic_score = 0.5
+                if user_embedding and post_embedding:
+                    user_vec = np.array([float(x) for x in user_embedding])
+                    post_vec = np.array([float(x) for x in post_embedding])
+                    dot_product = np.dot(user_vec, post_vec)
+                    norm_user = np.linalg.norm(user_vec)
+                    norm_post = np.linalg.norm(post_vec)
+                    if norm_user > 0 and norm_post > 0:
+                        similarity = dot_product / (norm_user * norm_post)
+                        semantic_score = float((similarity + 1) / 2)
 
-                scored_posts.append({**post, "feed_score": score})
+                # Engagement Score (30%) - Thompson Sampling
+                engagement_score = self._thompson_sample(
+                    successes=post.get("reaction_count", 0) + post.get("comment_count", 0),
+                    failures=max(
+                        0, post.get("impressions", 1) - post.get("engagements", 0)
+                    ),
+                )
+
+                # Recency Score (20%) - Exponential decay
+                recency_score = self._calculate_recency_score(post.get("created_at"))
+
+                # Connection Boost (15%) from cached set
+                connection_boost = 1.5 if author_id in connected_ids else 1.0
+
+                # Calculate final score
+                base_score = (
+                    self.weights["semantic"] * semantic_score
+                    + self.weights["engagement"] * engagement_score
+                    + self.weights["recency"] * recency_score
+                )
+
+                final_score = base_score * connection_boost
+
+                # Apply additional boosts
+                if post.get("intent") and user_data.get("looking_for") == post.get("intent"):
+                    final_score *= 1.1
+
+                final_score = round(min(1.0, final_score), 4)
+
+                # Cache score
+                await self._cache_score(user_id, post["id"], final_score)
+
+                scored_posts.append({**post, "feed_score": final_score})
 
             # Sort by score
             scored_posts.sort(key=lambda p: p["feed_score"], reverse=True)

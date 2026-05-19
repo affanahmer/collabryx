@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { LandingHeader } from "@/components/features/landing/landing-header"
 
 import { MorphingText } from "@/components/ui/morphing-text"
-import { Globe as GlobeBackground } from "@/components/ui/globe"
+const GlobeBackground = dynamic(() => import("@/components/ui/globe").then(m => ({ default: m.Globe })), { ssr: false, loading: () => <div className="animate-pulse bg-muted/20 rounded-full aspect-square max-w-[600px]" /> })
 import { MeshGradientBackground } from "@/components/features/landing/mesh-gradient-background"
 import { Marquee } from "@/components/ui/marquee"
 import { BorderBeam } from "@/components/ui/border-beam"

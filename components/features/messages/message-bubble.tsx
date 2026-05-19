@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import Image from "next/image"
 import { Check } from "lucide-react"
 
 interface MessageBubbleProps {
@@ -57,10 +58,11 @@ export function MessageBubble({
                 {/* Attachment */}
                 {attachmentUrl && attachmentType === "image" && (
                     <div className="mb-2 rounded-lg overflow-hidden">
-                        {/* eslint-disable @next/next/no-img-element */}
-                        <img
+                        <Image
                             src={attachmentUrl}
-                            alt="Attachment"
+                            alt="Message attachment"
+                            width={320}
+                            height={240}
                             className="w-full h-auto max-w-xs object-cover"
                         />
                     </div>

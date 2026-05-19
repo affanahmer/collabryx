@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { useCallback, useState, useRef } from 'react'
 import { Upload, X, Image as ImageIcon, FileText, AlertCircle, CheckCircle2 } from 'lucide-react'
+import Image from 'next/image'
 import { cn } from '@/lib/utils'
 
 /**
@@ -216,10 +217,12 @@ export function FileUpload({
           // Preview Mode
           <div className="relative">
             {accept.includes('image') ? (
-              /* eslint-disable @next/next/no-img-element */
-              <img
+              <Image
                 src={preview}
-                alt="Preview"
+                alt="File preview"
+                width={256}
+                height={256}
+                unoptimized
                 className={cn(
                   'max-h-64 w-full object-contain rounded-md',
                   uploadType === 'avatar' && 'w-32 h-32 rounded-full object-cover mx-auto'

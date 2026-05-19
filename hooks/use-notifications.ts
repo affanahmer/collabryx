@@ -167,12 +167,15 @@ export function useRealtimeNotifications() {
 
   useEffect(() => {
     const supabase = createClient()
-    
+    let channel: ReturnType<typeof supabase.channel> | null = null
+
     // Get user and set up channel
     supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) return
+
       // Use user-specific channel instead of postgres_changes for efficiency
-      const channel = supabase
-        .channel(`notifications:user:${user?.id}`)
+      channel = supabase
+        .channel(`notifications:user:${user.id}`)
         .on(
           'broadcast',
           {
@@ -185,10 +188,12 @@ export function useRealtimeNotifications() {
           }
         )
         .subscribe()
+    })
 
-      return () => {
+    return () => {
+      if (channel) {
         supabase.removeChannel(channel)
       }
-    })
+    }
   }, [queryClient])
 }

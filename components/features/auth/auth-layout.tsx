@@ -1,10 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { Globe } from "@/components/ui/globe"
-
+import dynamic from "next/dynamic"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+
+const Globe = dynamic(() => import("@/components/ui/globe").then(m => ({ default: m.Globe })), { ssr: false, loading: () => <div className="animate-pulse bg-muted/20 rounded-full aspect-square" /> })
 
 interface AuthLayoutProps {
     children: React.ReactNode
@@ -33,7 +34,6 @@ export function AuthLayout({ children }: AuthLayoutProps) {
                 </div>
             </div>
 
-            {/* Right Column - Globe / Visual */}
             {/* Right Column - Globe / Visual */}
             <div className="hidden lg:flex relative overflow-hidden items-center justify-center h-full">
                 <Globe className="relative opacity-40" />

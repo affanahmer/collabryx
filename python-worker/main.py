@@ -30,6 +30,9 @@ from prometheus_client import (
 from dotenv import load_dotenv
 from supabase import create_client, Client
 
+# OpenTelemetry-style request tracing (manual instrumentation)
+import uuid
+
 from embedding_generator import get_generator, construct_semantic_text
 from rate_limiter import RateLimiter
 from embedding_validator import EmbeddingValidator
@@ -149,6 +152,21 @@ MEMORY_USAGE_GAUGE = Gauge(
 DLQ_SIZE_GAUGE = Gauge(
     name="embedding_service_dlq_size",
     documentation="Current number of items in dead letter queue",
+)
+
+# Supabase query duration histogram
+SUPABASE_QUERY_DURATION = Histogram(
+    name="embedding_service_supabase_query_duration_seconds",
+    documentation="Supabase query duration in seconds",
+    labelnames=["table", "operation"],
+    buckets=[0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0],
+)
+
+# Supabase error counter
+SUPABASE_ERROR_COUNTER = Counter(
+    name="embedding_service_supabase_errors_total",
+    documentation="Total number of Supabase query errors",
+    labelnames=["table", "operation", "error_type"],
 )
 
 
@@ -377,11 +395,18 @@ async def api_key_auth(request: Request, call_next):
 
 @app.middleware("http")
 async def metrics_middleware(request: Request, call_next):
-    """Middleware to track request metrics with Prometheus"""
+    """Middleware to track request metrics with Prometheus and OpenTelemetry-style tracing"""
     start_time = time.time()
+    trace_id = str(uuid.uuid4())
+
+    # Add trace ID to request state for downstream access
+    request.state.trace_id = trace_id
 
     try:
         response = await call_next(request)
+
+        # Add trace ID to response headers for distributed tracing
+        response.headers["X-Trace-Id"] = trace_id
 
         # Record request counter
         REQUEST_COUNTER.labels(
@@ -406,6 +431,18 @@ async def metrics_middleware(request: Request, call_next):
         MEMORY_USAGE_GAUGE.labels(type="process_rss").set(process_memory.rss)
         MEMORY_USAGE_GAUGE.labels(type="process_vms").set(process_memory.vms)
 
+        # Log request with trace ID
+        logger.info(
+            f"{request.method} {request.url.path} {response.status_code} {duration:.3f}s",
+            extra={
+                "trace_id": trace_id,
+                "method": request.method,
+                "path": request.url.path,
+                "status_code": response.status_code,
+                "duration_ms": round(duration * 1000, 2),
+            },
+        )
+
         return response
 
     except Exception as e:
@@ -417,6 +454,19 @@ async def metrics_middleware(request: Request, call_next):
 
         # Update queue size gauge even on error
         QUEUE_SIZE_GAUGE.set(request_queue.qsize())
+
+        # Log error with trace ID
+        logger.error(
+            f"{request.method} {request.url.path} ERROR {type(e).__name__}",
+            extra={
+                "trace_id": trace_id,
+                "method": request.method,
+                "path": request.url.path,
+                "error_type": type(e).__name__,
+                "error_message": str(e),
+            },
+            exc_info=True,
+        )
 
         raise
 

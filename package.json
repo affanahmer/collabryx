@@ -23,7 +23,9 @@
     "docker:clean": "node scripts/docker-clean.mjs",
     "docker:logs": "node scripts/docker-logs.mjs",
     "docker:health": "node scripts/docker-health.mjs",
-    "docker:status": "node scripts/docker-status.mjs"
+    "docker:status": "node scripts/docker-status.mjs",
+    "perf:budget": "node scripts/perf-budget.mjs",
+    "perf:budget:ci": "npm run build && npm run perf:budget"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.33.0",

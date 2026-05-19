@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
 import withBundleAnalyzer from '@next/bundle-analyzer'
+import { withSentryConfig } from '@sentry/nextjs'
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  // Sentry source maps upload (only when auth token is available)
+  productionBrowserSourceMaps: !!process.env.SENTRY_AUTH_TOKEN,
   // Turbopack config (Next.js 16 default)
   turbopack: {
     // Enable code splitting and optimization
@@ -73,7 +76,6 @@ const nextConfig: NextConfig = {
   },
   poweredByHeader: false,
   compress: true,
-  productionBrowserSourceMaps: false, // Disable source maps in production to reduce bundle
   // Security and CDN caching headers
   async headers() {
     return [
@@ -130,6 +132,26 @@ const nextConfig: NextConfig = {
           {
             key: 'Cache-Control',
             value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // JS chunks - long-term CDN caching (1 year)
+      {
+        source: '/_next/:path*.js',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // HTML pages - no caching to ensure fresh content (placed after static asset rules)
+      {
+        source: '/((?!_next/static|_next/image|_next/data|static|api/upload|favicon|manifest).*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, must-revalidate',
           },
         ],
       },
@@ -206,6 +228,20 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withBundleAnalyzer({
-  enabled: process.env.ANALYZE === 'true',
-})(nextConfig);
+export default withSentryConfig(
+  withBundleAnalyzer({
+    enabled: process.env.ANALYZE === 'true',
+  })(nextConfig),
+  {
+    org: process.env.SENTRY_ORG || '',
+    project: process.env.SENTRY_PROJECT || '',
+    authToken: process.env.SENTRY_AUTH_TOKEN || '',
+    // Only upload source maps when auth token is set
+    silent: true,
+    widenClientFileUpload: true,
+    sourcemaps: {
+      deleteSourcemapsAfterUpload: true,
+    },
+    tunnelRoute: '/monitoring/sentry',
+  }
+)

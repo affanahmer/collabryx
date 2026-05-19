@@ -140,7 +140,8 @@ export function useEmbeddingQueueStats() {
       try {
         const { data, error } = await supabase
           .from('embedding_pending_queue')
-          .select('status');
+          .select('status')
+          .limit(1000);
 
         if (error) {
           console.error('Error loading queue stats:', error);

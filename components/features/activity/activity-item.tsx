@@ -1,6 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { GlassCard } from "@/components/shared/glass-card"
 import { glass } from "@/lib/utils/glass-variants"
@@ -45,10 +46,11 @@ export function ActivityItem({ activity }: ActivityItemProps) {
       {/* Avatar */}
       <div className="shrink-0">
         {activity.actor.avatar ? (
-          /* eslint-disable @next/next/no-img-element */
-          <img
+          <Image
             src={activity.actor.avatar}
             alt={activity.actor.name}
+            width={40}
+            height={40}
             className="h-10 w-10 rounded-full object-cover"
           />
         ) : (
