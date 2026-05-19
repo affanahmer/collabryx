@@ -13,6 +13,8 @@ export { mockSupabaseClient }
 // Cleanup after each test
 afterEach(() => {
   cleanup()
+  vi.clearAllMocks()
+  vi.resetAllMocks()
 })
 
 // Mock window.matchMedia

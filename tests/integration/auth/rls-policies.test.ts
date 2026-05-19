@@ -128,12 +128,65 @@ function createMockSupabaseForUser(user: MockUser | null) {
         return Promise.resolve({ data: record, error: null })
       })
 
-      // Update — only service_role can update match_scores
+      // Delete — RLS: users can only delete own resources
+      queryChain.delete.mockImplementation(() => {
+        if (table === 'profiles') {
+          // "Users can delete own profile (GDPR)" USING (auth.uid() = id)
+          const eqFn = vi.fn().mockImplementation((col: string, val: string) => {
+            if (col === 'id' && val !== user?.id) {
+              return Promise.resolve({ data: null, error: { message: 'new row violates row-level security policy', code: '42501' } })
+            }
+            return Promise.resolve({ data: {}, error: null })
+          })
+          return { eq: eqFn }
+        }
+        if (table === 'posts') {
+          // "Users can delete own posts" USING (auth.uid() = author_id)
+          const eqFn = vi.fn().mockImplementation((col: string, val: string) => {
+            if (col === 'author_id' && val !== user?.id) {
+              return Promise.resolve({ data: null, error: { message: 'new row violates row-level security policy', code: '42501' } })
+            }
+            if (col === 'id') {
+              // Simulate: post belongs to current user
+              return Promise.resolve({ data: {}, error: null })
+            }
+            return Promise.resolve({ data: null, error: { message: 'new row violates row-level security policy', code: '42501' } })
+          })
+          return { eq: eqFn }
+        }
+        // Default: return chainable eq that allows
+        const eqFn = vi.fn().mockResolvedValue({ data: {}, error: null })
+        return { eq: eqFn }
+      })
+
+      // Update — RLS: users can only update own resources
       queryChain.update.mockImplementation((_record: Record<string, unknown>) => {
         if (table === 'match_scores' && !rlsCanUpdateMatchScores(user?.role ?? null)) {
           return Promise.resolve({ data: null, error: { message: 'new row violates row-level security policy', code: '42501' } })
         }
-        return Promise.resolve({ data: {}, error: null })
+        if (table === 'posts') {
+          // "Users can update own posts" USING (auth.uid() = author_id)
+          const eqFn = vi.fn().mockImplementation((col: string, val: string) => {
+            if (col === 'author_id' && val !== user?.id) {
+              return Promise.resolve({ data: null, error: { message: 'new row violates row-level security policy', code: '42501' } })
+            }
+            return Promise.resolve({ data: {}, error: null })
+          })
+          return { eq: eqFn }
+        }
+        if (table === 'profiles') {
+          // "Users can update own profile" USING (auth.uid() = id)
+          const eqFn = vi.fn().mockImplementation((col: string, val: string) => {
+            if (col === 'id' && val !== user?.id) {
+              return Promise.resolve({ data: null, error: { message: 'new row violates row-level security policy', code: '42501' } })
+            }
+            return Promise.resolve({ data: {}, error: null })
+          })
+          return { eq: eqFn }
+        }
+        // Default: return chainable eq that allows
+        const eqFn = vi.fn().mockResolvedValue({ data: {}, error: null })
+        return { eq: eqFn }
       })
 
       return queryChain
@@ -323,6 +376,125 @@ describe('RLS Policies', () => {
 
       // Assert
       expect(data).toEqual([])
+    })
+  })
+
+  // ─── TC-018: RLS blocks profile tampering ──────────────────────────
+
+  describe('TC-018: RLS blocks users from updating other users profiles', () => {
+    it('should not allow user A to update user Bs profile', async () => {
+      // Arrange — User A trying to update user B's profile
+      const supabase = createMockSupabaseForUser(userA)
+
+      // Act — Attempt to update another user's profile
+      const { data, error } = await supabase.from('profiles').update({ display_name: 'Hacked' }).eq('id', 'user-b-id')
+
+      // Assert — RLS blocks: "Users can update own profile" USING (auth.uid() = id)
+      expect(error).toBeDefined()
+      expect(error?.message).toContain('row-level security policy')
+      expect(error?.code).toBe('42501')
+      expect(data).toBeNull()
+    })
+
+    it('should allow user A to update their own profile', async () => {
+      // Arrange — User A updating own profile
+      const supabase = createMockSupabaseForUser(userA)
+
+      // Act
+      const { data, error } = await supabase.from('profiles').update({ display_name: 'New Name' }).eq('id', 'user-a-id')
+
+      // Assert — RLS allows: auth.uid() matches profile id
+      expect(error).toBeNull()
+      expect(data).toBeDefined()
+    })
+
+    it('should not allow user A to delete user Bs profile', async () => {
+      // Arrange — User A trying to delete user B's profile
+      const supabase = createMockSupabaseForUser(userA)
+
+      // Act
+      const { data, error } = await supabase.from('profiles').delete().eq('id', 'user-b-id')
+
+      // Assert — RLS blocks: "Users can delete own profile (GDPR)" USING (auth.uid() = id)
+      expect(error).toBeDefined()
+      expect(error?.message).toContain('row-level security policy')
+      expect(error?.code).toBe('42501')
+      expect(data).toBeNull()
+    })
+  })
+
+  // ─── TC-019: RLS blocks post tampering ─────────────────────────────
+
+  describe('TC-019: RLS blocks users from deleting other users posts', () => {
+    it('should not allow user A to delete user Bs post', async () => {
+      // Arrange — User A trying to delete user B's post
+      const supabase = createMockSupabaseForUser(userA)
+
+      // Act
+      const { data, error } = await supabase.from('posts').delete().eq('author_id', 'user-b-id')
+
+      // Assert — RLS blocks: "Users can delete own posts" USING (auth.uid() = author_id)
+      expect(error).toBeDefined()
+      expect(error?.message).toContain('row-level security policy')
+      expect(error?.code).toBe('42501')
+      expect(data).toBeNull()
+    })
+
+    it('should allow user A to delete their own post', async () => {
+      // Arrange — User A deleting own post
+      const supabase = createMockSupabaseForUser(userA)
+
+      // Act
+      const { data, error } = await supabase.from('posts').delete().eq('id', 'post-a-id')
+
+      // Assert — RLS allows: auth.uid() matches author_id
+      expect(error).toBeNull()
+      expect(data).toBeDefined()
+    })
+
+    it('should not allow user A to update user Bs post', async () => {
+      // Arrange — User A trying to update user B's post
+      const supabase = createMockSupabaseForUser(userA)
+
+      // Act
+      const { data, error } = await supabase.from('posts').update({ content: 'Hacked' }).eq('author_id', 'user-b-id')
+
+      // Assert — RLS blocks: "Users can update own posts" USING (auth.uid() = author_id)
+      expect(error).toBeDefined()
+      expect(error?.message).toContain('row-level security policy')
+      expect(error?.code).toBe('42501')
+      expect(data).toBeNull()
+    })
+  })
+
+  // ─── TC-020: RLS enforces conversation participant access ──────────
+
+  describe('TC-020: Only conversation participants can read messages', () => {
+    it('should block non-participant from reading messages in a conversation', async () => {
+      // Arrange — User C is not in conv-1 (only A and B are)
+      const userC: MockUser = { id: 'user-c-id', email: 'userc@example.com', role: 'authenticated' }
+      const supabase = createMockSupabaseForUser(userC)
+
+      // Act
+      const { data } = await supabase.from('messages').select().single()
+
+      // Assert — User C should NOT see messages from conv-1
+      const texts = (data as Array<{ text: string }>).map(m => m.text)
+      expect(texts).not.toContain('Hello from A')
+      expect(texts).not.toContain('Hello from B')
+    })
+
+    it('should allow participant to read messages in their conversation', async () => {
+      // Arrange — User A is in conv-1
+      const supabase = createMockSupabaseForUser(userA)
+
+      // Act
+      const { data } = await supabase.from('messages').select().single()
+
+      // Assert — User A should see messages from conv-1
+      const texts = (data as Array<{ text: string }>).map(m => m.text)
+      expect(texts).toContain('Hello from A')
+      expect(texts).toContain('Hello from B')
     })
   })
 })

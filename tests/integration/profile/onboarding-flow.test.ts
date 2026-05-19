@@ -231,6 +231,23 @@ describe('Onboarding Flow Integration (TC-021)', () => {
         error: null,
       })
 
+      vi.mocked(mockSupabaseClient.from).mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            single: vi.fn().mockResolvedValue({ data: { onboarding_completed: false }, error: null }),
+            upsert: vi.fn().mockResolvedValue({ data: null, error: null }),
+          } as any
+        }
+        return {
+          insert: vi.fn().mockResolvedValue({ data: null, error: null }),
+          select: vi.fn().mockReturnThis(),
+          eq: vi.fn().mockReturnThis(),
+          single: vi.fn().mockResolvedValue({ data: null, error: null }),
+        } as any
+      })
+
       // Act: minimal valid data
       const result = await mockOnboardingAction({
         fullName: 'AB',

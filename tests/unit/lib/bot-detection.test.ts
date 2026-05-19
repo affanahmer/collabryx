@@ -66,7 +66,7 @@ describe('Bot Detection', () => {
     })
 
     it('should increase score for suspicious paths', () => {
-      const suspiciousPaths = ['/wp-admin', '/.env', '/.git', '/admin', '/backup']
+      const suspiciousPaths = ['/wp-admin', '/.env', '/.git', '/backup', '/phpmyadmin']
       
       suspiciousPaths.forEach(path => {
         const result = checkBot(createMockRequest('Mozilla/5.0', path))

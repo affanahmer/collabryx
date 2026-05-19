@@ -1,11 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { InMemoryRateLimitStore } from '@/lib/rate-limit/in-memory-store'
 
 describe('InMemoryRateLimitStore', () => {
   let store: InMemoryRateLimitStore
 
   beforeEach(() => {
+    vi.useFakeTimers()
     store = new InMemoryRateLimitStore()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   describe('incr', () => {
@@ -25,7 +30,7 @@ describe('InMemoryRateLimitStore', () => {
 
     it('should reset after TTL expires', async () => {
       await store.incr('test-key', 50)
-      await new Promise(resolve => setTimeout(resolve, 60))
+      vi.advanceTimersByTime(60)
       const result = await store.incr('test-key', 50)
       
       expect(result.count).toBe(1)

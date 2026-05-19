@@ -28,6 +28,13 @@ export const createMockSupabaseClient = () => {
       onAuthStateChange: vi.fn().mockReturnValue({ subscription: { unsubscribe: vi.fn() } }),
     },
   }
+  // Make chainable methods return the client itself for proper chaining
+  client.from.mockReturnThis()
+  client.select.mockReturnThis()
+  client.insert.mockReturnThis()
+  client.update.mockReturnThis()
+  client.delete.mockReturnThis()
+  client.eq.mockReturnThis()
   return client
 }
 

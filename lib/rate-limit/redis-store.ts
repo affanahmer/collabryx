@@ -67,6 +67,11 @@ export class RedisRateLimitStore implements RateLimitStore {
     }
   }
 
+  /** Reset the in-memory store (useful for testing) */
+  reset(): void {
+    this.store.clear()
+  }
+
   private incrMemory(key: string, ttl: number): Promise<{ count: number; resetAt: number }> {
     const now = Date.now()
     const storeKey = `ratelimit:${key}`

@@ -6,6 +6,7 @@ describe('RedisRateLimitStore', () => {
 
   beforeEach(() => {
     store = new RedisRateLimitStore()
+    store.reset()
   })
 
   describe('incr', () => {
@@ -20,7 +21,7 @@ describe('RedisRateLimitStore', () => {
       await store.incr('test-key', 60000)
       const result = await store.incr('test-key', 60000)
       
-      expect(result.count).toBe(1)
+      expect(result.count).toBe(2)
     })
 
     it('should have resetAt in the future', async () => {
