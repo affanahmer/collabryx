@@ -1,503 +1,202 @@
 # 🤖 AGENTS.md - Collabryx Development Guide
 
-**Project:** Collabryx - AI-Powered Collaborative Platform  
-**Stack:** Next.js 16, React 19, TypeScript, Supabase, Tailwind CSS v4  
-**Repo:** https://github.com/user-ahsan/collabryx.git
+Project: Collabryx (AI-Powered Collaborative Platform)
+Stack: Next.js 16, React 19, TypeScript, Supabase, Tailwind CSS v4
+State: Production Ready ✅ (Phase 5 Complete)
 
----
+## 🛑 PRE-EXECUTION MANDATES (READ FIRST)
+Before writing, modifying, or deleting a single line of code, you must execute these mandatory pre-flight checks:
 
-## 🎯 Quick Commands
+- **Codebase Reconnaissance (No Duplication):** Before creating a new utility, hook, or UI component, you MUST search the existing directory tree. If a component/utility already exists, you are strictly required to use it or extend it. Creating duplicate logic is a fatal exception.
+- **Version-Compatible Doc Fetching:** Verify your knowledge against Next.js 16, React 19, and Tailwind v4. If uncertain about an API change, fetch the specific version's documentation. Hallucinating deprecated APIs is forbidden.
+- **Framework Best Practices Alignment:** Explicitly align with the official architectural paradigms of the requested technology. Do not use outdated patterns.
+- **Impact Assessment:** Before modifying a shared component or utility, assess its import usage across the codebase. You are responsible for ensuring changes do not break dependent routes.
 
-### Build & Development
-```bash
-npm run dev              # Dev server (localhost:3000)
-npm run dev:skip-docker  # Dev without Docker check
-npm run build            # Production build
-npm run start            # Start production server
+## 🦠 ANTI-ENTROPY & CODEBASE PURITY RULES
+To maintain the "best codebase ever," the system must resist entropy. You are bound by the following structural laws:
+
+- **Single Source of Truth (SSOT):** Data models, types, and business logic must exist in one place. Never redefine an interface that already exists in `@/types/database.types.ts`.
+- **Zero Dead Code:** Delete commented-out code, unused imports, and orphaned variables before finalizing output. Do not leave "todo" comments unless explicitly tracking a multi-stage prompt.
+- **The Boy Scout Rule:** If you open a messy or poorly typed file, leave it cleaner than you found it. Apply strict types and remove any existing `@ts-ignore` flags within the scope of your edit.
+- **Strict Component Size Limits:** If a component exceeds 250 lines, logically abstract it. Separate complex state into hooks and break massive JSX blocks into private sub-components.
+- **No Orphaned Files:** New files must be exported properly, imported where needed, and logically placed within the feature-based architecture (`components/features/<domain>/`).
+
+## 🎯 ZERO-TOLERANCE IRON RULES
+Violating any of these will result in immediate rejection:
+
+1. **NO NEW PACKAGES:** You are strictly forbidden from adding dependencies to `package.json`.
+2. **NO VERSION BUMPS:** Never modify package versions under any circumstances.
+3. **CONFIG IMMUTABILITY:** Configuration files (`tailwind.config.ts`, `tsconfig.json`, `next.config.js`) are strictly read-only. Adapt your code to the config, never the reverse.
+4. **NO CSS MODULES:** Tailwind CSS v4 is the only permitted styling solution.
+5. **NO `any` TYPES:** Strict TypeScript only. Use `unknown` and type narrowing.
+6. **NO FILE REWRITES:** Apply minimal, surgical, line-by-line modifications to solve the immediate problem. Never rewrite entire files.
+7. **NO ROOT MODIFICATIONS:** Do not touch root directory files unless explicitly commanded.
+
+## 🏗 ARCHITECTURAL & QUALITY CONSTRAINTS
+### TypeScript Strictness
+- **The `any` Type is Banned:** Use `unknown` and implement strict runtime type narrowing (Zod parsing or instanceof checks).
+- **No `@ts-ignore`:** Silencing the compiler is forbidden. Resolve the underlying TypeScript error.
+- **Prop & State Discipline:** Prop drilling beyond two levels is strictly forbidden. Utilize server state (React Query) or URL search parameters to manage global data contextually.
+
+### Next.js 16 Paradigms
+- **Server-First Architecture:** Default to Server Components.
+- **Client Boundary Restrictions:** Use the `"use client"` directive only at the lowest possible leaf node where interactivity (hooks, DOM events) is absolutely required.
+- **Validation:** All forms, API inputs, Server Actions, and URL search parameters MUST be validated using strictly defined Zod schemas.
+
+### Imports & File Organization
+- **Absolute Paths Only:** Always use the `@/` alias. Relative paths (`../../`) are banned.
+- **Strict Import Ordering:** Force imports into exactly this order: React/Next.js → Third-Party Libraries → Internal Modules → Types.
+- **Naming Conventions:** Files must use `kebab-case.ts/tsx`. Components must use `PascalCase`. Hooks must use `camelCase` with a `use` prefix.
+
+### Styling Constraints (Tailwind CSS v4)
+- **Dynamic Classes:** Always wrap conditional Tailwind classes using the `cn()` utility from `@/lib/utils/cn`.
+- **Design Tokens:** Hardcoded hex codes and magic pixel values are strictly prohibited. Use Shadcn design tokens (e.g., `bg-muted`, `text-primary-foreground`).
+
+## 🗄 SUPABASE & DATA FETCHING CONSTRAINTS
+- **Targeted Queries:** Never use `select('*')`. Explicitly define the exact columns required to optimize payload size and memory footprint.
+- **Immediate Error Trapping:** Supabase requests must be immediately followed by a strict `if (error)` check. Never assume successful data retrieval.
+- **Row Level Security (RLS) Compliance:** Assume all tables have RLS. Ensure queries account for authenticated user contexts and never attempt to bypass RLS policies in standard API routes.
+- **Environment-Strict Clients:** Use the server client (`@/lib/supabase/server`) for Server Components/Actions and the browser client (`@/lib/supabase/client`) for Client Components. Mixing them is a fatal error.
+
+## 🧪 TESTING MANDATES (VITEST & PLAYWRIGHT)
+- **AAA Pattern is Mandatory:** Every test must be visually structured into Arrange, Act, and Assert blocks with clear comments separating the phases.
+- **Mock Infrastructure:** Do not hit real databases in unit/component tests. Utilize the existing mock infrastructure (`mockSupabaseClient`, mock data factories) found in `tests/setup/`.
+- **Coverage for Failures:** Ensure unit tests handle both expected outcomes and specific edge-case error codes (e.g., PostgreSQL error 23505).
+
+## 📁 EXACT DIRECTORY STRUCTURE
+*Reference taken directly from README.md to ensure strict placement.*
+
+```text
+collabryx/
+├── app/                        # Next.js App Router
+│   ├── (auth)/                # Protected routes (dashboard, messages, etc.)
+│   ├── (public)/              # Public routes (landing, login, register)
+│   └── api/                   # API routes
+├── components/
+│   ├── features/              # Domain-specific components
+│   │   ├── assistant/         # AI assistant feature
+│   │   ├── dashboard/         # Dashboard components
+│   │   ├── matches/           # Matching system
+│   │   ├── messages/          # Messaging
+│   │   ├── onboarding/        # Onboarding flow
+│   │   └── profile/           # User profile
+│   ├── shared/                # Cross-feature components
+│   │   ├── glass-card.tsx     # Glassmorphism card
+│   │   ├── sidebar-nav.tsx    # Navigation
+│   │   └── user-nav-dropdown.tsx
+│   └── ui/                    # shadcn/ui primitives
+├── hooks/                     # Custom React hooks
+│   ├── use-auth.ts            # Authentication
+│   ├── use-chat.ts            # Chat functionality
+│   ├── use-matches.ts         # Matching logic
+│   └── use-settings.ts        # User settings
+├── lib/
+│   ├── supabase/              # Supabase client setup
+│   ├── services/              # Business logic
+│   │   ├── embeddings.ts      # Embedding generation
+│   │   ├── matches.ts         # Matching service
+│   │   └── profiles.ts        # Profile service
+│   └── utils/                 # Helper functions
+├── tests/                     # Test suite (118 files, 750+ tests)
+│   ├── unit/                  # Unit tests (hooks, lib, services, actions)
+│   │   ├── hooks/             # 10 hook test files
+│   │   ├── lib/               # 30+ library/utility tests
+│   │   ├── services/          # 5 service algorithm tests
+│   │   └── actions/           # Server action tests
+│   ├── components/            # Component tests (25+ files)
+│   │   ├── features/          # Domain component tests (auth, matches, messages, etc.)
+│   │   ├── ui/                # UI primitive tests (globe, theme toggler, button)
+│   │   └── shared/            # Shared component tests (sidebar, notification)
+│   ├── integration/           # Cross-layer integration tests (30+ files)
+│   │   ├── auth/              # RLS policies, session expiry
+│   │   ├── embeddings/        # Embedding pipeline, worker failure, DLQ
+│   │   ├── ai-mentor/         # Chat sessions, MVP checklist, Lean Canvas, resilience
+│   │   ├── matches/           # Match flow end-to-end
+│   │   ├── realtime/          # Chat realtime, event processing
+│   │   ├── profile/           # Onboarding flow, CRUD, optimistic updates, cascade delete
+│   │   ├── notifications/     # Notification storage flow
+│   │   ├── moderation/        # Content scanning & quarantine
+│   │   ├── analytics/         # Activity tracking, daily aggregation
+│   │   ├── ui/                # Responsive layout, keyboard nav, smooth scroll
+│   │   ├── edge-functions/    # Deno Edge function tests
+│   │   ├── environment/       # Dev server, Docker worker health
+│   │   └── seeder/            # DB seeder CLI tests
+│   ├── e2e/                   # E2E Playwright tests (6 specs)
+│   │   ├── auth-flow.spec.ts
+│   │   ├── critical-flows.spec.ts
+│   │   ├── onboarding-flow.spec.ts
+│   │   ├── ui-components.spec.ts
+│   │   └── system-health.spec.ts
+│   ├── scripts/               # Shell infrastructure tests
+│   │   └── env-setup.test.sh
+│   ├── setup/                 # Global mocks & fixtures
+│   │   ├── setup.ts           # afterEach cleanup, matchMedia, IntersectionObserver, next/navigation, motion mocks
+│   │   ├── mocks.ts           # Supabase client, sonner toast, React Query mocks
+│   │   └── fixtures.ts        # Mock data factories (User, Post, Comment, Connection, Notification, etc.)
+│   └── README.md              # Test suite documentation (100 TCs mapped)
+├── docs/                      # Documentation
+│   ├── 01-getting-started/
+│   │   ├── development.md
+│   │   └── installation.md
+│   ├── 02-architecture/
+│   │   ├── diagrams.md
+│   │   └── overview.md
+│   ├── 03-core-features/
+│   │   ├── ai-assistant/
+│   │   │   └── overview.md
+│   │   ├── vector-embeddings/
+│   │   │   └── overview.md
+│   │   ├── api-reference.md
+│   │   ├── authentication.md
+│   │   ├── matching-system.md
+│   │   └── messaging.md
+│   ├── 04-infrastructure/
+│   │   ├── database/
+│   │   │   ├── embeddings.md
+│   │   │   ├── schema.md
+│   │   │   └── setup-guide.md
+│   │   ├── python-worker/
+│   │   │   ├── deployment.md
+│   │   │   ├── development.md
+│   │   │   └── overview.md
+│   │   ├── monitoring.md
+│   │   └── performance.md
+│   ├── 05-deployment/
+│   │   ├── checklist.md
+│   │   ├── docker-scripts.md
+│   │   ├── overview.md
+│   │   └── runbook.md
+│   ├── 06-contributing/
+│   │   ├── git-workflow.md
+│   │   └── guide.md
+│   ├── 07-reference/
+│   │   ├── commands.md
+│   │   ├── environment-variables.md
+│   │   └── troubleshooting.md
+│   ├── 08-database-seeding/
+│   │   ├── QUICK_REFERENCE.md
+│   │   └── README.md
+│   ├── DESIGN-SYSTEM.md
+│   ├── FRONTEND-INTEGRATION-GUIDE.md
+│   ├── IMPLEMENTATION_PLAN.md
+│   └── SECURITY.md
+├── python-worker/             # Python multi-service backend (FastAPI)
+│   ├── services/              # Core services (9 services)
+│   │   ├── embedding_generator.py
+│   │   ├── match_generator.py
+│   │   ├── notification_engine.py
+│   │   ├── activity_tracker.py
+│   │   ├── feed_scorer.py
+│   │   ├── content_moderator.py
+│   │   ├── ai_mentor_processor.py
+│   │   ├── event_processor.py
+│   │   └── analytics_aggregator.py
+│   ├── main.py                # FastAPI entry point
+│   └── tests/                 # Service tests
+├── supabase/
+│   ├── functions/             # Edge Functions (Deno)
+│   └── setup/                 # Database schema (31 tables + RLS + triggers)
+├── public/                    # Static assets
+├── types/                     # TypeScript types
+└── expected-objects/          # Backend schema specs
 ```
-
-### Testing
-```bash
-npm run test                     # Run all tests (Vitest)
-npm run test -- --watch          # Watch mode
-npm run test -- <pattern>        # Run specific test (e.g., sanitize.test.ts)
-npm run test -- --coverage       # With coverage
-npm run test:e2e                 # E2E tests (Playwright)
-```
-
-### Code Quality
-```bash
-npm run lint             # ESLint check
-npm run typecheck        # TypeScript type check
-```
-
-### Docker (Python Worker)
-```bash
-npm run docker:up        # Start with health check
-npm run docker:down      # Stop gracefully
-npm run docker:health    # Check health endpoint
-npm run docker:logs      # View logs
-npm run docker:status    # Full status report
-```
-
----
-
-## 📜 Code Style Guidelines
-
-### Imports & Organization
-```typescript
-// 1. React/Next.js
-import React from 'react'
-import { Suspense } from 'react'
-
-// 2. Third-party libraries
-import { createClient } from '@supabase/supabase-js'
-import { zodResolver } from '@hookform/resolvers/zod'
-
-// 3. Internal modules (use @/ alias)
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils/cn'
-import { useAuth } from '@/hooks/use-auth'
-
-// 4. Types
-import { Database } from '@/types/database.types'
-import { Post } from '@/types'
-
-// 5. Styles (Tailwind only - NO CSS modules)
-```
-
-**Rules:**
-- Use absolute imports with `@/` (configured in tsconfig.json)
-- Import order: React → Third-party → Internal → Types
-- Named imports preferred over default (e.g., `import { Button }`)
-- Specific icon imports: `import { Menu } from "lucide-react"` (not all)
-
-### TypeScript Standards
-```typescript
-// ✅ GOOD: Strict typing, no any
-interface UserProps {
-  id: string
-  name: string | null
-  avatar_url?: string
-}
-
-const UserProfile: React.FC<UserProps> = ({ id, name, avatar_url }) => {
-  // Use unknown, then narrow
-  const data: unknown = await fetchData()
-  if (isUser(data)) {
-    // TypeScript knows it's User
-  }
-}
-
-// ❌ BAD: Any types, @ts-ignore
-const data: any = await fetchData() // NEVER
-```
-
-**Rules:**
-- **NO `any` types** - Use `unknown` and narrow
-- **NO `@ts-ignore`** - Fix the type error
-- Use interfaces for component props
-- Import database types from `@/types/database.types.ts`
-- Enable strict mode (already in tsconfig.json)
-
-### Naming Conventions
-```typescript
-// Files: kebab-case
-// user-profile.tsx, use-auth.ts, database.types.ts
-
-// Components: PascalCase
-export const UserProfile = () => {}
-export const GlassCard = () => {}
-
-// Hooks: camelCase with use prefix
-export const useAuth = () => {}
-export const useDebounce = () => {}
-
-// Utilities: camelCase
-export const sanitizeText = () => {}
-export const formatInitials = () => {}
-
-// Types: PascalCase
-interface UserProfile { }
-type MatchScore = number
-```
-
-### Component Structure
-```typescript
-'use client' // Only when needed (hooks, events)
-
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils/cn'
-
-// Schema validation (ALWAYS use Zod)
-const formSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email'),
-})
-
-type FormData = z.infer<typeof formSchema>
-
-// Component (functional, export const)
-export function UserProfile() {
-  // Hooks first
-  const { user } = useAuth()
-  
-  // State
-  const [loading, setLoading] = React.useState(false)
-  
-  // Effects (cleanup if needed)
-  React.useEffect(() => {
-    return () => {
-      // Cleanup
-    }
-  }, [])
-  
-  // Handlers
-  const handleSubmit = async (data: FormData) => {
-    try {
-      setLoading(true)
-      await updateUser(data)
-    } catch (error) {
-      // Handle specific error codes
-      if (error.code === '401') {
-        toast.error('Unauthorized')
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-  
-  // Guard clauses
-  if (!user) return null
-  
-  // JSX
-  return (
-    <div className={cn('flex w-full flex-col md:w-1/2')}>
-      {/* Content */}
-    </div>
-  )
-}
-```
-
-### Tailwind CSS & UI
-```typescript
-// ✅ GOOD: Use cn() for conditional classes
-<div className={cn(
-  'flex flex-col',
-  loading && 'opacity-50',
-  className // Allow external overrides
-)} />
-
-// ✅ GOOD: Use design tokens
-<div className="bg-muted text-primary-foreground" />
-
-// ✅ GOOD: Mobile-first responsive
-<div className="w-full md:w-1/2 lg:w-1/3" />
-
-// ❌ BAD: Magic values
-<div className="w-[342px]" /> // Use design system values
-```
-
-**Rules:**
-- **ALWAYS** use `cn()` from `@/lib/utils/cn` for conditional classes
-- Use shadcn design tokens (`bg-muted`, `text-primary`)
-- Mobile-first approach (`w-full md:w-1/2`)
-- **NO CSS modules** - Tailwind only
-
-### Error Handling
-```typescript
-// ✅ GOOD: Guard clauses, specific errors
-async function updateUser(data: FormData) {
-  if (!data.id) {
-    throw new Error('User ID required')
-  }
-  
-  const { error } = await supabase
-    .from('profiles')
-    .update(data)
-    .eq('id', data.id)
-  
-  if (error) {
-    // Handle specific codes
-    if (error.code === '23505') {
-      toast.error('Email already exists')
-      return
-    }
-    
-    toast.error('Failed to update profile')
-    logger.error('Update failed', error)
-    throw error
-  }
-  
-  toast.success('Profile updated')
-}
-```
-
-**Rules:**
-- Guard clauses for null/undefined (return early)
-- Handle specific error codes (401, 404, 23505, etc.)
-- Use `toast.error()` for user feedback
-- Use `logger.error()` for debugging
-- Error boundaries in `error.tsx` for route segments
-
-### React & Next.js Patterns
-```typescript
-// ✅ Server Component (default)
-import { createClient } from '@/lib/supabase/server'
-
-export default async function Dashboard() {
-  const supabase = createClient()
-  const { data } = await supabase.from('posts').select()
-  
-  return <DashboardContent posts={data} />
-}
-
-// ✅ Client Component (when needed)
-'use client'
-
-export function DashboardContent({ posts }) {
-  const { data, isLoading } = usePosts() // React Query
-  
-  if (isLoading) return <LoadingSpinner />
-  
-  return (
-    <Suspense fallback={<LoadingSpinner />}>
-      <PostsList posts={data} />
-    </Suspense>
-  )
-}
-```
-
-**Rules:**
-- **Server-first**: Default to Server Components
-- Use `"use client"` only for hooks/events
-- Fetch data in Server Components, not `useEffect`
-- Use `<Suspense>` and `loading.tsx` for slow data
-- React Query for server state (staleTime configured)
-
-### Supabase Patterns
-```typescript
-// ✅ Client Component
-import { createBrowserClient } from '@/lib/supabase/client'
-import { Database } from '@/types/database.types'
-
-const supabase = createBrowserClient<Database>()
-
-const { data, error } = await supabase
-  .from('profiles')
-  .select('id, name, avatar_url') // Specific fields, not *
-  .eq('id', userId)
-  .single()
-
-if (error) {
-  logger.error('Fetch failed', error)
-  return null
-}
-```
-
-**Rules:**
-- Use `<Database>` generics for type safety
-- Select specific fields, not `*`
-- Check `if (error)` immediately
-- Row Level Security (RLS) on all tables
-- Use typed clients from `@/lib/supabase/`
-
----
-
-## 🚫 IRON RULES (NEVER BREAK)
-
-1. **NO NEW PACKAGES** - Use only existing dependencies in package.json
-2. **NO VERSION BUMPS** - Never modify package versions
-3. **CONFIG FILES ARE READ-ONLY** - Adapt code to config, not vice versa
-4. **NO CSS MODULES** - Tailwind CSS only
-5. **NO `any` TYPES** - Strict TypeScript, no @ts-ignore
-6. **NO FILE REWRITES** - Make minimal changes, edit line-by-line
-7. **NO root directory files** - Unless explicitly asked
-
----
-
-## 📁 File Structure
-
-```
-proxy.ts              # Next.js auth middleware (SupAuth session, protected routes, onboarding redirect)
-
-app/
-├── (auth)/           # Protected routes (dashboard, messages, etc.)
-├── (public)/         # Public routes (landing, login, register)
-└── api/              # API routes
-
-components/
-├── features/<domain>/ # Domain-specific (auth, dashboard, posts)
-├── shared/           # Cross-feature (glass-card, sidebar)
-└── ui/               # shadcn/ui primitives
-
-hooks/                # Custom React hooks
-lib/
-├── supabase/         # Client setup (client.ts, server.ts)
-├── utils/            # Helpers (sanitize.ts, cn.ts)
-└── validations/      # Zod schemas
-
-tests/
-├── unit/             # Unit tests (*.test.ts)
-├── components/       # Component tests (*.test.tsx)
-├── integration/      # Integration tests
-├── e2e/              # E2E tests
-└── setup/            # Test config & mocks
-
-types/                # TypeScript types
-```
-
-**Rules:**
-- Feature-based architecture (`components/features/<domain>/`)
-- Maintain `(auth)` and `(public)` route separation
-- Test files: `*.test.ts` or `*.test.tsx`
-- NO `pages/` directory (App Router only)
-
----
-
-## 🧪 Testing Guidelines
-
-### Test Suite Overview
-
-**118 test files, 750+ test cases across 10 modules (TC-001 through TC-100)**
-
-| Module | TCs | Domain |
-|--------|-----|--------|
-| 1 | TC-001→010 | Environment Setup & CLI Testing |
-| 2 | TC-011→020 | Authentication & Enterprise Security |
-| 3 | TC-021→030 | User Profiling & Data Management |
-| 4 | TC-031→040 | UI, 3D Rendering & Accessibility |
-| 5 | TC-041→050 | AI Vector Embedding & Python Worker |
-| 6 | TC-051→060 | Semantic Matching & Feed Engine |
-| 7 | TC-061→075 | Real-Time Networking & Communication |
-| 8 | TC-076→085 | AI Mentor & LLM Assistant |
-| 9 | TC-086→095 | Notifications & Content Moderation |
-| 10 | TC-096→100 | System Integration & Edge Services |
-
-See `tests/README.md` for the complete file structure and TC-to-file mapping.
-
-### AAA Pattern (Arrange-Act-Assert)
-```typescript
-// ✅ GOOD: Arrange → Act → Assert
-test('RLS blocks user from querying another user messages', () => {
-  // Arrange — Set up test data
-  const ownUserId = 'user-1'
-  const allMessages = [{ conversation_id: 'conv-2', ... }]
-  
-  // Act — Execute code under test
-  const result = rlsFilterMessages(allMessages, ownUserId)
-  
-  // Assert — Verify behavior
-  expect(result).toHaveLength(0)
-})
-
-// ❌ BAD: Unclear structure, no AAA
-test('test messages', () => {
-  expect(something()).toBe(true)
-})
-```
-
-### Unit Test Example
-```typescript
-import { describe, it, expect, vi } from 'vitest'
-import { sanitizeText } from '@/lib/utils/sanitize'
-
-describe('sanitize', () => {
-  it('should handle plain text', () => {
-    expect(sanitizeText('Hello')).toBe('Hello')
-  })
-  
-  it('should respect maxLength', () => {
-    expect(sanitizeText('Hello World', { maxLength: 5 })).toBe('Hello')
-  })
-})
-```
-
-### Component Test Example
-```typescript
-import { render, screen } from '@testing-library/react'
-import { Button } from '@/components/ui/button'
-
-describe('Button', () => {
-  it('renders with children', () => {
-    render(<Button>Click me</Button>)
-    expect(screen.getByText('Click me')).toBeInTheDocument()
-  })
-})
-```
-
-### Mock Infrastructure
-```typescript
-// Supabase client (auto-mocked in tests/setup/mocks.ts)
-import { mockSupabaseClient } from '@/../tests/setup/mocks'
-
-// Mock data factories
-import { createMockUser, createMockPost } from '@/../tests/setup/fixtures'
-
-// Mock a Supabase response
-mockSupabaseClient.single.mockResolvedValue({ data: mockUser, error: null })
-mockSupabaseClient.from('connections').insert().single.mockResolvedValue({ data: mockConnection, error: null })
-
-// Mock a Supabase error
-mockSupabaseClient.single.mockResolvedValue({ data: null, error: { code: '23505', message: 'Duplicate' } })
-```
-
-**Running Tests:**
-```bash
-# All unit/component/integration tests (Vitest)
-npm run test
-
-# Run with coverage
-npm run test -- --coverage
-
-# Watch mode
-npm run test -- --watch
-
-# E2E tests (Playwright)
-npm run test:e2e
-
-# Specific test file
-npm run test -- sanitize.test.ts
-
-# Specific module
-npm run test -- --run tests/unit/lib/
-npm run test -- --run tests/integration/auth/
-
-# Specific test case by name pattern
-npm run test -- -t "RLS blocks"
-```
-
----
-
-## 📚 Documentation
-
-- **Architecture:** `docs/02-architecture/overview.md` + `docs/02-architecture/diagrams.md`
-- **Deployment:** `docs/05-deployment/overview.md` + `docs/05-deployment/checklist.md`
-- **API Reference:** `docs/03-core-features/api-reference.md`
-- **Auth Flow:** `docs/03-core-features/authentication.md`
-- **Database Schema:** `supabase/setup/99-master-all-tables.sql` (v4.1.0 - 34 tables, 103 indexes, 100 RLS policies)
-- **Security:** `docs/SECURITY.md`
-- **Design System:** `docs/DESIGN-SYSTEM.md`
-
----
-
-## 🔐 Security Checklist
-
-- [ ] Environment variables via `process.env` only (NEVER hardcode)
-- [ ] Zod validation on all inputs (forms, API, search params)
-- [ ] Supabase RLS policies on all tables
-- [ ] Protected routes in `(auth)/` group
-- [ ] Input sanitization with `sanitize.ts`
-- [ ] CSRF protection with `lib/csrf.ts`
-- [ ] Rate limiting (100 req/15min general, 10/min strict)
-
----
-
-**Last Updated:** 2026-05-06  
-**Phase:** 5 Complete  
-**Test Suite:** 118 files, 750+ tests, 100 TCs (TC-001→TC-100)  
-**Status:** Production Ready ✅
