@@ -206,7 +206,7 @@ export async function cleanupExpiredNotifications(options?: {
     if (!batchRows?.length) break;
 
     const batchIds = batchRows.map((r) => r.id);
-    let del = supabase.from("notifications").delete().in("id", batchIds);
+    const del = supabase.from("notifications").delete().in("id", batchIds);
     const { error: delError } = await del;
     if (delError) errors.push(`Batch ${offset}: ${delError.message}`);
     else deleted += batchIds.length;
