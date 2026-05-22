@@ -1,7 +1,8 @@
 import nextDynamic from 'next/dynamic'
 import { GlassCard } from "@/components/shared/glass-card"
-import { Button } from "@/components/ui/button"
 import { ArrowRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
+// lucide-react imports used by child components
 import type { Metadata } from "next"
 import Link from "next/link"
 
@@ -36,7 +37,7 @@ function FeedSkeleton() {
   return (
     <div className="space-y-4">
       {[1, 2, 3].map(i => (
-        <div key={i} className="glass-card p-6 animate-pulse">
+        <div key={i} className="bg-card border border-border rounded-xl p-6 animate-pulse">
           <div className="h-4 bg-white/10 rounded w-3/4 mb-4" />
           <div className="h-3 bg-white/10 rounded w-full mb-2" />
           <div className="h-3 bg-white/10 rounded w-2/3" />
@@ -48,7 +49,7 @@ function FeedSkeleton() {
 
 function SuggestionsSkeleton() {
   return (
-    <div className="glass-card p-5 animate-pulse">
+    <div className="bg-card border border-border rounded-xl p-5 animate-pulse">
       <div className="h-5 bg-white/10 rounded w-1/2 mb-4" />
       {[1, 2, 3].map(i => (
         <div key={i} className="flex items-center gap-3 mb-4">
@@ -65,7 +66,7 @@ function SuggestionsSkeleton() {
 
 function ActivitySkeleton() {
   return (
-    <div className="space-y-3 animate-pulse">
+    <div className="bg-card border border-border rounded-xl p-4 space-y-3 animate-pulse">
       {[1, 2, 3, 4].map(i => (
         <div key={i} className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-white/10" />
@@ -94,19 +95,19 @@ export const metadata: Metadata = {
 export default function DashboardPage() {
     return (
         <div className="container max-w-7xl mx-auto py-2 md:py-6 px-2 md:px-6 lg:px-8">
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:gap-8 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
                 {/* Main Feed */}
-                <div className="xl:col-span-8 max-w-2xl mx-auto xl:mx-0 xl:max-w-none w-full">
+                <div className="lg:col-span-8 max-w-2xl mx-auto lg:mx-0 lg:max-w-none w-full">
                     <Feed />
                 </div>
                 
                 {/* Sidebar */}
-                <div className="hidden 2xl:block 2xl:col-span-4 sticky top-6 space-y-6">
+                <div className="hidden lg:block lg:col-span-4 sticky top-6 space-y-6">
                     <SuggestionsSidebar />
                     
                     {/* Recent Activity Section */}
                     <GlassCard>
-                        <div className="p-4 md:p-6 flex flex-row items-center justify-between space-y-0 border-b border-white/[0.06]">
+                        <div className="p-4 md:p-6 flex flex-row items-center justify-between space-y-0 border-b border-border">
                             <h3 className="text-base font-semibold flex items-center gap-2 text-foreground">
                                 Recent Activity
                             </h3>
