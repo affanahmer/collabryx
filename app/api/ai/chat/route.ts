@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { assembleAndBuildPrompt } from '@/lib/rag/context-assembler'
 import { getProviderRegistry } from '@/lib/ai/providers/registry'
+import type { StartupContext } from '@/lib/rag/types'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, sessionId, messages, query, preferredProvider } = body
+    const { userId, sessionId, messages, query, preferredProvider, otherUserIds, startupContext } = body
 
     if (!userId) {
       return NextResponse.json(
@@ -14,15 +15,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { context, systemPrompt } = await assembleAndBuildPrompt(
+    const { context, systemPrompt, warnings } = await assembleAndBuildPrompt({
       userId,
-      query || '',
+      query: query || '',
       sessionId,
-      messages || []
-    )
+      messages: messages || [],
+      otherUserIds: otherUserIds as string[] | undefined,
+      startupContext: startupContext as StartupContext | null | undefined,
+    })
 
     const registry = getProviderRegistry()
-    
+
     let result
     if (preferredProvider) {
       const provider = registry.getProvider(preferredProvider)
@@ -33,11 +36,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       content: result.content,
-      provider: 'minimax',
+      provider: result.provider || 'unknown',
       model: result.model,
       usage: result.usage,
+      warnings,
       context_used: {
         profile_used: !!context.profile,
+        startup_used: !!context.startup,
+        multi_user_used: !!context.multiUser,
         contexts_retrieved: context.retrieved_contexts?.length || 0,
         session_summarized: !!context.session_summary
       }
