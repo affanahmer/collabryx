@@ -7,8 +7,8 @@
     "npm": ">=10.5.1"
   },
   "scripts": {
-    "dev": "node scripts/check-docker.mjs && next dev",
-    "dev:skip-docker": "next dev",
+    "dev": "node scripts/check-docker.mjs && next dev --webpack",
+    "dev:skip-docker": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -76,7 +76,8 @@
     "tailwind-merge": "^3.4.0",
     "three": "^0.167.1",
     "zod": "^3.24.0",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8",
+    "@radix-ui/react-checkbox": "^1.1.12"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "^16.2.0",
