@@ -17,6 +17,7 @@ export interface AIProviderResponse {
   }
   model: string
   finishReason?: string
+  provider?: string
 }
 
 export interface AIProvider {
