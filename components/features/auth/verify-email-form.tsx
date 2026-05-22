@@ -10,7 +10,7 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { glass } from "@/lib/utils/glass-variants"
 import { useRouter } from "next/navigation"
-import { devLog, logEmailVerificationStatus, logRedirectDecision, isDebugEnabled, isDevelopmentMode } from "@/lib/services/development"
+import { devLog, logEmailVerificationStatus, logRedirectDecision, isDebugEnabled, isDevelopmentMode, isEmailVerificationSkipped } from "@/lib/services/development"
 
 // ARIA live region announcer component for screen readers
 function LiveAnnouncer({ message, priority = "polite" }: { message: string; priority?: "polite" | "assertive" }) {
@@ -64,6 +64,21 @@ export function VerifyEmailForm() {
 
                     // Log email verification status with detailed info
                     logEmailVerificationStatus(user.email, user.email_confirmed_at, "verify-email-form")
+                    
+                    // CRITICAL: Check dev override first — if SKIP_EMAIL_VERIFICATION is set,
+                    // treat email as verified regardless of Supabase's email_confirmed_at
+                    if (isEmailVerificationSkipped()) {
+                        devLog("auth", "✅ SKIP_EMAIL_VERIFICATION is active — treating email as verified", {
+                            email: user.email,
+                            emailConfirmedAt: user.email_confirmed_at,
+                        })
+                        setStatus("verified")
+                        setTimeout(() => {
+                            logRedirectDecision("/verify-email", "/onboarding", "Email verification skipped via env var")
+                            router.push("/onboarding")
+                        }, 2000)
+                        return
+                    }
                     
                     // CRITICAL: Only redirect if email_confirmed_at is actually set (truthy)
                     const isEmailConfirmed = !!user.email_confirmed_at
