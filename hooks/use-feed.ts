@@ -6,7 +6,7 @@
 "use client"
 
 import { useMutation } from '@tanstack/react-query'
-import { fetchPersonalizedFeed, fetchPosts, type PostsQueryOptions } from '@/lib/services/posts'
+import { fetchPersonalizedFeed, type PostsQueryOptions } from '@/lib/services/posts'
 import type { PostWithAuthor } from '@/types/database.types'
 
 export const FEED_QUERY_KEYS = {
