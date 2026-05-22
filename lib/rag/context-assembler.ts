@@ -2,7 +2,7 @@ import { fetchUserProfileContext, fetchMultipleUserContexts } from './context-fe
 import { retrieveContextFromVectorStore } from './vector-retriever'
 import { summarizeSessionIfNeeded } from './session-summarizer'
 import { buildEnhancedSystemPrompt, buildFallbackSystemPrompt } from '@/lib/prompt/ai-mentor-prompts'
-import type { RAGContext, ExtendedRAGContext, AIMessage, StartupContext, MultiUserContext } from './types'
+import type { ExtendedRAGContext, AIMessage, StartupContext, MultiUserContext } from './types'
 
 export interface AssemblerOptions {
   userId: string
