@@ -1,12 +1,12 @@
 /**
  * Match Generation API Route
- * Proxies requests to Python worker for match generation
+ * Generates match suggestions using the native match-generator service
  */
 
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getBackendConfig, getCircuitBreakerStatus } from "@/lib/config/backend";
+import { generateMatchesForUser } from "@/lib/services/match-generator";
 import { validateCSRFRequest, requiresCSRF } from "@/lib/csrf";
 import { rateLimit } from "@/lib/rate-limit";
 import { errorResponse } from '@/lib/utils/api-response';
@@ -36,7 +36,6 @@ export interface MatchGenerationResponse {
     }>;
   };
   error?: string;
-  circuit_breaker_state?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -110,64 +109,24 @@ export async function POST(request: NextRequest) {
       return errorResponse('EMBEDDING_NOT_READY', 'Please wait for your profile embedding to be generated', 400)
     }
 
-    // Get backend configuration with circuit breaker
-    const backendConfig = await getBackendConfig();
-    const circuitBreakerState = getCircuitBreakerStatus();
-    
-    // If backend is unavailable, return error with circuit breaker info
-    if (!backendConfig.endpoint) {
-      return errorResponse('SERVICE_UNAVAILABLE', 'Please try again later or contact support', 503)
-    }
+    // Generate matches using native service
+    const matches = await generateMatchesForUser(userId, { limit, minScore: min_score });
 
-    // Call Python worker match generation endpoint
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-    
-    try {
-      const workerResponse = await fetch(`${backendConfig.endpoint}/api/matches/generate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          limit,
-          min_score,
-          request_id: crypto.randomUUID(),
-        }),
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      // Handle rate limit response from worker
-      if (workerResponse.status === 429) {
-        await workerResponse.json(); // Consume the response body
-        return errorResponse('RATE_LIMIT_EXCEEDED', 'Maximum match generation requests exceeded', 429)
-      }
-      
-      if (!workerResponse.ok) {
-        throw new Error(`Backend error: ${workerResponse.status}`);
-      }
-      
-      const data: MatchGenerationResponse = await workerResponse.json();
-      
-      // Return response with backend mode info
-      return NextResponse.json({
-        ...data,
-        circuit_breaker_state: circuitBreakerState,
-      }, {
-        headers: {
-          'X-Circuit-Breaker-State': circuitBreakerState,
-          'X-Backend-Mode': backendConfig.mode,
-        }
-      });
-      
-    } catch (workerError) {
-      console.error("Python worker match generation error:", workerError);
-      
-      return errorResponse('MATCH_GENERATION_FAILED', 'Unable to connect to match generation service', 503)
-    }
+    return NextResponse.json({
+      success: true,
+      data: {
+        user_id: userId,
+        matches_generated: matches.length,
+        status: 'completed' as const,
+        backend_mode: 'native',
+        suggestions: matches.map(m => ({
+          matched_user_id: m.matchedUserId,
+          match_percentage: m.matchPercentage,
+          reasons: m.reasons,
+          ai_confidence: m.aiConfidence,
+        })),
+      },
+    });
 
   } catch (error) {
     console.error("Error in match generation:", error);
