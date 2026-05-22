@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback, useEffect, useRef } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { motion } from "framer-motion"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { Button } from "@/components/ui/button"
@@ -148,7 +148,7 @@ export function Feed() {
         checkEmbeddingStatus()
     }, [])
 
-    // ── Ecosystem States ──
+    // â”€â”€ Ecosystem States â”€â”€
     const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
     const [newPostsCount, setNewPostsCount] = useState(3)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -213,7 +213,7 @@ export function Feed() {
         const postElement = document.querySelector(`[data-post-id="${postId}"]`)
         if (postElement) {
             const currentReaction = postElement.getAttribute('data-reaction')
-            postElement.setAttribute('data-reaction', currentReaction ? '' : '👍')
+            postElement.setAttribute('data-reaction', currentReaction ? '' : 'ðŸ‘')
         }
     }
 
@@ -272,7 +272,7 @@ export function Feed() {
                     size="sm"
                     className="h-8 px-4 text-sm font-medium border-white/[0.08] hover:bg-white/[0.04] w-full sm:w-auto shrink-0"
                 >
-                    Ask AI Mentor →
+                    Ask AI Mentor â†’
                 </Button>
             </GlassCard>
 
