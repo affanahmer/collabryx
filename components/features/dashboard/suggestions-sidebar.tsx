@@ -1,8 +1,6 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { motion } from "framer-motion"
-import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -74,9 +72,8 @@ export function SuggestionsSidebar({ className }: MatchIntelligencePanelProps) {
         router.push("/onboarding")
     }
 
-    // ── API → Cache → Hardcoded Fallback ──
-    const prefersReduced = useReducedMotion()
-    const fetchMatchesData = useCallback(async () => {
+    // â”€â”€ API â†’ Cache â†’ Hardcoded Fallback â”€â”€
+        const fetchMatchesData = useCallback(async () => {
         setIsLoading(true)
         try {
             const { data, error } = await fetchMatches({ limit: 5 })
@@ -171,7 +168,7 @@ export function SuggestionsSidebar({ className }: MatchIntelligencePanelProps) {
                             variant="secondary"
                             className="h-5 px-1.5 text-xs md:text-[10px] font-bold bg-primary text-primary-foreground ml-1"
                         >
-                            ✨ AI
+                            âœ¨ AI
                         </Badge>
                     </h3>
                     <Button
