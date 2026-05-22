@@ -1,14 +1,15 @@
 /**
  * Notification Send API Route
- * Proxies requests to Python worker for single notification delivery
+ * Calls notification-engine service directly for single notification delivery
  */
 
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getBackendConfig, getCircuitBreakerStatus } from "@/lib/config/backend";
+import { sendNotification } from "@/lib/services/notification-engine";
 import { validateCSRFRequest, requiresCSRF } from "@/lib/csrf";
 import { rateLimit } from "@/lib/rate-limit";
+import { errorResponse } from '@/lib/utils/api-response';
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -35,7 +36,6 @@ export interface NotificationSendResponse {
     backend_mode: string;
   };
   error?: string;
-  circuit_breaker_state?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -51,10 +51,7 @@ export async function POST(request: NextRequest) {
         hasCookieToken: !!cookieToken,
         path: request.url,
       });
-      return NextResponse.json(
-        { success: false, error: "Invalid CSRF token" },
-        { status: 403 }
-      );
+      return errorResponse('INVALID_CSRF', 'Invalid CSRF token', 403)
     }
   }
   
@@ -63,10 +60,7 @@ export async function POST(request: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   
   if (authError || !user) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized" },
-      { status: 401 }
-    );
+    return errorResponse('UNAUTHORIZED', 'Unauthorized', 401)
   }
 
   // Apply rate limiting (20 requests per hour per user)
@@ -80,14 +74,7 @@ export async function POST(request: NextRequest) {
     
     const validationResult = NotificationSendRequestSchema.safeParse(body);
     if (!validationResult.success) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: "Invalid request body",
-          details: String(validationResult.error) 
-        },
-        { status: 400 }
-      );
+      return errorResponse('INVALID_REQUEST', 'Invalid request body', 400)
     }
     
     const { user_id, type, content, actor_id, actor_name, actor_avatar, resource_type, resource_id } = validationResult.data;
@@ -100,10 +87,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!recipient) {
-      return NextResponse.json(
-        { success: false, error: "Recipient not found" },
-        { status: 404 }
-      );
+      return errorResponse('NOT_FOUND', 'Recipient not found', 404)
     }
 
     // Verify actor exists if provided
@@ -115,119 +99,40 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (!actor) {
-        return NextResponse.json(
-          { success: false, error: "Actor not found" },
-          { status: 404 }
-        );
+        return errorResponse('NOT_FOUND', 'Actor not found', 404)
       }
     }
 
-    // Get backend configuration with circuit breaker
-    const backendConfig = await getBackendConfig();
-    const circuitBreakerState = getCircuitBreakerStatus();
-    
-    // If backend is unavailable, return error with circuit breaker info
-    if (!backendConfig.endpoint) {
-      return NextResponse.json({
-        success: false,
-        error: "Notification service unavailable",
-        message: "Please try again later or contact support",
-        circuit_breaker_state: circuitBreakerState,
-      }, {
-        status: 503,
-        headers: {
-          'X-Circuit-Breaker-State': circuitBreakerState,
-        }
-      });
-    }
+    // Send notification via notification-engine service
+    const result = await sendNotification({
+      userId: user_id,
+      type,
+      content,
+      actorId: actor_id,
+      actorName: actor_name,
+      actorAvatar: actor_avatar,
+      resourceType: resource_type,
+      resourceId: resource_id,
+    });
 
-    // Call Python worker notification send endpoint
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-    
-    try {
-      const workerResponse = await fetch(`${backendConfig.endpoint}/api/notifications/send`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id,
-          type,
-          content,
-          actor_id,
-          actor_name,
-          actor_avatar,
-          resource_type,
-          resource_id,
-          request_id: crypto.randomUUID(),
-        }),
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!workerResponse.ok) {
-        if (workerResponse.status === 429) {
-          const rateLimitData = await workerResponse.json();
-          return NextResponse.json(
-            {
-              success: false,
-              error: "Rate limit exceeded",
-              message: rateLimitData.detail?.message || "Maximum notification requests exceeded",
-              retry_after: rateLimitData.detail?.retry_after,
-            },
-            {
-              status: 429,
-              headers: {
-                'Retry-After': rateLimitData.detail?.retry_after?.toString() || '60',
-              }
-            }
-          );
-        }
-        throw new Error(`Backend error: ${workerResponse.status}`);
-      }
-      
-      const data: NotificationSendResponse = await workerResponse.json();
-      
-      // Return response with backend mode info
-      return NextResponse.json({
-        ...data,
-        circuit_breaker_state: circuitBreakerState,
-      }, {
-        headers: {
-          'X-Circuit-Breaker-State': circuitBreakerState,
-          'X-Backend-Mode': backendConfig.mode,
-        }
-      });
-      
-    } catch (workerError) {
-      console.error("Python worker notification send error:", workerError);
-      
-      return NextResponse.json({
-        success: false,
-        error: "Notification delivery failed",
-        message: "Unable to connect to notification service",
-        circuit_breaker_state: getCircuitBreakerStatus(),
-      }, {
-        status: 503,
-        headers: {
-          'X-Circuit-Breaker-State': getCircuitBreakerStatus(),
-        }
-      });
-    }
+    return NextResponse.json({
+      success: result.success,
+      data: result.success
+        ? {
+            notification_id: result.notificationId,
+            user_id: user_id,
+            type,
+            status: "sent" as const,
+            backend_mode: "native",
+          }
+        : undefined,
+      error: result.error,
+    });
 
   } catch (error) {
     console.error("Error in notification send:", error);
 
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: "Internal server error",
-        circuit_breaker_state: getCircuitBreakerStatus(),
-      },
-      { status: 500 }
-    );
+    return errorResponse('INTERNAL_ERROR', 'Internal server error', 500)
   }
 }
 
