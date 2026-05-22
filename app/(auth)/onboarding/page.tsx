@@ -26,13 +26,14 @@ import { StepExperience } from "@/components/features/onboarding/step-experience
 import { GlassCard } from "@/components/shared/glass-card"
 import { createClient } from "@/lib/supabase/client"
 import { completeOnboarding } from "./actions"
+import { useDebounce } from "@/hooks/use-debounce"
 
 // Schemas for each step - aligned with component validation
 const basicInfoSchema = z.object({
     fullName: z.string()
         .min(2, "Full name must be at least 2 characters.")
         .max(100, "Full name must be less than 100 characters.")
-        .regex(/^[A-Za-z\s]+$/, "Name can only contain letters and spaces"),
+        .regex(/^[a-zA-Z\s'-]+$/, "Name can only contain letters, spaces, hyphens, and apostrophes"),
     displayName: z.string()
         .max(30, "Display name must be less than 30 characters.")
         .regex(/^[a-z0-9_]*$/, "Display name can only contain lowercase letters, numbers, and underscores.")
@@ -40,8 +41,7 @@ const basicInfoSchema = z.object({
         .or(z.literal("")),
     headline: z.string()
         .min(5, "Headline must be at least 5 characters.")
-        .max(100, "Headline must be less than 100 characters.")
-        .regex(/^[a-zA-Z0-9\s@.,&'()-]+$/, "Headline can only contain letters, numbers, and basic punctuation."),
+        .max(200, "Headline must be less than 200 characters."),
     location: z.string()
         .max(100, "Location must be less than 100 characters.")
         .optional()
@@ -108,6 +108,7 @@ export default function OnboardingPage() {
     const [isEmailVerified, setIsEmailVerified] = useState<boolean | null>(null)
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
     const [hasAcknowledgedWarning, setHasAcknowledgedWarning] = useState(false)
+    const [isTransitioning, setIsTransitioning] = useState(false)
     const router = useRouter()
     const shouldReduceMotion = useReducedMotion()
 
@@ -133,6 +134,8 @@ export default function OnboardingPage() {
     
     // Track form changes for unsaved warning
     const formValues = watch()
+    const debouncedValues = useDebounce(formValues, 800)
+
     
     // Detect form changes
     useEffect(() => {
@@ -166,7 +169,7 @@ export default function OnboardingPage() {
                 setUserName(name)
                 
                 // Check email verification status
-                const emailIsVerified = user?.email_confirmed_at !== null && user?.email_confirmed_at !== undefined
+                const emailIsVerified = !!user?.email_confirmed_at
                 setIsEmailVerified(emailIsVerified)
                 
                 if (!emailIsVerified) {
@@ -199,7 +202,7 @@ export default function OnboardingPage() {
         if (currentStep > 0 && hasUnsavedChanges) {
             try {
                 sessionStorage.setItem("onboarding_draft", JSON.stringify({
-                    values: formValues,
+                    values: debouncedValues,
                     step: currentStep,
                     timestamp: Date.now()
                 }))
@@ -207,7 +210,7 @@ export default function OnboardingPage() {
                 console.warn("Failed to persist form data:", error)
             }
         }
-    }, [formValues, currentStep, hasUnsavedChanges])
+    }, [debouncedValues, currentStep, hasUnsavedChanges])
     
     // Restore form data from sessionStorage on mount
     useEffect(() => {
@@ -232,13 +235,14 @@ export default function OnboardingPage() {
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleNext = async () => {
-        if (currentStep === 0) {
+        if (isTransitioning || isSubmitting) return
+        setIsTransitioning(true)
+        try {
+            if (currentStep === 0) {
             setCurrentStep(1)
             return
         }
 
-        // Prevent navigation during submission
-        if (isSubmitting) return
 
         // Only validate and move to next step for steps 1-3
         let isStepValid = false
@@ -266,11 +270,17 @@ export default function OnboardingPage() {
         if (isStepValid) {
             setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1))
         }
+    } finally {
+            setIsTransitioning(false)
+        }
     }
 
     useEffect(() => {
         if (userName) {
-            methods.setValue("fullName", userName, { shouldValidate: true })
+            const currentValue = methods.getValues("fullName")
+            if (!currentValue || currentValue === "") {
+                methods.setValue("fullName", userName, { shouldValidate: true, shouldDirty: false })
+            }
         }
     }, [userName, methods])
 
@@ -425,11 +435,14 @@ export default function OnboardingPage() {
                 return
             }
 
-            // Use backend calculation for consistency (matches database function)
-            // Backend calculates: basic (25) + skills (25) + interests (15) + looking_for (10) + experience (25) = 100
-            const calculatedPercentage = 25 // Base for basic info - backend will recalculate via trigger
+            let calculatedPercentage = 25
+            if (data.skills?.length) calculatedPercentage += 25
+            if (data.interests?.length) calculatedPercentage += 15
+            if (data.goals?.length) calculatedPercentage += 10
+            if (data.experiences?.length) calculatedPercentage += 15
+            if (data.links?.length) calculatedPercentage += 10
 
-            setCompletionPercentage(Math.min(calculatedPercentage + 75, 100)) // Estimate for UI
+            setCompletionPercentage(Math.min(calculatedPercentage, 100))
 
             const result = await completeOnboarding(data, calculatedPercentage)
 
@@ -622,7 +635,18 @@ export default function OnboardingPage() {
                                             exit={{ opacity: 0, x: shouldReduceMotion ? 0 : -20 }}
                                             transition={shouldReduceMotion ? { duration: 0 } : transition}
                                         >
-                                            <StepBasicInfo userName={userName} />
+                                            <StepBasicInfo
+                                                userName={userName}
+                                                onNameExtracted={(displayName) => {
+                                                    const current = methods.getValues("displayName")
+                                                    if (!current) {
+                                                        methods.setValue("displayName", displayName, {
+                                                            shouldValidate: false,
+                                                            shouldDirty: false
+                                                        })
+                                                    }
+                                                }}
+                                            />
                                         </motion.div>
                                     ) : currentStep === 2 ? (
                                         <motion.div
@@ -673,14 +697,15 @@ export default function OnboardingPage() {
                                         </Button>
 
                                         <div className="flex gap-3">
-                                            {/* Skip & Complete - Available on all steps */}
+                                            {/* Skip & Complete - Only on steps where meaningful data exists */}
+                                            {currentStep >= 3 && (
                                             <Button
                                                 type="button"
                                                 variant="outline"
                                                 onClick={handleSkipExperience}
                                                 disabled={isSubmitting}
                                                 className="min-w-[120px] border-primary/20 text-primary hover:bg-primary/10"
-                                                aria-label="Skip experience step and complete profile"
+                                                aria-label="Complete profile without experience details"
                                             >
                                                 {isSubmitting ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" aria-hidden="true" />
@@ -688,6 +713,7 @@ export default function OnboardingPage() {
                                                     "Skip & Complete"
                                                 )}
                                             </Button>
+                                            )}
                                             
                                             {isLastStep ? (
                                                 <Button

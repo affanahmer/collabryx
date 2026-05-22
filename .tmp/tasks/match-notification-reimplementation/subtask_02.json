@@ -1,0 +1,37 @@
+{
+  "id": "match-notification-reimplementation-02",
+  "seq": "02",
+  "title": "Create lib/services/notification-engine.ts with send, digest, cleanup",
+  "status": "completed",
+  "agent_id": "coder-agent",
+  "started_at": "2026-05-22T00:00:00Z",
+  "completed_at": "2026-05-22T00:00:00Z",
+  "summary": "Created notification-engine.ts with send, bulk, digest, cleanup, and preference check functions",
+  "depends_on": [],
+  "parallel": true,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/c/Users/ahsan/.config/opencode/context/core/standards/code-quality.md",
+    "/c/Users/ahsan/.config/opencode/context/core/standards/security-patterns.md"
+  ],
+  "reference_files": [
+    "types/database.types.ts",
+    "lib/services/notifications.ts",
+    "lib/supabase/server.ts"
+  ],
+  "acceptance_criteria": [
+    "File lib/services/notification-engine.ts exists with TypeScript types",
+    "Implements sendNotification() with Zod validation",
+    "Implements sendBulkNotifications() for batch operations",
+    "Implements generateDigest() that aggregates unread notifications by type",
+    "Implements cleanupExpiredNotifications() based on configurable TTL",
+    "Implements checkNotificationPreferences() before sending",
+    "Writes to notifications table using service_role client",
+    "Respects notification_preferences (email, push, smart alerts)",
+    "No Python worker references",
+    "Uses server Supabase client with service_role key"
+  ],
+  "deliverables": [
+    "lib/services/notification-engine.ts"
+  ]
+}

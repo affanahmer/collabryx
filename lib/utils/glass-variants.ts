@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils"
  * Brand Colors (PRESERVED):
  * - Dark Mode Background: #0A0A0F (Deep Navy-Black)
  * - Brand Color: oklch(0.488 0.243 264.376) (Purple-Blue)
- * - Glass Effects: Blue-tinted with blue-400/10 borders
+ * - Card Surface: Flat with subtle shadow, no blur
  */
 
 export const glassVariants = {
@@ -20,7 +20,7 @@ export const glassVariants = {
    * TIER 1: Primary Glass (Signature Collabryx Aesthetic)
    * For: Post cards, Match cards, Profile cards, Dashboard widgets
    */
-  card: "relative overflow-hidden bg-blue-950/[0.05] backdrop-blur-2xl border border-blue-400/10 shadow-[0_4px_32px_0_rgba(59,130,246,0.06),0_1px_0_0_rgba(255,255,255,0.06)_inset] before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-blue-300/30 before:to-transparent before:pointer-events-none after:absolute after:inset-y-0 after:left-0 after:w-px after:bg-gradient-to-b after:from-blue-300/20 after:via-transparent after:to-transparent after:pointer-events-none",
+  card: "relative overflow-hidden bg-card border border-border shadow-sm",
   
   /**
    * TIER 1.5: Glass Card Inner (for GlassCard innerClassName)
@@ -31,18 +31,15 @@ export const glassVariants = {
   /**
    * TIER 2: Dialog/Modal Overlay Glass
    * For: DialogContent, Sheet, Modal overlays, Popovers
-   * Matches postcard background: bg-blue-950/[0.05]
+   * Matches card surface: bg-card border border-border
    */
-  overlay: "bg-blue-950/[0.05] backdrop-blur-2xl border-blue-500/20 shadow-[0_8px_40px_0_rgba(0,0,0,0.5),0_0_60px_-20px_rgba(59,130,246,0.1)]",
+  overlay: "bg-card/95 border border-border shadow-xl",
   
   /**
    * TIER 2.5: Dialog Highlights (decorative elements for dialogs)
    * Use as absolute positioned decorative elements
    */
-  dialogHighlights: `
-    before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-blue-300/30 before:to-transparent before:pointer-events-none before:z-0
-    after:absolute after:inset-y-0 after:left-0 after:w-px after:bg-gradient-to-b after:from-blue-300/20 after:via-transparent after:to-transparent after:pointer-events-none after:z-0
-  `,
+  dialogHighlights: "",
 
   /**
    * TIER 3: Dropdown Glass
@@ -72,7 +69,7 @@ export const glassVariants = {
    * TIER 5: Subtle Glass (Inputs, Buttons, Small Elements)
    * For: Input fields, Button overlays, Small decorative elements
    */
-  subtle: "bg-blue-950/[0.03] backdrop-blur-xl border-white/[0.06]",
+  subtle: "bg-muted/30 backdrop-blur-xl border-border/60",
   
   /**
    * TIER 5.5: Input Glass
@@ -84,19 +81,19 @@ export const glassVariants = {
    * TIER 5.6: Button Glass (for ghost/outline buttons)
    * For: Ghost buttons, Outline buttons with glass effect
    */
-  buttonGhost: "bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-all",
+  buttonGhost: "bg-transparent hover:bg-accent border border-border/50 transition-all",
   
   /**
    * TIER 5.7: Button Primary Glass
    * For: Primary buttons with subtle glass overlay
    */
-  buttonPrimary: "bg-primary shadow-[0_4px_32px_0_rgba(59,130,246,0.06)] hover:shadow-[0_8px_40px_0_rgba(59,130,246,0.12)] transition-all",
+  buttonPrimary: "bg-primary text-primary-foreground hover:bg-primary/90 transition-all",
   
   /**
    * TIER 5.8: Button Primary Glow
    * For: Primary buttons with signature blue glow
    */
-  buttonPrimaryGlow: "shadow-[0_4px_20px_0_rgba(59,130,246,0.3)] hover:shadow-[0_6px_28px_0_rgba(59,130,246,0.4)] transition-all",
+  buttonPrimaryGlow: "shadow-md hover:shadow-lg transition-all",
   
   /**
    * TIER 5.9: Button Secondary Glow
@@ -132,7 +129,7 @@ export const glassVariants = {
    * TIER 8: Badge Glass
    * For: Status badges, Notification badges, Small indicators
    */
-  badge: "bg-blue-500/10 backdrop-blur-sm border border-blue-500/20",
+  badge: "bg-muted border border-border",
   
   /**
    * TIER 8.5: Badge Variants
@@ -140,19 +137,19 @@ export const glassVariants = {
   badgeSuccess: "bg-green-500/10 backdrop-blur-sm border border-green-500/20 text-green-700 dark:text-green-400",
   badgeWarning: "bg-yellow-500/10 backdrop-blur-sm border border-yellow-500/20 text-yellow-700 dark:text-yellow-400",
   badgeError: "bg-red-500/10 backdrop-blur-sm border border-red-500/20 text-red-700 dark:text-red-400",
-  badgeInfo: "bg-blue-500/10 backdrop-blur-sm border border-blue-500/20 text-blue-700 dark:text-blue-400",
+  badgeInfo: "bg-muted border border-border text-muted-foreground",
 
   /**
    * TIER 9: Section Divider Glass
    * For: Horizontal rules, Section separators
    */
-  divider: "border-t border-blue-400/10 bg-gradient-to-r from-transparent via-blue-500/[0.05] to-transparent",
+  divider: "border-t border-border",
   
   /**
    * TIER 9.5: Vertical Divider Glass
    * For: Vertical separators
    */
-  dividerVertical: "border-l border-blue-400/10 bg-gradient-to-b from-transparent via-blue-500/[0.05] to-transparent",
+  dividerVertical: "border-l border-border",
 
   /**
    * TIER 10: Header/Footer Glass
@@ -169,31 +166,31 @@ export const glassVariants = {
    * TIER 11: Skill Matrix Glass
    * For: Skill cards, Proficiency indicators, Skill grid tiles
    */
-  skillCard: "relative overflow-hidden bg-blue-950/[0.04] backdrop-blur-xl border border-blue-400/10 shadow-[0_4px_24px_0_rgba(59,130,246,0.04)] before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-blue-300/30 before:to-transparent before:pointer-events-none after:absolute after:inset-y-0 after:left-0 after:w-px after:bg-gradient-to-b after:from-blue-300/20 after:via-transparent after:to-transparent after:pointer-events-none",
+  skillCard: "relative overflow-hidden bg-card border border-border shadow-sm",
   
   /**
    * TIER 11.5: Skill Card Active/Selected
    * For: Selected skill tiles, Active state with stronger glow
    */
-  skillCardActive: "relative overflow-hidden bg-blue-950/[0.04] backdrop-blur-xl border border-blue-400/30 shadow-[0_8px_40px_0_rgba(59,130,246,0.15)] before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-blue-300/30 before:to-transparent before:pointer-events-none after:absolute after:inset-y-0 after:left-0 after:w-px after:bg-gradient-to-b after:from-blue-300/20 after:via-transparent after:to-transparent after:pointer-events-none",
+  skillCardActive: "relative overflow-hidden bg-accent border border-border shadow-md",
   
   /**
    * TIER 11.7: Proficiency Ring Background
    * For: Subtle glass background behind proficiency rings/circles
    */
-  proficiencyRing: "bg-blue-950/[0.06] backdrop-blur-xl border border-blue-400/15 rounded-full",
+  proficiencyRing: "bg-muted border border-border rounded-full",
   
   /**
    * TIER 11.9: Skill Card Hoverable
    * For: Interactive skill cards with hover effects
    */
-  skillCardHoverable: "transition-all duration-500 hover:shadow-[0_8px_40px_0_rgba(59,130,246,0.12)] hover:-translate-y-1",
+  skillCardHoverable: "transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
 
   /**
    * UTILITY: Glass Card Hover Effects
    * Add to any glass card for hover interaction
    */
-  hoverable: "transition-all duration-500 hover:shadow-[0_8px_40px_0_rgba(59,130,246,0.12),0_1px_0_0_rgba(255,255,255,0.08)_inset] hover:-translate-y-1",
+  hoverable: "transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
 
   /**
    * UTILITY: Glass Pulse Animation
@@ -224,20 +221,20 @@ export function glass(variant: keyof typeof glassVariants, className?: string) {
  */
 export const glassDecorations = {
   /** Top highlight streak */
-  topHighlight: "absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-300/30 to-transparent pointer-events-none",
+  topHighlight: "absolute inset-x-0 top-0 h-px bg-border pointer-events-none",
   
   /** Left edge highlight */
-  leftHighlight: "absolute inset-y-0 left-0 w-px bg-gradient-to-b from-blue-300/20 via-transparent to-transparent pointer-events-none",
+  leftHighlight: "",
   
   /** Blue ambient tint overlay */
-  ambientTint: "absolute inset-0 bg-gradient-to-br from-blue-500/[0.04] via-transparent to-indigo-500/[0.03] pointer-events-none",
+  ambientTint: "",
   
   /** Noise texture overlay (for premium feel) */
   noise: "before:absolute before:inset-0 before:bg-[url('https://grainy-gradients.vercel.app/noise.svg')] before:bg-repeat before:bg-[150px_150px] before:opacity-[0.05] before:mix-blend-overlay before:pointer-events-none",
   
   /** Inner shadow for depth */
-  innerShadow: "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]",
+  innerShadow: "shadow-inner",
   
   /** Outer glow for emphasis */
-  outerGlow: "shadow-[0_4px_32px_0_rgba(59,130,246,0.06)]",
+  outerGlow: "shadow-md",
 }

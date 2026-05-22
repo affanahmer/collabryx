@@ -1,21 +1,26 @@
-import { fetchUserProfileContext } from './context-fetcher'
+import { fetchUserProfileContext, fetchMultipleUserContexts } from './context-fetcher'
 import { retrieveContextFromVectorStore } from './vector-retriever'
 import { summarizeSessionIfNeeded } from './session-summarizer'
 import { buildEnhancedSystemPrompt, buildFallbackSystemPrompt } from '@/lib/prompt/ai-mentor-prompts'
-import type { RAGContext, AIMessage } from './types'
+import type { RAGContext, ExtendedRAGContext, AIMessage, StartupContext, MultiUserContext } from './types'
+
+export interface AssemblerOptions {
+  userId: string
+  query: string
+  sessionId: string
+  messages: AIMessage[]
+  otherUserIds?: string[] // For collaboration advice
+  startupContext?: StartupContext | null // For startup planning
+}
 
 export interface AssemblerResult {
-  context: RAGContext
+  context: ExtendedRAGContext
   systemPrompt: string
   warnings: string[]
 }
 
-export async function assembleRAGContext(
-  userId: string,
-  query: string,
-  sessionId: string,
-  messages: AIMessage[]
-): Promise<RAGContext> {
+export async function assembleRAGContext(options: AssemblerOptions): Promise<ExtendedRAGContext> {
+  const { userId, query, sessionId, messages, otherUserIds, startupContext } = options
   const warnings: string[] = []
 
   const profileResult = await fetchUserProfileContext(userId)
@@ -33,8 +38,27 @@ export async function assembleRAGContext(
     warnings.push(...summaryResult.warnings)
   }
 
+  // Fetch multi-user context if otherUserIds provided
+  let multiUser: MultiUserContext | null = null
+  if (otherUserIds && otherUserIds.length > 0 && profileResult.data) {
+    const otherUsersMap = await fetchMultipleUserContexts([userId, ...otherUserIds])
+    const otherUsers = otherUserIds
+      .map(id => otherUsersMap.get(id))
+      .filter((u): u is NonNullable<typeof u> => u !== undefined)
+
+    if (otherUsers.length > 0) {
+      multiUser = {
+        currentUser: profileResult.data,
+        otherUsers,
+        relationship: 'potential_match',
+      }
+    }
+  }
+
   return {
     profile: profileResult.data ?? null,
+    startup: startupContext ?? null,
+    multiUser,
     retrieved_contexts: vectorResult.contexts,
     session_summary: summaryResult.summary,
     conversation_history: messages.slice(-10),
@@ -43,22 +67,21 @@ export async function assembleRAGContext(
 }
 
 export async function assembleAndBuildPrompt(
-  userId: string,
-  query: string,
-  sessionId: string,
-  messages: AIMessage[]
+  options: AssemblerOptions
 ): Promise<AssemblerResult> {
   const warnings: string[] = []
 
   try {
-    const context = await assembleRAGContext(userId, query, sessionId, messages)
-    const systemPrompt = buildEnhancedSystemPrompt(context, query)
+    const context = await assembleRAGContext(options)
+    const systemPrompt = buildEnhancedSystemPrompt(context, options.query)
     return { context, systemPrompt, warnings }
   } catch (error) {
     warnings.push(`RAG assembly failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
     return {
       context: {
         profile: null,
+        startup: null,
+        multiUser: null,
         retrieved_contexts: [],
         session_summary: null,
         conversation_history: [],

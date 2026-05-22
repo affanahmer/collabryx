@@ -10,6 +10,17 @@ export const createMockSupabaseClient = () => {
     upsert: vi.fn().mockReturnThis(),
     delete: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    neq: vi.fn().mockReturnThis(),
+    gt: vi.fn().mockReturnThis(),
+    gte: vi.fn().mockReturnThis(),
+    lt: vi.fn().mockReturnThis(),
+    lte: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
+    not: vi.fn().mockReturnThis(),
+    or: vi.fn().mockReturnThis(),
+    like: vi.fn().mockReturnThis(),
+    ilike: vi.fn().mockReturnThis(),
+    is: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue({ data: null, error: null }),
     maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
     order: vi.fn().mockReturnThis(),
@@ -35,6 +46,7 @@ export const createMockSupabaseClient = () => {
   client.update.mockReturnThis()
   client.delete.mockReturnThis()
   client.eq.mockReturnThis()
+  client.in.mockReturnThis()
   return client
 }
 

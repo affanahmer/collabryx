@@ -1,0 +1,38 @@
+{
+  "id": "match-notification-reimplementation-01",
+  "seq": "01",
+  "title": "Create lib/services/match-generator.ts with cosine similarity and scoring",
+  "status": "completed",
+  "agent_id": "coder-agent",
+  "started_at": "2026-05-22T00:00:00Z",
+  "completed_at": "2026-05-22T00:00:00Z",
+  "summary": "Created lib/services/match-generator.ts with cosine similarity, weighted scoring, match generation, batch processing, and blocked user exclusion",
+  "depends_on": [],
+  "parallel": true,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/c/Users/ahsan/.config/opencode/context/core/standards/code-quality.md",
+    "/c/Users/ahsan/.config/opencode/context/core/standards/security-patterns.md"
+  ],
+  "reference_files": [
+    "types/database.types.ts",
+    "lib/services/embeddings.ts",
+    "lib/services/matches.ts",
+    "lib/supabase/server.ts"
+  ],
+  "acceptance_criteria": [
+    "File lib/services/match-generator.ts exists with TypeScript types",
+    "Implements cosineSimilarity(vectorA, vectorB) pure function",
+    "Implements calculateMatchScore() with weighted scoring (semantic, skills, interests, activity)",
+    "Implements generateMatchesForUser(userId, options) using Supabase service_role client",
+    "Implements generateBatchMatches(userIds, options) for admin batch processing",
+    "Writes to match_suggestions and match_scores tables",
+    "Respects match_preferences (min_match_percentage, interested_in_types)",
+    "Excludes blocked users from suggestions",
+    "No Python worker references or fetch calls",
+    "Uses server Supabase client with service_role key"
+  ],
+  "deliverables": [
+    "lib/services/match-generator.ts"
+  ]
+}

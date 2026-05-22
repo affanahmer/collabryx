@@ -33,3 +33,46 @@ export class AllProvidersFailedError extends Error {
     this.name = 'AllProvidersFailedError'
   }
 }
+
+export class ProviderConfigError extends Error {
+  constructor(
+    message: string,
+    public readonly providerName?: string
+  ) {
+    super(message)
+    this.name = 'ProviderConfigError'
+  }
+}
+
+export class StreamingError extends Error {
+  constructor(
+    message: string,
+    public readonly provider: string,
+    public readonly cause?: Error
+  ) {
+    super(message)
+    this.name = 'StreamingError'
+  }
+}
+
+export class RateLimitError extends Error {
+  constructor(
+    message: string,
+    public readonly provider: string,
+    public readonly retryAfterMs?: number
+  ) {
+    super(message)
+    this.name = 'RateLimitError'
+  }
+}
+
+export class ProviderTimeoutError extends Error {
+  constructor(
+    message: string,
+    public readonly provider: string,
+    public readonly timeoutMs: number
+  ) {
+    super(message)
+    this.name = 'ProviderTimeoutError'
+  }
+}

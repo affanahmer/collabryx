@@ -1,354 +1,900 @@
 /**
- * TC-086: Match notification - notification_engine pushes smart notification
- *        when new match is generated
- * TC-087: Priority batching - notification_engine applies priority batching
- *         to prevent notification spam
+ * Notification Engine Service Tests
  *
- * Tests the TypeScript notification service sendMatchNotification along
- * with a mock batching engine that mirrors the Python worker's logic.
+ * Tests for lib/services/notification-engine.ts
+ * Covers: sendNotification, sendBulkNotifications, generateDigest,
+ *         cleanupExpiredNotifications, checkNotificationPreferences
+ *
+ * All external dependencies mocked — deterministic tests only.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
-  sendMatchNotification,
-  sendCommentNotification,
-  sendLikeNotification,
-  createNotification,
-} from '@/lib/services/notifications'
+  sendNotification,
+  sendBulkNotifications,
+  generateDigest,
+  cleanupExpiredNotifications,
+  checkNotificationPreferences,
+  type NotificationInput,
+} from "@/lib/services/notification-engine";
+import { mockSupabaseClient } from "@/tests/setup/mocks";
 
-// Mock Supabase insert chain
-const mockInsert = vi.fn()
-const mockSelect = vi.fn()
-const mockSingle = vi.fn()
+// ─── Mock Infrastructure ───────────────────────────────────────────────────
 
-vi.mock('@/lib/supabase/client', () => ({
-  createClient: () => ({
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'test-user-id' } }, error: null }),
+// Mock logger
+vi.mock("@/lib/logger", () => ({
+  logger: {
+    app: {
+      error: vi.fn(),
+      warn: vi.fn(),
+      info: vi.fn(),
+      debug: vi.fn(),
     },
-    from: vi.fn().mockReturnValue({
-      select: mockSelect,
-      insert: mockInsert,
-      update: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnValue({
-              single: mockSingle,
-            }),
-          }),
-        }),
-      }),
-      delete: vi.fn().mockReturnValue({
-        eq: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: null }),
-        }),
-      }),
-    }),
-  }),
-}))
+  },
+}));
 
-// ─── Mock Batching Engine (mirrors Python NotificationEngine) ──────────────
+// Mock @supabase/supabase-js createClient to return our mockSupabaseClient
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: () => mockSupabaseClient,
+}));
 
-interface BatchedNotification {
-  type: string
-  actor_id: string
-  content: string
-  priority: string
-  queuedAt: number
-}
+// ─── Test Constants ────────────────────────────────────────────────────────
 
-const PRIORITY_HIGH = ['message', 'match', 'connection_accepted']
-const PRIORITY_MEDIUM = ['connection_request', 'like', 'comment']
-const _PRIORITY_LOW = ['profile_view', 'weekly_summary']
+const VALID_UUID = "550e8400-e29b-41d4-a716-446655440001";
+const VALID_UUID_2 = "550e8400-e29b-41d4-a716-446655440002";
+const VALID_UUID_3 = "550e8400-e29b-41d4-a716-446655440003";
 
-function batchNotifications(
-  batch: BatchedNotification[]
-): BatchedNotification[] {
-  if (batch.length <= 1) return batch
-
-  // Group by type
-  const grouped = new Map<string, BatchedNotification[]>()
-  for (const n of batch) {
-    const existing = grouped.get(n.type) || []
-    existing.push(n)
-    grouped.set(n.type, existing)
-  }
-
-  const combined: BatchedNotification[] = []
-  for (const [type, notifications] of grouped) {
-    if (notifications.length > 1) {
-      // Combine multiple notifications of same type
-      const combinedContent =
-        type === 'like'
-          ? `${notifications.length} people liked your post`
-          : type === 'comment'
-            ? `You have ${notifications.length} new comments`
-            : `You have ${notifications.length} new ${type} notifications`
-
-      combined.push({
-        type,
-        actor_id: notifications[0].actor_id,
-        content: combinedContent,
-        priority: 'medium',
-        queuedAt: Math.min(...notifications.map((n) => n.queuedAt)),
-      })
-    } else {
-      combined.push(notifications[0])
-    }
-  }
-
-  return combined
-}
-
-function getPriority(type: string): string {
-  if (PRIORITY_HIGH.includes(type)) return 'high'
-  if (PRIORITY_MEDIUM.includes(type)) return 'medium'
-  return 'low'
-}
+const validInput: NotificationInput = {
+  userId: VALID_UUID,
+  type: "match",
+  content: "You have a new match!",
+};
 
 // ─── Tests ─────────────────────────────────────────────────────────────────
 
-describe('Notification Engine', () => {
+describe("Notification Engine Service", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockInsert.mockReturnValue({
-      select: mockSelect,
-    })
-    mockSelect.mockReturnValue({
-      single: mockSingle,
-    })
-    mockSingle.mockResolvedValue({
-      data: {
-        id: '550e8400-e29b-41d4-a716-446655440001',
-        user_id: '550e8400-e29b-41d4-a716-446655440001',
-        type: 'match',
-        content: 'You have a 95% match with someone!',
-      },
-      error: null,
-    })
-  })
+    vi.clearAllMocks();
 
-  // ── TC-086: Match notification ──────────────────────────────────────────
+    // Set required env vars for getServiceClient
+    process.env.SUPABASE_SERVICE_ROLE_KEY =
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0LXNlcnZpY2UifQ.test";
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://test.supabase.co";
 
-  describe('TC-086: Match notification', () => {
-    it('creates a notification when a new match is generated', async () => {
-      // Arrange - use valid UUIDs
-      const userId = '550e8400-e29b-41d4-a716-446655440001'
-      const matchedUserId = '550e8400-e29b-41d4-a716-446655440002'
-      const matchPercentage = 95
+    // Re-initialize all chainable methods on mockSupabaseClient after clear
+    mockSupabaseClient.from = vi.fn().mockReturnThis();
+    mockSupabaseClient.select = vi.fn().mockReturnThis();
+    mockSupabaseClient.insert = vi.fn().mockReturnThis();
+    mockSupabaseClient.update = vi.fn().mockReturnThis();
+    mockSupabaseClient.delete = vi.fn().mockReturnThis();
+    mockSupabaseClient.eq = vi.fn().mockReturnThis();
+    mockSupabaseClient.order = vi.fn().mockReturnThis();
+    mockSupabaseClient.limit = vi.fn().mockReturnThis();
+    mockSupabaseClient.range = vi.fn().mockReturnThis();
+    mockSupabaseClient.gte = vi.fn().mockReturnThis();
+    mockSupabaseClient.lte = vi.fn().mockReturnThis();
+    mockSupabaseClient.lt = vi.fn().mockReturnThis();
+    mockSupabaseClient.single = vi.fn().mockResolvedValue({ data: null, error: null });
+    mockSupabaseClient.then = vi.fn().mockImplementation((resolve) => resolve({ data: [], error: null }));
+  });
 
-      // Act
-      const result = await sendMatchNotification(userId, matchedUserId, matchPercentage)
+  afterEach(() => {
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+  });
 
-      // Assert
-      expect(result.error).toBeNull()
-      expect(mockInsert).toHaveBeenCalled()
+  // ── sendNotification() ───────────────────────────────────────────────────
 
-      // Verify notification was created with correct fields
-      const insertCall = mockInsert.mock.calls[0][0]
-      expect(insertCall.user_id).toBe(userId)
-      expect(insertCall.type).toBe('match')
-      expect(insertCall.actor_id).toBe(matchedUserId)
-      expect(insertCall.content).toContain('95%')
-      expect(insertCall.content).toContain('match')
-      expect(insertCall.resource_type).toBe('match')
-      expect(insertCall.resource_id).toBe(matchedUserId)
-    })
-
-    it('includes match percentage in notification content', async () => {
-      // Arrange - use valid UUIDs
-      const userId = '550e8400-e29b-41d4-a716-446655440003'
-      const matchedUserId = '550e8400-e29b-41d4-a716-446655440004'
-      const matchPercentage = 72
-
-      // Act
-      await sendMatchNotification(userId, matchedUserId, matchPercentage)
-
-      // Assert
-      const insertCall = mockInsert.mock.calls[0][0]
-      expect(insertCall.content).toBe('You have a 72% match with someone!')
-    })
-
-    it('sets resource_type to "match" for match notifications', async () => {
-      // Arrange & Act - use valid UUIDs
-      await sendMatchNotification('550e8400-e29b-41d4-a716-446655440005', '550e8400-e29b-41d4-a716-446655440006', 60)
-
-      // Assert
-      const insertCall = mockInsert.mock.calls[0][0]
-      expect(insertCall.resource_type).toBe('match')
-    })
-
-    it('handles 0% match correctly', async () => {
-      // Arrange & Act - use valid UUIDs
-      await sendMatchNotification('550e8400-e29b-41d4-a716-446655440007', '550e8400-e29b-41d4-a716-446655440008', 0)
-
-      // Assert
-      const insertCall = mockInsert.mock.calls[0][0]
-      expect(insertCall.content).toContain('0%')
-    })
-  })
-
-  // ── TC-087: Priority batching ───────────────────────────────────────────
-
-  describe('TC-087: Priority batching', () => {
-    it('assigns priority based on notification type', () => {
-      // Arrange & Act
-      const matchPriority = getPriority('match')
-      const likePriority = getPriority('like')
-      const viewPriority = getPriority('profile_view')
-
-      // Assert
-      expect(matchPriority).toBe('high')
-      expect(likePriority).toBe('medium')
-      expect(viewPriority).toBe('low')
-    })
-
-    it('batches multiple like notifications into a single combined notification', () => {
-      // Arrange - 4 likes from different users in a short window
-      const now = Date.now()
-      const batch: BatchedNotification[] = [
-        { type: 'like', actor_id: 'user-1', content: 'liked your post', priority: 'medium', queuedAt: now },
-        { type: 'like', actor_id: 'user-2', content: 'liked your post', priority: 'medium', queuedAt: now + 100 },
-        { type: 'like', actor_id: 'user-3', content: 'liked your post', priority: 'medium', queuedAt: now + 200 },
-        { type: 'like', actor_id: 'user-4', content: 'liked your post', priority: 'medium', queuedAt: now + 300 },
-      ]
-
-      // Act
-      const result = batchNotifications(batch)
-
-      // Assert - 4 individual likes should combine to 1 notification
-      expect(result.length).toBe(1)
-      expect(result[0].type).toBe('like')
-      expect(result[0].content).toBe('4 people liked your post')
-    })
-
-    it('batches multiple comment notifications into one', () => {
-      // Arrange - 3 comments
-      const now = Date.now()
-      const batch: BatchedNotification[] = [
-        { type: 'comment', actor_id: 'user-1', content: 'commented', priority: 'medium', queuedAt: now },
-        { type: 'comment', actor_id: 'user-2', content: 'commented', priority: 'medium', queuedAt: now + 500 },
-        { type: 'comment', actor_id: 'user-3', content: 'commented', priority: 'medium', queuedAt: now + 1000 },
-      ]
-
-      // Act
-      const result = batchNotifications(batch)
-
-      // Assert
-      expect(result.length).toBe(1)
-      expect(result[0].content).toBe('You have 3 new comments')
-    })
-
-    it('does not batch a single notification', () => {
+  describe("sendNotification", () => {
+    it("sends notification successfully", async () => {
       // Arrange
-      const batch: BatchedNotification[] = [
-        { type: 'like', actor_id: 'user-1', content: 'liked your post', priority: 'medium', queuedAt: Date.now() },
-      ]
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { id: "notif-1" },
+        error: null,
+      });
 
       // Act
-      const result = batchNotifications(batch)
+      const result = await sendNotification(validInput);
 
       // Assert
-      expect(result.length).toBe(1)
-      expect(result[0].content).toBe('liked your post')
-    })
+      expect(result.success).toBe(true);
+      expect(result.notificationId).toBe("notif-1");
+      expect(result.error).toBeUndefined();
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith("notifications");
+      expect(mockSupabaseClient.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          user_id: VALID_UUID,
+          type: "match",
+          content: "You have a new match!",
+        }),
+      );
+    });
 
-    it('groups different notification types separately within a batch', () => {
-      // Arrange - mixed notification types arriving rapidly
-      const now = Date.now()
-      const batch: BatchedNotification[] = [
-        { type: 'like', actor_id: 'u1', content: 'liked', priority: 'medium', queuedAt: now },
-        { type: 'like', actor_id: 'u2', content: 'liked', priority: 'medium', queuedAt: now + 50 },
-        { type: 'comment', actor_id: 'u3', content: 'commented', priority: 'medium', queuedAt: now + 100 },
-        { type: 'comment', actor_id: 'u4', content: 'commented', priority: 'medium', queuedAt: now + 150 },
-        { type: 'connection_request', actor_id: 'u5', content: 'request', priority: 'medium', queuedAt: now + 200 },
-      ]
-
-      // Act
-      const result = batchNotifications(batch)
-
-      // Assert - should have 3 combined notifications: likes, comments, connection_request
-      expect(result.length).toBe(3)
-
-      const likeResult = result.find((r) => r.type === 'like')
-      const commentResult = result.find((r) => r.type === 'comment')
-      const requestResult = result.find((r) => r.type === 'connection_request')
-
-      expect(likeResult?.content).toBe('2 people liked your post')
-      expect(commentResult?.content).toBe('You have 2 new comments')
-      expect(requestResult?.content).toBe('request')
-    })
-
-    it('high priority notifications are identified correctly (not batched)', () => {
-      // Arrange & Act
-      const matchPriority = getPriority('match')
-      const messagePriority = getPriority('message')
-      const connectionPriority = getPriority('connection_accepted')
-
-      // Assert - high priority events should not go through batching
-      expect(matchPriority).toBe('high')
-      expect(messagePriority).toBe('high')
-      expect(connectionPriority).toBe('high')
-    })
-
-    it('returns empty array for empty batch', () => {
-      // Arrange & Act
-      const result = batchNotifications([])
-
-      // Assert
-      expect(result).toEqual([])
-    })
-
-    it('sends individual comment notification when createNotification is called directly', async () => {
-      // Arrange - use valid UUIDs
-      const postAuthorId = '550e8400-e29b-41d4-a716-446655440009'
-      const commenterId = '550e8400-e29b-41d4-a716-446655440010'
-      const postId = '550e8400-e29b-41d4-a716-446655440011'
-
-      // Act
-      const result = await sendCommentNotification(postAuthorId, commenterId, postId)
-
-      // Assert - direct call should create exactly one notification
-      expect(result.error).toBeNull()
-      expect(mockInsert).toHaveBeenCalledTimes(1)
-      const insertCall = mockInsert.mock.calls[0][0]
-      expect(insertCall.type).toBe('comment')
-      expect(insertCall.user_id).toBe(postAuthorId)
-      expect(insertCall.actor_id).toBe(commenterId)
-      expect(insertCall.resource_type).toBe('post')
-      expect(insertCall.resource_id).toBe(postId)
-    })
-  })
-
-  // ── Edge cases ───────────────────────────────────────────────────────────
-
-  describe('Edge cases', () => {
-    it('creates notification with all required fields', async () => {
-      // Arrange & Act - use valid UUIDs
-      await sendLikeNotification('550e8400-e29b-41d4-a716-446655440012', '550e8400-e29b-41d4-a716-446655440013', '550e8400-e29b-41d4-a716-446655440014')
-
-      // Assert
-      const insertCall = mockInsert.mock.calls[0][0]
-      expect(insertCall).toHaveProperty('user_id')
-      expect(insertCall).toHaveProperty('type')
-      expect(insertCall).toHaveProperty('content')
-      expect(insertCall).toHaveProperty('actor_id')
-    })
-
-    it('createNotification validates input via Zod schema', async () => {
-      // Arrange - invalid user_id
+    it("validates input with Zod and rejects invalid input", async () => {
+      // Arrange
       const invalidInput = {
-        user_id: 'not-a-uuid',
-        type: 'match' as const,
-        content: 'hello',
-        actor_id: 'also-not-uuid',
-      }
+        userId: "not-a-uuid",
+        type: "match",
+        content: "test",
+      } as unknown as NotificationInput;
 
       // Act
-      const result = await createNotification(invalidInput)
+      const result = await sendNotification(invalidInput);
 
-      // Assert - should fail validation, no insert called from this test's mock
-      expect(result.error).toBeDefined()
-      // The validation error occurred before the Supabase insert was attempted
-    })
-  })
-})
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(mockSupabaseClient.from).not.toHaveBeenCalled();
+    });
+
+    it("rejects input with empty content", async () => {
+      // Arrange
+      const invalidInput: NotificationInput = {
+        userId: VALID_UUID,
+        type: "match",
+        content: "",
+      };
+
+      // Act
+      const result = await sendNotification(invalidInput);
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+    });
+
+    it("rejects input with invalid notification type", async () => {
+      // Arrange
+      const invalidInput = {
+        userId: VALID_UUID,
+        type: "invalid_type",
+        content: "test",
+      } as unknown as NotificationInput;
+
+      // Act
+      const result = await sendNotification(invalidInput);
+
+      // Assert
+      expect(result.success).toBe(false);
+    });
+
+    it("respects notification_preferences and skips when disabled", async () => {
+      // Arrange
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { ai_smart_match_alerts: false },
+        error: null,
+      });
+
+      // Act
+      const result = await sendNotification(validInput);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(result.error).toBe("Notification disabled by user preferences");
+      // Should NOT reach the insert call (only from() called once for preferences)
+      const fromCalls = mockSupabaseClient.from.mock.calls;
+      expect(fromCalls.length).toBe(1);
+      expect(fromCalls[0][0]).toBe("notification_preferences");
+    });
+
+    it("handles missing preferences record and defaults to allow", async () => {
+      // Arrange — PGRST116 = no rows found
+      mockSupabaseClient.single.mockResolvedValue({
+        data: null,
+        error: { code: "PGRST116", message: "No rows found" },
+      });
+      mockSupabaseClient.single.mockResolvedValueOnce({
+        data: null,
+        error: { code: "PGRST116", message: "No rows found" },
+      });
+      // Second call (insert) success
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { id: "notif-2" },
+        error: null,
+      });
+
+      // Act
+      const result = await sendNotification(validInput);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(result.notificationId).toBe("notif-2");
+    });
+
+    it("handles Supabase insert errors", async () => {
+      // Arrange
+      // First call: preferences check — allow
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { ai_smart_match_alerts: true },
+        error: null,
+      });
+      // Second call: insert fails
+      mockSupabaseClient.single.mockResolvedValue({
+        data: null,
+        error: { code: "23505", message: "Duplicate key violation" },
+      });
+
+      // Act
+      const result = await sendNotification(validInput);
+
+      // Assert
+      expect(result.success).toBe(false);
+      expect(result.error).toBe("Duplicate key violation");
+    });
+
+    it("handles missing recipient by checking preferences gracefully", async () => {
+      // Arrange — preferences check returns error but not PGRST116
+      // The service defaults to allow (true) on any preference error
+      mockSupabaseClient.single.mockResolvedValueOnce({
+        data: null,
+        error: { code: "500", message: "Internal server error" },
+      });
+      // Insert succeeds
+      mockSupabaseClient.single.mockResolvedValueOnce({
+        data: { id: "notif-4" },
+        error: null,
+      });
+
+      // Act
+      const result = await sendNotification(validInput);
+
+      // Assert — preference error defaults to allow, then insert succeeds
+      expect(result.success).toBe(true);
+      expect(result.notificationId).toBe("notif-4");
+    });
+
+    it("accepts optional fields (actorId, actorName, actorAvatar, resourceType, resourceId)", async () => {
+      // Arrange
+      const inputWithOptionals: NotificationInput = {
+        userId: VALID_UUID,
+        type: "like",
+        content: "Someone liked your post",
+        actorId: VALID_UUID_2,
+        actorName: "Jane Doe",
+        actorAvatar: "https://example.com/avatar.jpg",
+        resourceType: "post",
+        resourceId: VALID_UUID_3,
+      };
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { id: "notif-3" },
+        error: null,
+      });
+
+      // Act
+      const result = await sendNotification(inputWithOptionals);
+
+      // Assert
+      expect(result.success).toBe(true);
+      expect(mockSupabaseClient.insert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actor_id: VALID_UUID_2,
+          actor_name: "Jane Doe",
+          actor_avatar: "https://example.com/avatar.jpg",
+          resource_type: "post",
+          resource_id: VALID_UUID_3,
+        }),
+      );
+    });
+  });
+
+  // ── sendBulkNotifications() ──────────────────────────────────────────────
+
+  describe("sendBulkNotifications", () => {
+    it("sends multiple notifications successfully", async () => {
+      // Arrange
+      const inputs: NotificationInput[] = [
+        { userId: VALID_UUID, type: "match", content: "Match 1" },
+        { userId: VALID_UUID_2, type: "match", content: "Match 2" },
+        { userId: VALID_UUID_3, type: "like", content: "Like 1" },
+      ];
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { id: "notif-bulk-1" },
+        error: null,
+      });
+
+      // Act
+      const result = await sendBulkNotifications(inputs);
+
+      // Assert
+      expect(result.sent).toBe(3);
+      expect(result.failed).toBe(0);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("isolates errors so one failure doesn't stop the batch", async () => {
+      // Arrange
+      const inputs: NotificationInput[] = [
+        { userId: VALID_UUID, type: "match", content: "Success" },
+        { userId: "not-a-uuid", type: "match", content: "Invalid" },
+        { userId: VALID_UUID_2, type: "like", content: "Success" },
+      ];
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { id: "notif-ok" },
+        error: null,
+      });
+
+      // Act
+      const result = await sendBulkNotifications(inputs);
+
+      // Assert
+      expect(result.sent).toBe(2);
+      expect(result.failed).toBe(1);
+      expect(result.errors.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("returns correct sent/failed counts with mixed results", async () => {
+      // Arrange — need mocks for: pref-check-1, insert-1, pref-check-2, insert-2
+      // Input 1: preferences allow + insert succeeds
+      mockSupabaseClient.single.mockResolvedValueOnce({
+        data: { ai_smart_match_alerts: true },
+        error: null,
+      });
+      mockSupabaseClient.single.mockResolvedValueOnce({
+        data: { id: "notif-1" },
+        error: null,
+      });
+      // Input 2: preferences allow + insert fails
+      mockSupabaseClient.single.mockResolvedValueOnce({
+        data: { ai_smart_match_alerts: true },
+        error: null,
+      });
+      mockSupabaseClient.single.mockResolvedValueOnce({
+        data: null,
+        error: { code: "500", message: "DB error" },
+      });
+
+      const inputs: NotificationInput[] = [
+        { userId: VALID_UUID, type: "match", content: "A" },
+        { userId: VALID_UUID_2, type: "match", content: "B" },
+      ];
+
+      // Act
+      const result = await sendBulkNotifications(inputs);
+
+      // Assert
+      expect(result.sent).toBe(1);
+      expect(result.failed).toBe(1);
+      expect(result.errors).toContain("DB error");
+    });
+
+    it("handles empty input array", async () => {
+      // Arrange & Act
+      const result = await sendBulkNotifications([]);
+
+      // Assert
+      expect(result.sent).toBe(0);
+      expect(result.failed).toBe(0);
+      expect(result.errors).toEqual([]);
+      expect(mockSupabaseClient.from).not.toHaveBeenCalled();
+    });
+  });
+
+  // ── generateDigest() ─────────────────────────────────────────────────────
+
+  describe("generateDigest", () => {
+    it("generates digest for users with unread notifications", async () => {
+      // Arrange
+      const today = new Date().toISOString().split("T")[0];
+      mockSupabaseClient.then.mockImplementation(
+        (resolve: (value: unknown) => void) =>
+          resolve({
+            data: [
+              {
+                id: "n1",
+                user_id: VALID_UUID,
+                type: "match",
+                content: "Match",
+                created_at: `${today}T10:00:00Z`,
+              },
+              {
+                id: "n2",
+                user_id: VALID_UUID,
+                type: "like",
+                content: "Like",
+                created_at: `${today}T11:00:00Z`,
+              },
+            ],
+            error: null,
+          }),
+      );
+      mockSupabaseClient.insert.mockResolvedValue({ data: null, error: null });
+
+      // Act
+      const result = await generateDigest();
+
+      // Assert
+      expect(result.digestsQueued).toBe(1); // 1 user grouped
+      expect(result.digestsSent).toBe(1);
+      expect(result.digestsFailed).toBe(0);
+      expect(result.errors).toEqual([]);
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith("notifications");
+      expect(mockSupabaseClient.eq).toHaveBeenCalledWith("is_read", false);
+    });
+
+    it("respects dryRun mode (counts only, no inserts)", async () => {
+      // Arrange
+      const today = new Date().toISOString().split("T")[0];
+      mockSupabaseClient.then.mockImplementation(
+        (resolve: (value: unknown) => void) =>
+          resolve({
+            data: [
+              {
+                id: "n1",
+                user_id: VALID_UUID,
+                type: "match",
+                content: "Match",
+                created_at: `${today}T10:00:00Z`,
+              },
+            ],
+            error: null,
+          }),
+      );
+
+      // Act
+      const result = await generateDigest({ dryRun: true });
+
+      // Assert
+      expect(result.digestsQueued).toBe(1);
+      expect(result.digestsSent).toBe(0);
+      expect(result.digestsFailed).toBe(0);
+      // insert should NOT be called in dryRun mode
+      expect(mockSupabaseClient.insert).not.toHaveBeenCalled();
+    });
+
+    it("respects batchSize parameter", async () => {
+      // Arrange
+      const today = new Date().toISOString().split("T")[0];
+      mockSupabaseClient.then.mockImplementation(
+        (resolve: (value: unknown) => void) =>
+          resolve({
+            data: [
+              {
+                id: "n1",
+                user_id: VALID_UUID,
+                type: "match",
+                content: "Match",
+                created_at: `${today}T10:00:00Z`,
+              },
+            ],
+            error: null,
+          }),
+      );
+      mockSupabaseClient.insert.mockResolvedValue({ data: null, error: null });
+
+      // Act
+      await generateDigest({ batchSize: 50 });
+
+      // Assert
+      expect(mockSupabaseClient.limit).toHaveBeenCalledWith(50);
+    });
+
+    it("handles date filtering", async () => {
+      // Arrange
+      mockSupabaseClient.then.mockImplementation(
+        (resolve: (value: unknown) => void) =>
+          resolve({ data: [], error: null }),
+      );
+
+      // Act
+      await generateDigest({ date: "2025-01-15" });
+
+      // Assert
+      expect(mockSupabaseClient.gte).toHaveBeenCalledWith(
+        "created_at",
+        "2025-01-15T00:00:00Z",
+      );
+      expect(mockSupabaseClient.lte).toHaveBeenCalledWith(
+        "created_at",
+        "2025-01-15T23:59:59Z",
+      );
+    });
+
+    it("handles no unread notifications", async () => {
+      // Arrange
+      mockSupabaseClient.then.mockImplementation(
+        (resolve: (value: unknown) => void) =>
+          resolve({ data: [], error: null }),
+      );
+
+      // Act
+      const result = await generateDigest();
+
+      // Assert
+      expect(result.digestsQueued).toBe(0);
+      expect(result.digestsSent).toBe(0);
+      expect(result.digestsFailed).toBe(0);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("handles Supabase query errors", async () => {
+      // Arrange
+      mockSupabaseClient.then.mockImplementation(
+        (resolve: (value: unknown) => void) =>
+          resolve({ data: null, error: { code: "500", message: "Query failed" } }),
+      );
+
+      // Act
+      const result = await generateDigest();
+
+      // Assert
+      expect(result.digestsQueued).toBe(0);
+      expect(result.digestsSent).toBe(0);
+      expect(result.digestsFailed).toBe(1);
+      expect(result.errors).toContain("Query failed");
+    });
+
+    it("tracks digest insert failures per user", async () => {
+      // Arrange
+      const today = new Date().toISOString().split("T")[0];
+      let thenCallCount = 0;
+      mockSupabaseClient.then.mockImplementation(
+        (resolve: (value: unknown) => void) => {
+          thenCallCount++;
+          if (thenCallCount === 1) {
+            // Initial query for unread notifications
+            resolve({
+              data: [
+                {
+                  id: "n1",
+                  user_id: VALID_UUID,
+                  type: "match",
+                  content: "Match",
+                  created_at: `${today}T10:00:00Z`,
+                },
+                {
+                  id: "n2",
+                  user_id: VALID_UUID_2,
+                  type: "like",
+                  content: "Like",
+                  created_at: `${today}T11:00:00Z`,
+                },
+              ],
+              error: null,
+            });
+          } else if (thenCallCount === 2) {
+            // First user digest insert — succeeds
+            resolve({ data: null, error: null });
+          } else {
+            // Second user digest insert — fails
+            resolve({ data: null, error: { code: "500", message: "Insert failed" } });
+          }
+        },
+      );
+
+      // Act
+      const result = await generateDigest();
+
+      // Assert
+      expect(result.digestsQueued).toBe(2);
+      expect(result.digestsSent).toBe(1);
+      expect(result.digestsFailed).toBe(1);
+      expect(result.errors.length).toBe(1);
+    });
+  });
+
+  // ── cleanupExpiredNotifications() ────────────────────────────────────────
+
+  describe("cleanupExpiredNotifications", () => {
+    it("deletes notifications older than cutoff", async () => {
+      // Arrange — then() is used for both count query and delete
+      let cleanupThenCall = 0;
+      mockSupabaseClient.then.mockImplementation(
+        (resolve: (value: unknown) => void) => {
+          cleanupThenCall++;
+          if (cleanupThenCall === 1) {
+            // Count query
+            resolve({ count: 10, error: null });
+          } else if (cleanupThenCall === 2) {
+            // Fetch IDs batch - return rows with IDs
+            resolve({ data: Array.from({ length: 10 }, (_, i) => ({ id: `id-${i}` })), error: null });
+          } else {
+            // Delete operation
+            resolve({ data: null, error: null });
+          }
+        },
+      );
+      mockSupabaseClient.delete.mockReturnThis();
+      mockSupabaseClient.in.mockReturnThis();
+
+      // Act
+      const result = await cleanupExpiredNotifications({ olderThanDays: 30 });
+
+      // Assert
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith("notifications");
+      expect(mockSupabaseClient.lt).toHaveBeenCalled();
+      // Service counts actual deleted rows (batchIds.length), not batch size
+      expect(result.notificationsDeleted).toBe(10);
+      expect(result.notificationsArchived).toBe(0);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("respects dryRun mode (counts only, no deletes)", async () => {
+      // Arrange
+      mockSupabaseClient.then.mockImplementation(
+        (resolve: (value: unknown) => void) =>
+          resolve({ count: 50, error: null }),
+      );
+
+      // Act
+      const result = await cleanupExpiredNotifications({ dryRun: true });
+
+      // Assert
+      expect(result.notificationsDeleted).toBe(0);
+      expect(result.notificationsArchived).toBe(50);
+      expect(result.errors).toEqual([]);
+      // delete() should NOT be called in dryRun
+      expect(mockSupabaseClient.delete).not.toHaveBeenCalled();
+    });
+
+    it("respects batchSize parameter", async () => {
+      // Arrange
+      let batchThenCall = 0;
+      mockSupabaseClient.then.mockImplementation(
+        (resolve: (value: unknown) => void) => {
+          batchThenCall++;
+          if (batchThenCall === 1) {
+            resolve({ count: 1500, error: null });
+          } else {
+            resolve({ data: null, error: null });
+          }
+        },
+      );
+      mockSupabaseClient.delete.mockReturnThis();
+
+      // Act
+      await cleanupExpiredNotifications({ batchSize: 500 });
+
+      // Assert
+      expect(mockSupabaseClient.range).toHaveBeenCalledWith(0, 499);
+    });
+
+    it("respects userId filter", async () => {
+      // Arrange
+      mockSupabaseClient.then.mockImplementation(
+        (resolve: (value: unknown) => void) =>
+          resolve({ count: 5, error: null }),
+      );
+      mockSupabaseClient.delete.mockReturnThis();
+      mockSupabaseClient.then.mockImplementation(
+        (resolve: (value: unknown) => void) =>
+          resolve({ data: null, error: null }),
+      );
+
+      // Act
+      await cleanupExpiredNotifications({ userId: VALID_UUID });
+
+      // Assert
+      // eq should be called with user_id filter
+      const eqCalls = mockSupabaseClient.eq.mock.calls;
+      const userIdFilterApplied = eqCalls.some(
+        (call: unknown[]) =>
+          Array.isArray(call) &&
+          call.length >= 2 &&
+          call[0] === "user_id" &&
+          call[1] === VALID_UUID,
+      );
+      expect(userIdFilterApplied).toBe(true);
+    });
+
+    it("handles no expired notifications", async () => {
+      // Arrange
+      mockSupabaseClient.then.mockImplementation(
+        (resolve: (value: unknown) => void) =>
+          resolve({ count: 0, error: null }),
+      );
+
+      // Act
+      const result = await cleanupExpiredNotifications();
+
+      // Assert
+      expect(result.notificationsDeleted).toBe(0);
+      expect(result.notificationsArchived).toBe(0);
+      expect(result.errors).toEqual([]);
+    });
+
+    it("handles Supabase count errors", async () => {
+      // Arrange
+      mockSupabaseClient.then.mockImplementation(
+        (resolve: (value: unknown) => void) =>
+          resolve({ count: null, error: { code: "500", message: "Count query failed" } }),
+      );
+
+      // Act
+      const result = await cleanupExpiredNotifications();
+
+      // Assert
+      expect(result.notificationsDeleted).toBe(0);
+      expect(result.notificationsArchived).toBe(0);
+      expect(result.errors).toContain("Count query failed");
+    });
+
+    it("handles Supabase delete errors in batch processing", async () => {
+      // Arrange
+      mockSupabaseClient.single.mockResolvedValue({
+        count: 100,
+        error: null,
+      });
+      mockSupabaseClient.delete.mockReturnThis();
+      // Override then to return error for delete operations
+      mockSupabaseClient.then.mockImplementation(
+        (resolve: (value: unknown) => void) =>
+          resolve({ data: null, error: { code: "500", message: "Batch delete failed" } }),
+      );
+
+      // Act
+      const result = await cleanupExpiredNotifications({ batchSize: 100 });
+
+      // Assert
+      expect(result.errors.length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  // ── checkNotificationPreferences() ───────────────────────────────────────
+
+  describe("checkNotificationPreferences", () => {
+    it("returns true when preferences allow notification", async () => {
+      // Arrange
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { ai_smart_match_alerts: true },
+        error: null,
+      });
+
+      // Act
+      const result = await checkNotificationPreferences(VALID_UUID, "match");
+
+      // Assert
+      expect(result).toBe(true);
+      expect(mockSupabaseClient.from).toHaveBeenCalledWith(
+        "notification_preferences",
+      );
+      expect(mockSupabaseClient.eq).toHaveBeenCalledWith("user_id", VALID_UUID);
+    });
+
+    it("returns false when preferences disable notification", async () => {
+      // Arrange
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { ai_smart_match_alerts: false },
+        error: null,
+      });
+
+      // Act
+      const result = await checkNotificationPreferences(VALID_UUID, "match");
+
+      // Assert
+      expect(result).toBe(false);
+    });
+
+    it("returns true when no preferences record exists (default allow)", async () => {
+      // Arrange — PGRST116 = no rows found
+      mockSupabaseClient.single.mockResolvedValue({
+        data: null,
+        error: { code: "PGRST116", message: "No rows found" },
+      });
+
+      // Act
+      const result = await checkNotificationPreferences(VALID_UUID, "match");
+
+      // Assert
+      expect(result).toBe(true);
+    });
+
+    it("returns true for unknown notification types (default allow)", async () => {
+      // Arrange & Act
+      const result = await checkNotificationPreferences(
+        VALID_UUID,
+        "unknown_type",
+      );
+
+      // Assert
+      expect(result).toBe(true);
+      // Should NOT query database for unknown types
+      expect(mockSupabaseClient.from).not.toHaveBeenCalled();
+    });
+
+    it("returns true when Supabase returns general error (fail-open)", async () => {
+      // Arrange
+      mockSupabaseClient.single.mockResolvedValue({
+        data: null,
+        error: { code: "500", message: "Database error" },
+      });
+
+      // Act
+      const result = await checkNotificationPreferences(VALID_UUID, "match");
+
+      // Assert
+      expect(result).toBe(true);
+    });
+
+    it("returns true when preference value is null/undefined (default allow)", async () => {
+      // Arrange
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { ai_smart_match_alerts: null },
+        error: null,
+      });
+
+      // Act
+      const result = await checkNotificationPreferences(VALID_UUID, "match");
+
+      // Assert
+      expect(result).toBe(true);
+    });
+
+    it("maps connect type to email_new_connections preference", async () => {
+      // Arrange
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { email_new_connections: false },
+        error: null,
+      });
+
+      // Act
+      const result = await checkNotificationPreferences(VALID_UUID, "connect");
+
+      // Assert
+      expect(result).toBe(false);
+      expect(mockSupabaseClient.select).toHaveBeenCalledWith(
+        "email_new_connections",
+      );
+    });
+
+    it("maps message type to email_messages preference", async () => {
+      // Arrange
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { email_messages: false },
+        error: null,
+      });
+
+      // Act
+      const result = await checkNotificationPreferences(VALID_UUID, "message");
+
+      // Assert
+      expect(result).toBe(false);
+      expect(mockSupabaseClient.select).toHaveBeenCalledWith("email_messages");
+    });
+
+    it("maps like type to email_post_likes preference", async () => {
+      // Arrange
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { email_post_likes: false },
+        error: null,
+      });
+
+      // Act
+      const result = await checkNotificationPreferences(VALID_UUID, "like");
+
+      // Assert
+      expect(result).toBe(false);
+      expect(mockSupabaseClient.select).toHaveBeenCalledWith(
+        "email_post_likes",
+      );
+    });
+
+    it("maps comment type to email_comments preference", async () => {
+      // Arrange
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { email_comments: false },
+        error: null,
+      });
+
+      // Act
+      const result = await checkNotificationPreferences(VALID_UUID, "comment");
+
+      // Assert
+      expect(result).toBe(false);
+      expect(mockSupabaseClient.select).toHaveBeenCalledWith("email_comments");
+    });
+
+    it("maps system type to push_enabled preference", async () => {
+      // Arrange
+      mockSupabaseClient.single.mockResolvedValue({
+        data: { push_enabled: false },
+        error: null,
+      });
+
+      // Act
+      const result = await checkNotificationPreferences(VALID_UUID, "system");
+
+      // Assert
+      expect(result).toBe(false);
+      expect(mockSupabaseClient.select).toHaveBeenCalledWith("push_enabled");
+    });
+  });
+});

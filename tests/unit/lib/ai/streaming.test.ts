@@ -75,7 +75,8 @@ describe('Streaming Utilities', () => {
         timeout: 30000
       },
       chat: vi.fn(),
-      stream: vi.fn()
+      stream: vi.fn(),
+      supportsStreaming: () => true,
     }
 
     const mockMessages: Message[] = [
@@ -112,7 +113,8 @@ describe('Streaming Utilities', () => {
           temperature: 0.7,
           timeout: 30000
         },
-        chat: vi.fn()
+        chat: vi.fn(),
+        supportsStreaming: () => false,
       }
 
       const response = await createMessageStream(mockMessages, providerNoStream)

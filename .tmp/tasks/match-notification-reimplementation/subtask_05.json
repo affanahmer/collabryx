@@ -1,0 +1,32 @@
+{
+  "id": "match-notification-reimplementation-05",
+  "seq": "05",
+  "title": "Rewrite app/api/matches/health/route.ts for direct health check",
+  "status": "pending",
+  "depends_on": ["01"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/c/Users/ahsan/.config/opencode/context/core/standards/code-quality.md"
+  ],
+  "reference_files": [
+    "app/api/matches/health/route.ts",
+    "lib/services/match-generator.ts",
+    "lib/supabase/server.ts"
+  ],
+  "acceptance_criteria": [
+    "Route no longer imports getBackendConfig or getCircuitBreakerStatus",
+    "Route no longer fetches to PYTHON_WORKER_URL /health",
+    "Route checks Supabase connectivity directly",
+    "Route verifies match_suggestions table accessibility",
+    "Route verifies profile_embeddings table accessibility",
+    "Returns HealthCheckResponse with status, database_connected, response_time_ms",
+    "Removes worker_health field (no worker)",
+    "Supports ?refresh=true query parameter for cache clearing",
+    "Returns 200 for healthy, 503 for degraded",
+    "Maintains CORS preflight handler"
+  ],
+  "deliverables": [
+    "app/api/matches/health/route.ts"
+  ]
+}

@@ -5,51 +5,11 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   // Turbopack config (Next.js 16 default)
   turbopack: {
-    // Enable code splitting and optimization
     resolveAlias: {
-      // Optimize large library imports
       'lucide-react': 'lucide-react/dist/esm/lucide-react',
     },
   },
-  // Webpack config for backwards compatibility
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      // Split large vendor chunks
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          ...config.optimization?.splitChunks,
-          chunks: 'all',
-          cacheGroups: {
-            ...config.optimization?.splitChunks?.cacheGroups,
-            // Separate vendor chunks
-            vendors: {
-              test: /[\/]node_modules[\/]/,
-              name: 'vendors',
-              chunks: 'all',
-              priority: 20,
-            },
-            // Separate React chunks
-            react: {
-              test: /[\/]node_modules[\/](react|react-dom|react-server-dom-webpack)[\/]/,
-              name: 'react',
-              chunks: 'all',
-              priority: 30,
-            },
-            // Separate UI library chunks
-            ui: {
-              test: /[\/]node_modules[\/](@radix-ui|@supabase)[\/]/,
-              name: 'ui',
-              chunks: 'all',
-              priority: 25,
-            },
-          },
-        },
-      };
-    }
-    return config;
-  },
-  // Image optimization with CDN caching
+  // Image optimization
   images: {
     remotePatterns: [
       {
@@ -73,7 +33,7 @@ const nextConfig: NextConfig = {
   },
   poweredByHeader: false,
   compress: true,
-  // Security and CDN caching headers
+  // Security headers only (Cache-Control removed — Next.js manages chunk caching internally)
   async headers() {
     return [
       {
@@ -119,105 +79,6 @@ const nextConfig: NextConfig = {
           {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), midi=()',
-          },
-        ],
-      },
-      // Static assets - long-term CDN caching (1 year)
-      {
-        source: '/_next/static/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      // JS chunks - long-term CDN caching (1 year)
-      {
-        source: '/_next/:path*.js',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      // HTML pages - no caching to ensure fresh content (placed after static asset rules)
-      {
-        source: '/((?!_next/static|_next/image|_next/data|static|api/upload|favicon|manifest).*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'no-cache, must-revalidate',
-          },
-        ],
-      },
-      // Static media files - long-term CDN caching
-      {
-        source: '/static/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      // Optimized images - medium-term caching (30 days)
-      {
-        source: '/_next/image',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=2592000, stale-while-revalidate=86400',
-          },
-        ],
-      },
-      // Avatars and banners from Supabase storage - CDN caching
-      {
-        source: '/api/upload/avatar/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400, stale-while-revalidate=604800',
-          },
-        ],
-      },
-      {
-        source: '/api/upload/banner/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400, stale-while-revalidate=604800',
-          },
-        ],
-      },
-      // Post media - medium-term caching
-      {
-        source: '/api/upload/post/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400, stale-while-revalidate=604800',
-          },
-        ],
-      },
-      // Fonts - long-term caching
-      {
-        source: '/:path*.(woff2?|ttf|otf|eot)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      // Favicon and manifest - medium-term caching
-      {
-        source: '/:path*.(ico|png|json)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400, stale-while-revalidate=604800',
           },
         ],
       },

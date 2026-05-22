@@ -1,0 +1,39 @@
+{
+  "id": "match-notification-reimplementation-03",
+  "seq": "03",
+  "title": "Rewrite app/api/matches/generate/route.ts to call service directly",
+  "status": "completed",
+  "agent_id": "coder-agent",
+  "started_at": "2026-05-22T00:00:00Z",
+  "completed_at": "2026-05-22T00:00:00Z",
+  "completion_summary": "Rewrote generate route to use native match-generator service, removed Python worker proxy",
+  "depends_on": ["01"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/c/Users/ahsan/.config/opencode/context/core/standards/code-quality.md",
+    "/c/Users/ahsan/.config/opencode/context/core/standards/security-patterns.md"
+  ],
+  "reference_files": [
+    "app/api/matches/generate/route.ts",
+    "lib/services/match-generator.ts",
+    "lib/utils/api-response.ts",
+    "lib/rate-limit.ts",
+    "lib/csrf/index.ts"
+  ],
+  "acceptance_criteria": [
+    "Route no longer imports getBackendConfig or getCircuitBreakerStatus",
+    "Route no longer fetches to PYTHON_WORKER_URL",
+    "Route imports and calls generateMatchesForUser from match-generator service",
+    "Maintains existing CSRF validation",
+    "Maintains existing rate limiting",
+    "Maintains existing auth check (supabase.auth.getUser)",
+    "Maintains existing onboarding/embedding prerequisite checks",
+    "Returns same response shape (MatchGenerationResponse interface)",
+    "Runtime remains 'edge' compatible or updated appropriately",
+    "Error handling uses errorResponse utility"
+  ],
+  "deliverables": [
+    "app/api/matches/generate/route.ts"
+  ]
+}

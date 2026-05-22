@@ -47,7 +47,7 @@ export function MobileNav() {
 
     return (
         <>
-            <div className="sticky top-0 z-50 flex items-center justify-between border-b bg-background/95 backdrop-blur px-3 py-2.5 md:hidden supports-[backdrop-filter]:bg-background/60">
+            <div className="sticky top-0 z-50 flex items-center justify-between border-b bg-background/95 backdrop-blur px-3 py-2.5 md:hidden supports-[backdrop-filter]:bg-background/60 pb-env(safe-area-inset-bottom)">
                 <div className="flex items-center gap-3">
                     <Sheet open={open} onOpenChange={setOpen}>
                         <SheetTrigger asChild>
@@ -79,7 +79,7 @@ export function MobileNav() {
                             aria-label="Notifications"
                         >
                             <Bell className="h-[18px] w-[18px]" />
-                            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-blue-500 border border-background" />
+                            <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive border border-background" />
                         </Button>
                     </NotificationsWidget>
 

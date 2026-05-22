@@ -1,5 +1,7 @@
 import type { AIProvider, Message, AIProviderResponse } from './base'
 import { AllProvidersFailedError } from '@/lib/ai/errors'
+import { OpenAICompatibleProvider } from './openai-compatible'
+import { AnthropicNativeProvider } from './anthropic-native'
 
 export interface ProviderConfig {
   name: string
@@ -35,7 +37,7 @@ export class ProviderRegistry {
 
   async chatWithFallback(
     messages: Message[],
-    options?: { preferredProvider?: string; timeout?: number }
+    options?: { preferredProvider?: string; timeout?: number; systemPrompt?: string }
   ): Promise<AIProviderResponse> {
     const errors: Array<{ provider: string; error: Error }> = []
     const triedProviders: string[] = []
@@ -47,6 +49,7 @@ export class ProviderRegistry {
         return await this.executeWithTimeout(
           preferred.provider.chat.bind(preferred.provider),
           messages,
+          options.systemPrompt,
           options.timeout
         )
       } catch (error) {
@@ -64,6 +67,7 @@ export class ProviderRegistry {
         return await this.executeWithTimeout(
           providerConfig.provider.chat.bind(providerConfig.provider),
           messages,
+          options?.systemPrompt,
           options?.timeout
         )
       } catch (error) {
@@ -82,17 +86,89 @@ export class ProviderRegistry {
   private async executeWithTimeout(
     chatFn: (messages: Message[], systemPrompt?: string) => Promise<AIProviderResponse>,
     messages: Message[],
+    systemPrompt?: string,
     timeoutMs?: number
   ): Promise<AIProviderResponse> {
     if (timeoutMs) {
       return Promise.race([
-        chatFn(messages),
+        chatFn(messages, systemPrompt),
         new Promise<AIProviderResponse>((_, reject) =>
           setTimeout(() => reject(new Error('Provider timeout')), timeoutMs)
         )
       ])
     }
-    return chatFn(messages)
+    return chatFn(messages, systemPrompt)
+  }
+}
+
+/**
+ * Auto-register providers from environment variables.
+ * Supports pattern: AI_PROVIDER_N_NAME, AI_PROVIDER_N_API_KEY, etc.
+ */
+export function autoRegisterProviders(registry: ProviderRegistry): void {
+  let index = 1
+
+  while (true) {
+    const name = process.env[`AI_PROVIDER_${index}_NAME`]
+    if (!name) break
+
+    const apiKey = process.env[`AI_PROVIDER_${index}_API_KEY`]
+    const baseURL = process.env[`AI_PROVIDER_${index}_BASE_URL`]
+    const model = process.env[`AI_PROVIDER_${index}_MODEL`]
+    const maxTokens = parseInt(process.env[`AI_PROVIDER_${index}_MAX_TOKENS`] || '4096', 10)
+    const temperature = parseFloat(process.env[`AI_PROVIDER_${index}_TEMPERATURE`] || '0.7')
+    const timeout = parseInt(process.env[`AI_PROVIDER_${index}_TIMEOUT`] || '60000', 10)
+    const priority = parseInt(process.env[`AI_PROVIDER_${index}_PRIORITY`] || String(index), 10)
+
+    if (!baseURL) {
+      console.warn(`⚠️ AI_PROVIDER_${index}_BASE_URL not set, skipping provider ${name}`)
+      index++
+      continue
+    }
+
+    try {
+      // Anthropic native API uses different endpoint pattern
+      if (baseURL.includes('anthropic.com')) {
+        const provider = new AnthropicNativeProvider({
+          apiKey,
+          model,
+          maxTokens,
+          temperature,
+          timeout,
+        })
+
+        registry.registerProvider({
+          name,
+          provider,
+          priority,
+          capabilities: ['chat', 'streaming'],
+        })
+      } else {
+        // All other providers use OpenAI-compatible format
+        const provider = new OpenAICompatibleProvider({
+          name,
+          apiKey,
+          baseURL,
+          model: model || 'gpt-4o-mini',
+          maxTokens,
+          temperature,
+          timeout,
+        })
+
+        registry.registerProvider({
+          name,
+          provider,
+          priority,
+          capabilities: ['chat', 'streaming'],
+        })
+      }
+
+      console.log(`✅ Registered AI provider: ${name} (priority: ${priority})`)
+    } catch (error) {
+      console.warn(`⚠️ Failed to register provider ${name}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    }
+
+    index++
   }
 }
 
@@ -101,6 +177,7 @@ let globalRegistry: ProviderRegistry | null = null
 export function getProviderRegistry(): ProviderRegistry {
   if (!globalRegistry) {
     globalRegistry = new ProviderRegistry()
+    autoRegisterProviders(globalRegistry)
   }
   return globalRegistry
 }

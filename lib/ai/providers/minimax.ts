@@ -121,6 +121,10 @@ export class MiniMaxProvider implements AIProvider {
     }
   }
 
+  supportsStreaming(): boolean {
+    return true
+  }
+
   async *stream(messages: Message[], systemPrompt?: string): AsyncGenerator<string> {
     const allMessages: Message[] = []
 

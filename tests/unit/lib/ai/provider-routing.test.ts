@@ -24,6 +24,7 @@ function createMockProvider(config: AIProviderConfig): AIProvider {
   return {
     config,
     chat: vi.fn(),
+    supportsStreaming: () => false,
   }
 }
 

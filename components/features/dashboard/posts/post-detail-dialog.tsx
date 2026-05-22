@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import { motion } from "framer-motion"
+import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import Image from "next/image"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -60,6 +62,8 @@ export function PostDetailDialog({
             scrollContainerRef.current.scrollTo({ left: 0 })
         }
     }, [post?.id])
+
+    const prefersReduced = useReducedMotion()
 
     if (!post) return null
 

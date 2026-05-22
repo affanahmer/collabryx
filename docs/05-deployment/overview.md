@@ -72,6 +72,20 @@ NODE_ENV=production
 # Required: Python Worker (Embeddings)
 PYTHON_WORKER_URL=https://your-embedding-service.com
 
+# Required: AI Providers (at least one)
+AI_PROVIDER_1_NAME=openai
+AI_PROVIDER_1_API_KEY=sk-prod-key
+AI_PROVIDER_1_BASE_URL=https://api.openai.com/v1
+AI_PROVIDER_1_MODEL=gpt-4o-mini
+AI_PROVIDER_1_PRIORITY=1
+
+# Optional: Secondary provider for failover
+AI_PROVIDER_2_NAME=anthropic
+AI_PROVIDER_2_API_KEY=sk-ant-prod-key
+AI_PROVIDER_2_BASE_URL=https://api.anthropic.com
+AI_PROVIDER_2_MODEL=claude-sonnet-4-20250514
+AI_PROVIDER_2_PRIORITY=2
+
 # Optional: Feature Flags
 NEXT_PUBLIC_ENABLE_AI_FEATURES=true
 NEXT_PUBLIC_MAINTENANCE_MODE=false
@@ -354,6 +368,21 @@ NODE_ENV=production
 
 # Required: Python Worker (Embeddings)
 PYTHON_WORKER_URL=
+
+# Required: AI Providers (Universal Provider System)
+# Configure at least one provider. For production, configure 2+ for failover.
+AI_PROVIDER_1_NAME=
+AI_PROVIDER_1_API_KEY=
+AI_PROVIDER_1_BASE_URL=
+AI_PROVIDER_1_MODEL=
+AI_PROVIDER_1_PRIORITY=1
+
+# Optional: Secondary provider
+# AI_PROVIDER_2_NAME=
+# AI_PROVIDER_2_API_KEY=
+# AI_PROVIDER_2_BASE_URL=
+# AI_PROVIDER_2_MODEL=
+# AI_PROVIDER_2_PRIORITY=2
 
 # Optional
 ```

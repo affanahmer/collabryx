@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { motion } from "framer-motion"
+import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -73,6 +75,7 @@ export function SuggestionsSidebar({ className }: MatchIntelligencePanelProps) {
     }
 
     // ── API → Cache → Hardcoded Fallback ──
+    const prefersReduced = useReducedMotion()
     const fetchMatchesData = useCallback(async () => {
         setIsLoading(true)
         try {
@@ -184,8 +187,8 @@ export function SuggestionsSidebar({ className }: MatchIntelligencePanelProps) {
                     {matches.length === 0 ? (
                         /* Empty State */
                         <div className="py-8 text-center">
-                            <div className="h-12 w-12 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <Inbox className="h-6 w-6 text-blue-400" />
+                            <div className="h-12 w-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-3">
+                                <Inbox className="h-6 w-6 text-muted-foreground" />
                             </div>
                             <p className="text-sm font-medium text-foreground mb-1">
                                 No matches yet
@@ -285,7 +288,7 @@ export function SuggestionsSidebar({ className }: MatchIntelligencePanelProps) {
                                     <h4 className="font-semibold text-sm text-foreground">
                                         Complete Your Profile
                                     </h4>
-                                    <span className="text-sm font-bold text-amber-500">Incomplete</span>
+                                    <span className="text-sm font-bold text-muted-foreground">Incomplete</span>
                                 </div>
                                 <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
                                     Complete your profile to unlock{" "}

@@ -1,0 +1,40 @@
+{
+  "id": "match-notification-reimplementation",
+  "name": "Match Generation & Notification Delivery Reimplementation",
+  "status": "active",
+  "objective": "Replace Python worker proxy routes with Next.js Server Actions using Supabase service_role for match generation and notification delivery",
+  "context_files": [
+    "/c/Users/ahsan/.config/opencode/context/core/standards/code-quality.md",
+    "/c/Users/ahsan/.config/opencode/context/core/standards/security-patterns.md",
+    "/c/Users/ahsan/.config/opencode/context/core/standards/server-actions.md"
+  ],
+  "reference_files": [
+    "types/database.types.ts",
+    "lib/services/match-generation.ts",
+    "lib/services/notifications.ts",
+    "lib/services/matches.ts",
+    "lib/services/embeddings.ts",
+    "lib/supabase/server.ts",
+    "app/api/matches/generate/route.ts",
+    "app/api/matches/generate/batch/route.ts",
+    "app/api/matches/health/route.ts",
+    "app/api/notifications/send/route.ts",
+    "app/api/notifications/digest/route.ts",
+    "app/api/notifications/cleanup/route.ts",
+    "lib/utils/api-response.ts",
+    "lib/rate-limit.ts",
+    "lib/csrf/index.ts"
+  ],
+  "exit_criteria": [
+    "All 6 API routes no longer proxy to Python worker",
+    "Match generation service implements cosine similarity scoring in TypeScript",
+    "Notification engine supports send, digest, and cleanup operations",
+    "All unit tests pass with >90% coverage",
+    "All integration tests pass against mock Supabase",
+    "No references to PYTHON_WORKER_URL in match/notification code",
+    "Service uses Supabase service_role client for server-side operations"
+  ],
+  "subtask_count": 12,
+  "completed_count": 0,
+  "created_at": "2026-05-22T00:00:00Z"
+}

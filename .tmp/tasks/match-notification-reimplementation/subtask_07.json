@@ -1,0 +1,33 @@
+{
+  "id": "match-notification-reimplementation-07",
+  "seq": "07",
+  "title": "Rewrite app/api/notifications/digest/route.ts to call service directly",
+  "status": "pending",
+  "depends_on": ["02"],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "/c/Users/ahsan/.config/opencode/context/core/standards/code-quality.md",
+    "/c/Users/ahsan/.config/opencode/context/core/standards/security-patterns.md"
+  ],
+  "reference_files": [
+    "app/api/notifications/digest/route.ts",
+    "lib/services/notification-engine.ts",
+    "lib/supabase/server.ts"
+  ],
+  "acceptance_criteria": [
+    "Route no longer imports getBackendConfig or getCircuitBreakerStatus",
+    "Route no longer fetches to PYTHON_WORKER_URL",
+    "Route imports and calls generateDigest from notification-engine service",
+    "Aggregates unread notifications by type for specified user(s)",
+    "Respects notification_preferences for digest frequency",
+    "Returns structured digest with notification counts by type",
+    "Supports admin-only access for bulk digest generation",
+    "Maintains CSRF validation",
+    "Error handling uses errorResponse utility",
+    "CORS preflight handler present"
+  ],
+  "deliverables": [
+    "app/api/notifications/digest/route.ts"
+  ]
+}

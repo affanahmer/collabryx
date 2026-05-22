@@ -72,7 +72,12 @@
   - `rate_limiter` - Database-backed rate limiting for embedding requests
   - `embedding_validator` - Embedding validation and dimension normalization
 
-- **OpenAI/Anthropic/Gemini** - Multi-provider AI mentor chat integration
+- **Universal AI Provider System** - Multi-provider registry with automatic failover:
+  - Supports ALL OpenAI-compatible APIs (OpenAI, Groq, Together, Ollama, etc.) via `OpenAICompatibleProvider`
+  - Native Anthropic support via `AnthropicNativeProvider`
+  - Priority-based automatic failover (lower number = higher priority)
+  - Configurable via `AI_PROVIDER_N_*` environment variables
+  - Legacy `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` still supported for backward compatibility
 
 ### State & Forms
 - **[Zustand 5](https://zustand-demo.pmnd.rs/)** - Lightweight state management
@@ -396,6 +401,18 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 # Python Worker (Optional, for embeddings)
 PYTHON_WORKER_URL=http://localhost:8000
+
+# AI Providers (Optional, configure one or more)
+# Legacy (backward compatible):
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Universal Provider System (recommended):
+AI_PROVIDER_1_NAME=openai
+AI_PROVIDER_1_API_KEY=sk-...
+AI_PROVIDER_1_BASE_URL=https://api.openai.com/v1
+AI_PROVIDER_1_MODEL=gpt-4o-mini
+AI_PROVIDER_1_PRIORITY=1
 
 # Optional
 NEXT_PUBLIC_APP_URL=http://localhost:3000

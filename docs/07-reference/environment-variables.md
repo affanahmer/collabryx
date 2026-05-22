@@ -52,6 +52,99 @@ These variables enable additional features or customization.
 |----------|-------------|---------|--------------|
 | `PYTHON_WORKER_URL` | Embedding service URL | `http://localhost:8000` | Semantic matching |
 
+### AI Providers (Universal Provider System)
+
+Collabryx uses a **multi-provider registry** with automatic failover. You can configure one or more AI providers using numbered environment variables.
+
+#### Provider Configuration Pattern
+
+Each provider is configured with a set of variables using a numeric index (`N`):
+
+| Variable | Description | Required | Example |
+|----------|-------------|----------|---------|
+| `AI_PROVIDER_N_NAME` | Provider display name | ✅ Yes | `openai`, `groq`, `ollama` |
+| `AI_PROVIDER_N_API_KEY` | API key for authentication | ✅ Yes | `sk-...` |
+| `AI_PROVIDER_N_BASE_URL` | API base URL | ✅ Yes | `https://api.openai.com/v1` |
+| `AI_PROVIDER_N_MODEL` | Model identifier | ✅ Yes | `gpt-4o-mini`, `llama-3.1-70b` |
+| `AI_PROVIDER_N_MAX_TOKENS` | Maximum response tokens | No (default: 4096) | `4096` |
+| `AI_PROVIDER_N_TEMPERATURE` | Sampling temperature (0-2) | No (default: 0.7) | `0.7` |
+| `AI_PROVIDER_N_TIMEOUT` | Request timeout in ms | No (default: 60000) | `60000` |
+| `AI_PROVIDER_N_PRIORITY` | Failover priority (lower = higher) | No (default: index) | `1` |
+
+> **Note:** Replace `N` with a number starting from 1. Providers are auto-registered in order.
+
+#### Provider Auto-Registration
+
+Providers are automatically detected and registered at startup. The system scans for `AI_PROVIDER_1_NAME`, `AI_PROVIDER_2_NAME`, etc., stopping at the first missing name.
+
+**Provider Type Detection:**
+- If `BASE_URL` contains `anthropic.com` → uses native Anthropic API
+- All other URLs → uses OpenAI-compatible format
+
+#### Legacy Variables (Backward Compatible)
+
+| Variable | Description | Status |
+|----------|-------------|--------|
+| `OPENAI_API_KEY` | OpenAI API key | ✅ Still supported |
+| `ANTHROPIC_API_KEY` | Anthropic API key | ✅ Still supported |
+
+> Legacy variables are used as fallback if no `AI_PROVIDER_N_*` variables are configured.
+
+#### Example: Single Provider (OpenAI)
+
+```env
+AI_PROVIDER_1_NAME=openai
+AI_PROVIDER_1_API_KEY=sk-proj-abc123...
+AI_PROVIDER_1_BASE_URL=https://api.openai.com/v1
+AI_PROVIDER_1_MODEL=gpt-4o-mini
+AI_PROVIDER_1_PRIORITY=1
+```
+
+#### Example: Multiple Providers with Failover
+
+```env
+# Primary: OpenAI (priority 1)
+AI_PROVIDER_1_NAME=openai
+AI_PROVIDER_1_API_KEY=sk-proj-abc123...
+AI_PROVIDER_1_BASE_URL=https://api.openai.com/v1
+AI_PROVIDER_1_MODEL=gpt-4o-mini
+AI_PROVIDER_1_PRIORITY=1
+
+# Secondary: Groq (priority 2)
+AI_PROVIDER_2_NAME=groq
+AI_PROVIDER_2_API_KEY=gsk_xyz789...
+AI_PROVIDER_2_BASE_URL=https://api.groq.com/openai/v1
+AI_PROVIDER_2_MODEL=llama-3.1-70b-versatile
+AI_PROVIDER_2_PRIORITY=2
+
+# Tertiary: Local Ollama (priority 3)
+AI_PROVIDER_3_NAME=ollama
+AI_PROVIDER_3_BASE_URL=http://localhost:11434/v1
+AI_PROVIDER_3_MODEL=llama3.1
+AI_PROVIDER_3_PRIORITY=3
+```
+
+#### Example: Anthropic Native Provider
+
+```env
+AI_PROVIDER_1_NAME=anthropic
+AI_PROVIDER_1_API_KEY=sk-ant-api03-...
+AI_PROVIDER_1_BASE_URL=https://api.anthropic.com
+AI_PROVIDER_1_MODEL=claude-sonnet-4-20250514
+AI_PROVIDER_1_MAX_TOKENS=8192
+AI_PROVIDER_1_PRIORITY=1
+```
+
+#### Example: Together AI
+
+```env
+AI_PROVIDER_1_NAME=together
+AI_PROVIDER_1_API_KEY=your-together-key
+AI_PROVIDER_1_BASE_URL=https://api.together.xyz/v1
+AI_PROVIDER_1_MODEL=meta-llama/Llama-3.1-70B-Instruct-Turbo
+AI_PROVIDER_1_PRIORITY=1
+```
+
 ### Feature Flags
 
 | Variable | Description | Default |
@@ -94,6 +187,13 @@ NODE_ENV=development
 # Feature Flags
 NEXT_PUBLIC_ENABLE_AI_FEATURES=true
 
+# AI Provider (Development - single provider)
+AI_PROVIDER_1_NAME=openai
+AI_PROVIDER_1_API_KEY=sk-dev-key
+AI_PROVIDER_1_BASE_URL=https://api.openai.com/v1
+AI_PROVIDER_1_MODEL=gpt-4o-mini
+AI_PROVIDER_1_PRIORITY=1
+
 # Development (optional - skip email verification locally)
 # SKIP_EMAIL_VERIFICATION=true
 
@@ -117,6 +217,19 @@ NODE_ENV=production
 # Feature Flags
 NEXT_PUBLIC_ENABLE_AI_FEATURES=true
 NEXT_PUBLIC_MAINTENANCE_MODE=false
+
+# AI Providers (Production - multi-provider with failover)
+AI_PROVIDER_1_NAME=openai
+AI_PROVIDER_1_API_KEY=sk-prod-key
+AI_PROVIDER_1_BASE_URL=https://api.openai.com/v1
+AI_PROVIDER_1_MODEL=gpt-4o-mini
+AI_PROVIDER_1_PRIORITY=1
+
+AI_PROVIDER_2_NAME=anthropic
+AI_PROVIDER_2_API_KEY=sk-ant-prod-key
+AI_PROVIDER_2_BASE_URL=https://api.anthropic.com
+AI_PROVIDER_2_MODEL=claude-sonnet-4-20250514
+AI_PROVIDER_2_PRIORITY=2
 
 # Development (optional - skip email verification locally)
 # SKIP_EMAIL_VERIFICATION=true
@@ -323,6 +436,13 @@ NODE_ENV=development
 NEXT_PUBLIC_ENABLE_AI_FEATURES=true
 NEXT_PUBLIC_MAINTENANCE_MODE=false
 
+# AI Providers (Universal Provider System)
+AI_PROVIDER_1_NAME=openai
+AI_PROVIDER_1_API_KEY=sk-proj-abc123...
+AI_PROVIDER_1_BASE_URL=https://api.openai.com/v1
+AI_PROVIDER_1_MODEL=gpt-4o-mini
+AI_PROVIDER_1_PRIORITY=1
+
 # Development (optional - skip email verification locally)
 # SKIP_EMAIL_VERIFICATION=true
 
@@ -330,7 +450,7 @@ NEXT_PUBLIC_MAINTENANCE_MODE=false
 
 ---
 
-**Last Updated**: 2026-03-14  
-**Version**: 2.0.0
+**Last Updated**: 2026-05-22  
+**Version**: 3.0.0
 
 [← Back to Docs](../README.md) | [Installation Guide →](../01-getting-started/installation.md)

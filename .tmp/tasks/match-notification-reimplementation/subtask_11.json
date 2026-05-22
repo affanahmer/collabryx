@@ -1,0 +1,39 @@
+{
+  "id": "match-notification-reimplementation-11",
+  "seq": "11",
+  "title": "Write tests/integration/matches/generation.test.ts",
+  "status": "pending",
+  "depends_on": ["03", "04", "05", "09"],
+  "parallel": false,
+  "suggested_agent": "TestEngineer",
+  "context_files": [
+    "/c/Users/ahsan/.config/opencode/context/core/standards/code-quality.md",
+    "/c/Users/ahsan/.config/opencode/context/core/standards/testing-patterns.md"
+  ],
+  "reference_files": [
+    "app/api/matches/generate/route.ts",
+    "app/api/matches/generate/batch/route.ts",
+    "app/api/matches/health/route.ts",
+    "lib/services/match-generator.ts",
+    "tests/setup/setup.ts",
+    "tests/setup/mocks.ts",
+    "tests/setup/fixtures.ts"
+  ],
+  "acceptance_criteria": [
+    "File tests/integration/matches/generation.test.ts exists",
+    "Tests use Vitest with AAA pattern",
+    "Tests POST /api/matches/generate end-to-end with mocked auth",
+    "Tests POST /api/matches/generate/batch with admin mock",
+    "Tests GET /api/matches/health response shape",
+    "Tests CSRF validation rejection",
+    "Tests rate limiting behavior",
+    "Tests unauthorized access (no auth)",
+    "Tests onboarding incomplete scenario",
+    "Tests embedding not ready scenario",
+    "Uses mock infrastructure, no real Supabase calls",
+    "All tests pass independently"
+  ],
+  "deliverables": [
+    "tests/integration/matches/generation.test.ts"
+  ]
+}

@@ -75,13 +75,20 @@ describe('context-assembler', () => {
         warnings: [],
       })
 
-      const result = await assembleRAGContext(mockUserId, mockQuery, mockSessionId, mockMessages)
+      const result = await assembleRAGContext({
+        userId: mockUserId,
+        query: mockQuery,
+        sessionId: mockSessionId,
+        messages: mockMessages,
+      })
 
       expect(result.profile).toEqual(mockProfile)
       expect(result.retrieved_contexts).toEqual(mockRetrievedContexts)
       expect(result.session_summary).toEqual(mockSummary)
       expect(result.conversation_history).toEqual(mockMessages.slice(-10))
       expect(result.assembled_at).toBeDefined()
+      expect(result.startup).toBeNull()
+      expect(result.multiUser).toBeNull()
     })
 
     it('should continue when profile fetch fails', async () => {
@@ -104,7 +111,12 @@ describe('context-assembler', () => {
         warnings: [],
       })
 
-      const result = await assembleRAGContext(mockUserId, mockQuery, mockSessionId, mockMessages)
+      const result = await assembleRAGContext({
+        userId: mockUserId,
+        query: mockQuery,
+        sessionId: mockSessionId,
+        messages: mockMessages,
+      })
 
       expect(result.profile).toBeNull()
       expect(result.retrieved_contexts).toEqual(mockRetrievedContexts)
@@ -130,7 +142,12 @@ describe('context-assembler', () => {
         warnings: [],
       })
 
-      const result = await assembleRAGContext(mockUserId, mockQuery, mockSessionId, mockMessages)
+      const result = await assembleRAGContext({
+        userId: mockUserId,
+        query: mockQuery,
+        sessionId: mockSessionId,
+        messages: mockMessages,
+      })
 
       expect(result.profile).toEqual(mockProfile)
       expect(result.retrieved_contexts).toEqual([])
@@ -156,7 +173,12 @@ describe('context-assembler', () => {
         warnings: ['Summarization failed'],
       })
 
-      const result = await assembleRAGContext(mockUserId, mockQuery, mockSessionId, mockMessages)
+      const result = await assembleRAGContext({
+        userId: mockUserId,
+        query: mockQuery,
+        sessionId: mockSessionId,
+        messages: mockMessages,
+      })
 
       expect(result.profile).toEqual(mockProfile)
       expect(result.session_summary).toBeNull()
@@ -189,7 +211,12 @@ describe('context-assembler', () => {
         created_at: new Date().toISOString(),
       }))
 
-      const result = await assembleRAGContext(mockUserId, mockQuery, mockSessionId, longMessages)
+      const result = await assembleRAGContext({
+        userId: mockUserId,
+        query: mockQuery,
+        sessionId: mockSessionId,
+        messages: longMessages,
+      })
 
       expect(result.conversation_history).toHaveLength(10)
       expect(result.conversation_history[0].id).toBe('5')
@@ -221,7 +248,12 @@ describe('context-assembler', () => {
       })
       vi.mocked(aiMentorPrompts.buildEnhancedSystemPrompt).mockReturnValue(mockSystemPrompt)
 
-      const result = await assembleAndBuildPrompt(mockUserId, mockQuery, mockSessionId, mockMessages)
+      const result = await assembleAndBuildPrompt({
+        userId: mockUserId,
+        query: mockQuery,
+        sessionId: mockSessionId,
+        messages: mockMessages,
+      })
 
       expect(aiMentorPrompts.buildEnhancedSystemPrompt).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -245,7 +277,12 @@ describe('context-assembler', () => {
       vi.mocked(contextFetcher.fetchUserProfileContext).mockRejectedValue(new Error('DB error'))
       vi.mocked(aiMentorPrompts.buildFallbackSystemPrompt).mockReturnValue(mockFallbackPrompt)
 
-      const result = await assembleAndBuildPrompt(mockUserId, mockQuery, mockSessionId, mockMessages)
+      const result = await assembleAndBuildPrompt({
+        userId: mockUserId,
+        query: mockQuery,
+        sessionId: mockSessionId,
+        messages: mockMessages,
+      })
 
       expect(result.systemPrompt).toBe(mockFallbackPrompt)
       expect(result.context.profile).toBeNull()
@@ -267,7 +304,12 @@ describe('context-assembler', () => {
       vi.mocked(sessionSummarizer.summarizeSessionIfNeeded).mockRejectedValue(new Error('Summary error'))
       vi.mocked(aiMentorPrompts.buildFallbackSystemPrompt).mockReturnValue(mockFallbackPrompt)
 
-      const result = await assembleAndBuildPrompt(mockUserId, mockQuery, mockSessionId, mockMessages)
+      const result = await assembleAndBuildPrompt({
+        userId: mockUserId,
+        query: mockQuery,
+        sessionId: mockSessionId,
+        messages: mockMessages,
+      })
 
       expect(result.context.profile).toBeNull()
       expect(result.context.retrieved_contexts).toEqual([])
