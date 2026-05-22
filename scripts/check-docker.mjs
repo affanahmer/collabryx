@@ -33,10 +33,6 @@ async function checkHealth() {
 }
 
 async function main() {
-  const mode = process.env.BACKEND_MODE || 'auto'
-  
-
-  
   // Skip check if running on Vercel
   if (process.env.VERCEL) {
     stdout.write('✅ Vercel deployment: Using Render backend\n')
