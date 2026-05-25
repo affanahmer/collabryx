@@ -192,7 +192,7 @@ export function useRealtimeNotifications() {
         .subscribe()
     }
 
-    setup()
+    setup().catch((err) => console.error("Failed to set up notifications channel:", err))
 
     return () => {
       isMounted = false

@@ -90,11 +90,16 @@ export class ProviderRegistry {
     timeoutMs?: number
   ): Promise<AIProviderResponse> {
     if (timeoutMs) {
+      const controller = new AbortController()
+      const timeoutPromise = new Promise<AIProviderResponse>((_, reject) =>
+        setTimeout(() => {
+          controller.abort()
+          reject(new Error('Provider timeout'))
+        }, timeoutMs)
+      )
       return Promise.race([
         systemPrompt ? chatFn(messages, systemPrompt) : chatFn(messages),
-        new Promise<AIProviderResponse>((_, reject) =>
-          setTimeout(() => reject(new Error('Provider timeout')), timeoutMs)
-        )
+        timeoutPromise,
       ])
     }
     return systemPrompt ? chatFn(messages, systemPrompt) : chatFn(messages)
