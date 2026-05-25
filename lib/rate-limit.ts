@@ -43,6 +43,11 @@ const RATE_LIMITS = {
     maxRequests: 20,
     blockDuration: 2 * 60 * 60 * 1000,
   },
+  matches: {
+    interval: 60 * 1000,
+    maxRequests: 10,
+    blockDuration: 5 * 60 * 1000,
+  },
   fileUpload: {
     interval: 24 * 60 * 60 * 1000,
     maxRequests: 50,
