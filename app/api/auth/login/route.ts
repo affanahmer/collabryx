@@ -75,9 +75,60 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create rate limit key based on email and IP
+    // Create rate limit keys for email-only and combined tracking
+    const emailOnlyKey = `login:${email.toLowerCase()}`
     const rateLimitKey = `${email.toLowerCase()}:${ip}`
     const now = Date.now()
+    
+    // Email-based rate limiting (independent of IP - prevents IP spoofing bypass)
+    const emailLockoutData = failedAttempts.get(emailOnlyKey)
+    if (emailLockoutData && emailLockoutData.lockedUntil > now) {
+      const remainingLockTime = Math.ceil((emailLockoutData.lockedUntil - now) / 1000 / 60)
+      logger.auth.warn('Login attempt on email-locked account', {
+        email: email.toLowerCase(),
+        ip,
+        remainingLockTime,
+      })
+      
+      return NextResponse.json(
+        {
+          error: 'Account temporarily locked',
+          message: `Too many failed attempts. Please try again in ${remainingLockTime} minutes.`,
+          locked: true,
+          retryAfter: remainingLockTime * 60,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': (remainingLockTime * 60).toString(),
+            'X-Account-Locked': 'true',
+          },
+        }
+      )
+    }
+
+    if (emailLockoutData && emailLockoutData.backoffUntil > now) {
+      const remainingBackoff = Math.ceil((emailLockoutData.backoffUntil - now) / 1000)
+      logger.auth.info('Login attempt during email backoff period', {
+        email: email.toLowerCase(),
+        ip,
+        remainingBackoff,
+      })
+      
+      return NextResponse.json(
+        {
+          error: 'Too many attempts',
+          message: 'Please wait before trying again',
+          retryAfter: remainingBackoff,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': remainingBackoff.toString(),
+          },
+        }
+      )
+    }
     
     // Check for account lockout
     const lockoutData = failedAttempts.get(rateLimitKey)
@@ -165,6 +216,13 @@ export async function POST(request: NextRequest) {
           lockedUntil: now + lockoutDuration,
           backoffUntil: 0,
         })
+        // Also lock by email-only key to prevent IP spoofing bypass
+        failedAttempts.set(emailOnlyKey, {
+          count: newCount,
+          lastAttempt: now,
+          lockedUntil: now + lockoutDuration,
+          backoffUntil: 0,
+        })
         
         logger.auth.error('Account locked due to failed attempts', {
           email: email.toLowerCase(),
@@ -199,6 +257,13 @@ export async function POST(request: NextRequest) {
         lockedUntil: 0,
         backoffUntil: now + backoffMs,
       })
+      // Also track by email-only key to prevent IP spoofing bypass
+      failedAttempts.set(emailOnlyKey, {
+        count: newCount,
+        lastAttempt: now,
+        lockedUntil: 0,
+        backoffUntil: now + backoffMs,
+      })
 
       logger.auth.info('Failed login with backoff', {
         email: email.toLowerCase(),
@@ -224,8 +289,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Successful login - clear failed attempts
+    // Successful login - clear failed attempts (IP-based and email-only)
     failedAttempts.delete(rateLimitKey)
+    failedAttempts.delete(emailOnlyKey)
 
     logger.auth.info('Successful login', {
       userId: data.user.id,
