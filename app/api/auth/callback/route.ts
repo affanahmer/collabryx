@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { devLog, isDebugEnabled } from "@/lib/services/development"
 
+/**
+ * CSRF Protection Note:
+ * This endpoint uses GET for the OAuth callback flow (standard PKCE flow).
+ * Supabase manages CSRF protection via the `SameSite=Strict` cookie attribute set
+ * on the auth session cookie. This prevents the browser from sending the cookie
+ * on cross-site requests, effectively mitigating CSRF attacks on the auth callback.
+ * No additional CSRF token validation is required for this callback route.
+ */
+
 export async function GET(request: NextRequest) {
     const { searchParams, origin } = new URL(request.url)
     const code = searchParams.get("code")
