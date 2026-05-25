@@ -186,6 +186,19 @@ export default function Orb({
     gl.clearColor(0, 0, 0, 0);
     container.appendChild(gl.canvas);
 
+    let contextLost = false;
+
+    gl.canvas.addEventListener('webglcontextlost', (e: Event) => {
+      e.preventDefault();
+      contextLost = true;
+      cancelAnimationFrame(rafId);
+    });
+
+    gl.canvas.addEventListener('webglcontextrestored', () => {
+      contextLost = false;
+      rafId = requestAnimationFrame(update);
+    });
+
     const geometry = new Triangle(gl);
     const program = new Program(gl, {
       vertex: vert,
@@ -206,7 +219,7 @@ export default function Orb({
 
     function resize() {
       if (!container) return;
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       const width = container.clientWidth;
       const height = container.clientHeight;
       renderer.setSize(width * dpr, height * dpr);
@@ -250,6 +263,7 @@ export default function Orb({
 
     let rafId: number;
     const update = (t: number) => {
+      if (contextLost) return;
       rafId = requestAnimationFrame(update);
       const dt = (t - lastTime) * 0.001;
       lastTime = t;
@@ -274,7 +288,9 @@ export default function Orb({
       window.removeEventListener('resize', resize);
       container.removeEventListener('mousemove', handleMouseMove);
       container.removeEventListener('mouseleave', handleMouseLeave);
-      container.removeChild(gl.canvas);
+      if (container.contains(gl.canvas)) {
+        container.removeChild(gl.canvas);
+      }
       gl.getExtension('WEBGL_lose_context')?.loseContext();
     };
   }, [hue, hoverIntensity, rotateOnHover, forceHoverState, vert, frag]);

@@ -5,7 +5,17 @@ import { devLog, isDebugEnabled } from "@/lib/services/development"
 export async function GET(request: NextRequest) {
     const { searchParams, origin } = new URL(request.url)
     const code = searchParams.get("code")
-    const next = searchParams.get("next") ?? "/dashboard"
+    let next = searchParams.get("next") ?? "/dashboard"
+    function isValidRedirect(path: string): boolean {
+        if (!path.startsWith('/')) return false
+        if (path.startsWith('//')) return false
+        if (path.includes('@')) return false
+        if (path.includes(':')) return false
+        return true
+    }
+    if (!isValidRedirect(next)) {
+        next = '/dashboard'
+    }
     
     const timestamp = new Date().toISOString()
     const isDebug = isDebugEnabled()
@@ -83,7 +93,7 @@ export async function GET(request: NextRequest) {
             
             // Redirect with error message for user
             return NextResponse.redirect(
-                `${origin}/login?error=${encodeURIComponent(error.message || 'Authentication failed')}`
+                `${origin}/login?error=authentication_failed`
             )
         }
     }
