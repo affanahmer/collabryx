@@ -231,12 +231,16 @@ export async function generateMatchesForUser(
   ) ?? [];
   excludeList.push(...blockedIds);
 
-  // Also fetch blocked connections from connections table
-  const { data: blockedConnections } = await supabase
+  // Fetch blocked connections from connections table (status = 'blocked')
+  const { data: blockedConnections, error: blockedConnError } = await supabase
     .from("connections")
     .select("requester_id, receiver_id")
     .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
     .eq("status", "blocked");
+
+  if (blockedConnError) {
+    logger.app.error("Error fetching blocked connections", { error: blockedConnError });
+  }
 
   if (blockedConnections) {
     for (const conn of blockedConnections) {
