@@ -49,6 +49,7 @@ async function fetchConversations(): Promise<Conversation[]> {
         `)
         .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
         .order("last_message_at", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: false })
 
     if (conversationsError) {
         console.error("Failed to fetch conversations:", conversationsError)

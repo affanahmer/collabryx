@@ -50,15 +50,20 @@ export interface EmbeddingGenerationResult {
 export async function generateUserEmbedding(userId: string): Promise<EmbeddingGenerationResult> {
   const supabase = createClient();
   
-  const { data: { session } } = await supabase.auth.getSession();
+  // Use getUser() instead of getSession() — it verifies the token with the
+  // Supabase Auth server rather than trusting the locally-cached session.
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
   
-  if (!session?.access_token) {
+  if (userError || !user) {
     return {
       success: false,
-      message: "Not authenticated",
-      error: "User session not found"
+      message: userError?.message || "Not authenticated",
+      error: "User session not found or token invalid"
     };
   }
+
+  // Read the access token from local session for the Authorization header
+  const { data: { session } } = await supabase.auth.getSession();
 
   try {
     const response = await fetch(
@@ -66,7 +71,7 @@ export async function generateUserEmbedding(userId: string): Promise<EmbeddingGe
       {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${session.access_token}`,
+          "Authorization": `Bearer ${session?.access_token || ''}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ user_id: userId }),
@@ -245,9 +250,10 @@ export async function checkEmbeddingRateLimit(_userId?: string): Promise<{
 }> {
   const supabase = createClient();
   
-  const { data: { session } } = await supabase.auth.getSession();
+  // Use getUser() to verify the session server-side
+  const { data: { user } } = await supabase.auth.getUser();
   
-  if (!session?.access_token) {
+  if (!user) {
     return {
       allowed: false,
       remaining: 0,
@@ -256,7 +262,7 @@ export async function checkEmbeddingRateLimit(_userId?: string): Promise<{
   }
 
   try {
-    const userId = _userId || session.user.id;
+    const userId = _userId || user.id;
 
     const { data, error: rpcError } = await supabase
       .rpc('check_embedding_rate_limit', { p_user_id: userId })
