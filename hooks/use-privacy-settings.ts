@@ -27,18 +27,7 @@ export function usePrivacySettings(userId: string | null) {
             }
 
             if (process.env.NODE_ENV === "development") {
-                await new Promise((resolve) => setTimeout(resolve, 300))
-                return {
-                    id: "dev-privacy-id",
-                    user_id: userId,
-                    profile_visibility: "public",
-                    show_email: false,
-                    show_connections_list: true,
-                    activity_status_visible: true,
-                    allow_data_download: true,
-                    updated_at: new Date().toISOString(),
-                    created_at: new Date().toISOString(),
-                }
+                console.warn("Using real API in development mode — ensure backend is running")
             }
 
             const { data, error: fetchError } = await supabase
@@ -66,8 +55,7 @@ export function usePrivacySettings(userId: string | null) {
             }
 
             if (process.env.NODE_ENV === "development") {
-                await new Promise((resolve) => setTimeout(resolve, 500))
-                return { success: true }
+                console.warn("Using real API in development mode — ensure backend is running")
             }
 
             const { data: existingSettings } = await supabase
