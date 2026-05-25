@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from "react"
 import { useForm, FormProvider } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -28,72 +27,17 @@ import { createClient } from "@/lib/supabase/client"
 import { completeOnboarding } from "./actions"
 import { useDebounce } from "@/hooks/use-debounce"
 import { isEmailVerificationSkipped } from "@/lib/services/development"
+import { onboardingDataSchema, OnboardingData } from "@/lib/validations/onboarding"
 
-// Schemas for each step - aligned with component validation
-const basicInfoSchema = z.object({
-    fullName: z.string()
-        .min(2, "Full name must be at least 2 characters.")
-        .max(100, "Full name must be less than 100 characters.")
-        .regex(/^[a-zA-Z\s'-]+$/, "Name can only contain letters, spaces, hyphens, and apostrophes"),
-    displayName: z.string()
-        .max(30, "Display name must be less than 30 characters.")
-        .regex(/^[a-z0-9_]*$/, "Display name can only contain lowercase letters, numbers, and underscores.")
-        .optional()
-        .or(z.literal("")),
-    headline: z.string()
-        .min(5, "Headline must be at least 5 characters.")
-        .max(200, "Headline must be less than 200 characters."),
-    location: z.string()
-        .max(100, "Location must be less than 100 characters.")
-        .optional()
-        .or(z.literal("")),
-})
+const combinedSchema = onboardingDataSchema
 
-const skillsSchema = z.object({
-    skills: z.array(z.object({
-        id: z.string(),
-        label: z.string(),
-        proficiency: z.enum(["beginner", "intermediate", "advanced", "expert"], {
-            required_error: "Please select proficiency level"
-        })
-    })).min(5, "Please add at least 5 skills to continue"),
-})
-
-const interestsGoalsSchema = z.object({
-    interests: z.array(z.string()).min(1, "Please add at least one interest."),
-    goals: z.array(z.string()).optional(),
-})
-
-const experienceSchema = z.object({
-    experiences: z.array(z.object({
-        title: z.string().optional().or(z.literal("")),
-        company: z.string().optional().or(z.literal("")),
-        description: z.string().optional().or(z.literal("")),
-    }).refine(
-        (data) => data.title || data.company,
-        { message: "At least title or company is required" }
-    )).optional(),
-    links: z.array(z.object({
-        platform: z.string(),
-        url: z.string().optional().or(z.literal("")),
-    })).optional(),
-})
-
-const combinedSchema = z.object({
-    ...basicInfoSchema.shape,
-    ...skillsSchema.shape,
-    ...interestsGoalsSchema.shape,
-    ...experienceSchema.shape,
-});
-
-export type OnboardingFormValues = z.infer<typeof combinedSchema>
 
 const STEPS = [
     { id: "welcome", title: "Welcome", component: StepWelcome, icon: Sparkles },
-    { id: "basic-info", title: "Basic Info", component: StepBasicInfo, schema: basicInfoSchema, icon: User },
-    { id: "skills", title: "Skills", component: StepSkills, schema: skillsSchema, icon: Code2 },
-    { id: "interests-goals", title: "Interests & Goals", component: StepInterestsAndGoals, schema: interestsGoalsSchema, icon: Target },
-    { id: "experience", title: "Experience", component: StepExperience, schema: experienceSchema, icon: Briefcase },
+    { id: "basic-info", title: "Basic Info", component: StepBasicInfo, icon: User },
+    { id: "skills", title: "Skills", component: StepSkills, icon: Code2 },
+    { id: "interests-goals", title: "Interests & Goals", component: StepInterestsAndGoals, icon: Target },
+    { id: "experience", title: "Experience", component: StepExperience, icon: Briefcase },
 ]
 
 const transition = {
@@ -113,7 +57,7 @@ export default function OnboardingPage() {
     const router = useRouter()
     const shouldReduceMotion = useReducedMotion()
 
-    const methods = useForm<OnboardingFormValues>({
+    const methods = useForm<OnboardingData>({
         resolver: zodResolver(combinedSchema),
         mode: "onBlur",
         reValidateMode: "onChange",
@@ -405,7 +349,7 @@ export default function OnboardingPage() {
         }
     }
 
-    const onSubmit = useCallback(async (data: OnboardingFormValues) => {
+    const onSubmit = useCallback(async (data: OnboardingData) => {
         // Prevent double submission
         if (isSubmitting) return
         
