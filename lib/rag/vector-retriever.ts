@@ -5,7 +5,10 @@ import type { RetrievedContext } from './types'
 
 let openaiInstance: OpenAI | null = null
 
-// Module-level BM25 index cache to avoid rebuilding on every query
+// Module-level BM25 index cache to avoid rebuilding on every query.
+// NOTE: Shared across all users intentionally — for a single-tenant / embedded deployment
+// this is fine because all profiles are indexed together. The cache is invalidated by
+// CACHE_TTL_MS below. If multi-tenant isolation is needed, scope the cache by tenant ID.
 interface BM25Cache {
   index: BM25 | null
   timestamp: number
@@ -146,10 +149,13 @@ async function searchKeywordIndex(
     }))
   }
 
+  // NOTE: 500-profile limit for BM25 index construction. The BM25 index is built in-memory
+  // and searched locally, so the payload is proportional to avg profile text length × 500.
+  // If the user base grows beyond 500, consider paginating or switching to Postgres full-text search.
   const { data: profiles, error } = await supabase
     .from('profiles')
     .select('id, display_name, headline, bio, looking_for, skills, interests')
-    .limit(100)
+    .limit(500)
 
   if (error) {
     throw new Error(`Failed to fetch profiles for keyword search: ${error.message}`)

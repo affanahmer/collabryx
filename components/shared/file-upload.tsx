@@ -82,7 +82,18 @@ export function FileUpload({
       formData.append('file', file)
       formData.append('type', uploadType)
 
-      // Simulate progress (since Supabase doesn't provide upload progress)
+      /**
+       * NOTE: Upload progress is SIMULATED — not actual transfer progress.
+       *
+       * The progress bar increments in steps of 10% every 100ms up to 90%,
+       * then jumps to 100% when the fetch completes. This provides visual
+       * feedback during upload but is NOT accurate.
+       *
+       * For real upload progress tracking:
+       * - Supabase Storage: use the onUploadProgress callback in the JS SDK
+       * - For custom uploads: use XMLHttpRequest with xhr.upload.onprogress
+       * - For fetch API: not natively supported (use XHR or ReadableStream)
+       */
       const progressInterval = setInterval(() => {
         setProgress(prev => {
           if (prev >= 90) {
