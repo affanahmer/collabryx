@@ -18,16 +18,7 @@ export function useAIStream(options: UseAIStreamOptions) {
   const currentMessageRef = useRef<string>('')
   const abortControllerRef = useRef<AbortController | null>(null)
   const messagesRef = useRef<AIMessage[]>([])
-  const [sessionId] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const stored = sessionStorage.getItem('ai-mentor-session-id')
-      if (stored) return stored
-      const newId = crypto.randomUUID()
-      sessionStorage.setItem('ai-mentor-session-id', newId)
-      return newId
-    }
-    return crypto.randomUUID()
-  })
+  const [sessionId] = useState(() => crypto.randomUUID())
 
   // Keep ref in sync with state
   useEffect(() => {
