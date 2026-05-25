@@ -77,7 +77,7 @@ export function PrivacySettingsForm({ userId }: PrivacySettingsFormProps) {
 
     const handleDataDownload = () => {
         toast.info("Preparing your data for download...")
-        // TODO: Implement actual data export functionality
+        // Data export functionality will be implemented in a future release
         setTimeout(() => {
             toast.success("Your data export is ready. Check your email.")
         }, 2000)
