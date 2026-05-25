@@ -44,6 +44,7 @@ function createMockClient() {
     eq: vi.fn(),
     not: vi.fn(),
     or: vi.fn(),
+    in: vi.fn(),
     single: mockSingle,
     upsert: mockUpsert,
     insert: vi.fn().mockResolvedValue({ data: null, error: null }),
@@ -55,6 +56,7 @@ function createMockClient() {
   client.eq.mockReturnValue(client);
   client.not.mockReturnValue(client);
   client.or.mockReturnValue(client);
+  client.in.mockReturnValue(client);
 
   // Make the client thenable — resolves with queued mockResult values
   Object.defineProperty(client, "then", {
@@ -647,10 +649,10 @@ describe("generateMatchesForUser", () => {
       data: { user_id: "user-1", embedding: [0.5, 0.3, 0.2], status: "completed" },
       error: null,
     });
-    // User skills
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    // User interests
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
+    // User skills (direct await)
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    // User interests (direct await)
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
     // User profile
     mockSingle.mockResolvedValueOnce({
       data: { id: "user-1", collaboration_readiness: "open" },
@@ -661,10 +663,16 @@ describe("generateMatchesForUser", () => {
       data: { min_match_percentage: null },
       error: null,
     });
-    // Blocked users
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    // Candidates query
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
+    // Blocked users (direct await)
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    // Candidates query (direct await) — returns empty
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    // Batch skills (still called even with empty candidateIds)
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    // Batch interests
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    // Batch profiles
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
 
     // Act
     const result = await generateMatchesForUser("user-1");
@@ -675,23 +683,24 @@ describe("generateMatchesForUser", () => {
 
   it("returns matches sorted by percentage descending", async () => {
     // Arrange
-    // Call order for generateMatchesForUser:
+    // Call order for generateMatchesForUser (NEW batch flow):
     // 1. User embedding (.single)
     // 2. User skills (direct await in Promise.all)
     // 3. User interests (direct await in Promise.all)
     // 4. User profile (.single in Promise.all)
     // 5. Match preferences (.single in Promise.all)
     // 6. Blocked users (direct await)
-    // 7. Candidates (direct await)
-    // 8-10. Candidate 2: skills (direct), interests (direct), profile (.single)
-    // 11-13. Candidate 3: skills (direct), interests (direct), profile (.single)
-    // 14. Upsert match_suggestions (direct await)
-    // 15. persistMatchScores: check existing user-2 (.single)
-    // 16. persistMatchScores: upsert score user-2 (direct)
-    // 17. persistMatchScores: check existing user-3 (.single)
-    // 18. persistMatchScores: upsert score user-3 (direct)
+    // 7. Candidates via .not() (direct await)
+    // 8. Batch skills via .in() (direct await)
+    // 9. Batch interests via .in() (direct await)
+    // 10. Batch profiles via .in() (direct await)
+    // 11. Upsert match_suggestions (direct await)
+    // 12. persistMatchScores: check existing user-2 (.single)
+    // 13. persistMatchScores: upsert score user-2 (direct)
+    // 14. persistMatchScores: check existing user-3 (.single)
+    // 15. persistMatchScores: upsert score user-3 (direct)
 
-    // .single() calls: 1, 4, 5, 10, 13, 15, 17
+    // .single() calls: 1, 4, 5, 12, 14
     mockSingle.mockResolvedValueOnce({
       data: { user_id: "user-1", embedding: [1, 0, 0], status: "completed" },
       error: null,
@@ -704,18 +713,10 @@ describe("generateMatchesForUser", () => {
       data: { min_match_percentage: null },
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({
-      data: { collaboration_readiness: "open" },
-      error: null,
-    });
-    mockSingle.mockResolvedValueOnce({
-      data: { collaboration_readiness: "open" },
-      error: null,
-    });
     mockSingle.mockResolvedValueOnce({ data: null, error: null });
     mockSingle.mockResolvedValueOnce({ data: null, error: null });
 
-    // Direct await calls: 2, 3, 6, 7, 8, 9, 11, 12, 14, 16, 18
+    // Direct await calls: 2, 3, 6, 7, 8, 9, 10, 11, 13, 15
     mockResult.mockResolvedValueOnce({ data: [], error: null }); // 2: user skills
     mockResult.mockResolvedValueOnce({ data: [], error: null }); // 3: user interests
     mockResult.mockResolvedValueOnce({ data: [], error: null }); // 6: blocked users
@@ -726,13 +727,19 @@ describe("generateMatchesForUser", () => {
       ],
       error: null,
     }); // 7: candidates
-    mockResult.mockResolvedValueOnce({ data: [], error: null }); // 8: cand2 skills
-    mockResult.mockResolvedValueOnce({ data: [], error: null }); // 9: cand2 interests
-    mockResult.mockResolvedValueOnce({ data: [], error: null }); // 11: cand3 skills
-    mockResult.mockResolvedValueOnce({ data: [], error: null }); // 12: cand3 interests
-    mockResult.mockResolvedValueOnce({ data: null, error: null }); // 14: upsert suggestions
-    mockResult.mockResolvedValueOnce({ data: null, error: null }); // 16: upsert score user-2
-    mockResult.mockResolvedValueOnce({ data: null, error: null }); // 18: upsert score user-3
+    // Batch calls replace per-candidate queries
+    mockResult.mockResolvedValueOnce({ data: [], error: null }); // 8: batch skills
+    mockResult.mockResolvedValueOnce({ data: [], error: null }); // 9: batch interests
+    mockResult.mockResolvedValueOnce({
+      data: [
+        { id: "user-2", collaboration_readiness: "open" },
+        { id: "user-3", collaboration_readiness: "open" },
+      ],
+      error: null,
+    }); // 10: batch profiles
+    mockResult.mockResolvedValueOnce({ data: null, error: null }); // 11: upsert suggestions
+    mockResult.mockResolvedValueOnce({ data: null, error: null }); // 13: upsert score user-2
+    mockResult.mockResolvedValueOnce({ data: null, error: null }); // 15: upsert score user-3
 
     // Act
     const result = await generateMatchesForUser("user-1");
@@ -752,8 +759,9 @@ describe("generateMatchesForUser", () => {
       data: { user_id: "user-1", embedding: [1, 0, 0], status: "completed" },
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
+    // User skills / interests (direct await)
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockSingle.mockResolvedValueOnce({
       data: { id: "user-1", collaboration_readiness: "open" },
       error: null,
@@ -762,18 +770,19 @@ describe("generateMatchesForUser", () => {
       data: { min_match_percentage: 90 },
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
     // Candidate with lower similarity (orthogonal → 0% score)
-    mockSingle.mockResolvedValueOnce({
+    mockResult.mockResolvedValueOnce({
       data: [
         { user_id: "user-2", embedding: [0, 1, 0], status: "completed" },
       ],
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({
-      data: { collaboration_readiness: "open" },
+    // Batch calls (skills, interests, profiles)
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({
+      data: [{ id: "user-2", collaboration_readiness: "open" }],
       error: null,
     });
 
@@ -790,8 +799,9 @@ describe("generateMatchesForUser", () => {
       data: { user_id: "user-1", embedding: [1, 0, 0], status: "completed" },
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
+    // User skills / interests (direct await)
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockSingle.mockResolvedValueOnce({
       data: { id: "user-1", collaboration_readiness: "open" },
       error: null,
@@ -800,9 +810,9 @@ describe("generateMatchesForUser", () => {
       data: { min_match_percentage: null },
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
     // 3 candidates
-    mockSingle.mockResolvedValueOnce({
+    mockResult.mockResolvedValueOnce({
       data: [
         { user_id: "user-2", embedding: [1, 0, 0], status: "completed" },
         { user_id: "user-3", embedding: [1, 0, 0], status: "completed" },
@@ -810,33 +820,24 @@ describe("generateMatchesForUser", () => {
       ],
       error: null,
     });
-    // Candidate 2 data
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({
-      data: { collaboration_readiness: "open" },
+    // Batch calls replace per-candidate queries
+    mockResult.mockResolvedValueOnce({ data: [], error: null }); // batch skills
+    mockResult.mockResolvedValueOnce({ data: [], error: null }); // batch interests
+    mockResult.mockResolvedValueOnce({
+      data: [
+        { id: "user-2", collaboration_readiness: "open" },
+        { id: "user-3", collaboration_readiness: "open" },
+        { id: "user-4", collaboration_readiness: "open" },
+      ],
       error: null,
-    });
-    // Candidate 3 data
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({
-      data: { collaboration_readiness: "open" },
-      error: null,
-    });
-    // Candidate 4 data
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({
-      data: { collaboration_readiness: "open" },
-      error: null,
-    });
+    }); // batch profiles
     // Upsert
+    mockResult.mockResolvedValueOnce({ data: null, error: null });
+    // persistMatchScores checks (only top 2 of 3 candidates)
     mockSingle.mockResolvedValueOnce({ data: null, error: null });
-    // persistMatchScores checks (3 candidates)
+    mockResult.mockResolvedValueOnce({ data: null, error: null });
     mockSingle.mockResolvedValueOnce({ data: null, error: null });
-    mockSingle.mockResolvedValueOnce({ data: null, error: null });
-    mockSingle.mockResolvedValueOnce({ data: null, error: null });
+    mockResult.mockResolvedValueOnce({ data: null, error: null });
 
     // Act
     const result = await generateMatchesForUser("user-1", { limit: 2 });
@@ -851,8 +852,8 @@ describe("generateMatchesForUser", () => {
       data: { user_id: "user-1", embedding: [1, 0, 0], status: "completed" },
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockSingle.mockResolvedValueOnce({
       data: { id: "user-1", collaboration_readiness: "open" },
       error: null,
@@ -861,21 +862,23 @@ describe("generateMatchesForUser", () => {
       data: { min_match_percentage: null },
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({
       data: [
         { user_id: "user-3", embedding: [1, 0, 0], status: "completed" },
       ],
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({
-      data: { collaboration_readiness: "open" },
+    // Batch calls
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({
+      data: [{ id: "user-3", collaboration_readiness: "open" }],
       error: null,
     });
+    mockResult.mockResolvedValueOnce({ data: null, error: null });
     mockSingle.mockResolvedValueOnce({ data: null, error: null });
-    mockSingle.mockResolvedValueOnce({ data: null, error: null });
+    mockResult.mockResolvedValueOnce({ data: null, error: null });
 
     // Act
     const result = await generateMatchesForUser("user-1", {
@@ -894,8 +897,8 @@ describe("generateMatchesForUser", () => {
       data: { user_id: "user-1", embedding: [1, 0, 0], status: "completed" },
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockSingle.mockResolvedValueOnce({
       data: { id: "user-1", collaboration_readiness: "open" },
       error: null,
@@ -905,24 +908,26 @@ describe("generateMatchesForUser", () => {
       error: null,
     });
     // Blocked users: user-1 blocked user-2
-    mockSingle.mockResolvedValueOnce({
+    mockResult.mockResolvedValueOnce({
       data: [{ blocker_id: "user-1", blocked_id: "user-2" }],
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({
+    mockResult.mockResolvedValueOnce({
       data: [
         { user_id: "user-3", embedding: [1, 0, 0], status: "completed" },
       ],
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({
-      data: { collaboration_readiness: "open" },
+    // Batch calls
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({
+      data: [{ id: "user-3", collaboration_readiness: "open" }],
       error: null,
     });
+    mockResult.mockResolvedValueOnce({ data: null, error: null });
     mockSingle.mockResolvedValueOnce({ data: null, error: null });
-    mockSingle.mockResolvedValueOnce({ data: null, error: null });
+    mockResult.mockResolvedValueOnce({ data: null, error: null });
 
     // Act
     const result = await generateMatchesForUser("user-1");
@@ -934,7 +939,7 @@ describe("generateMatchesForUser", () => {
 
   it("writes to match_suggestions table when matches are found", async () => {
     // Arrange
-    // .single() calls: embedding, profile, prefs, cand profile, check existing
+    // .single() calls: embedding, profile, prefs, check existing
     mockSingle.mockResolvedValueOnce({
       data: { user_id: "user-1", embedding: [1, 0, 0], status: "completed" },
       error: null,
@@ -947,13 +952,9 @@ describe("generateMatchesForUser", () => {
       data: { min_match_percentage: null },
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({
-      data: { collaboration_readiness: "open" },
-      error: null,
-    });
     mockSingle.mockResolvedValueOnce({ data: null, error: null });
 
-    // Direct await calls: user skills, user interests, blocked, candidates, cand skills, cand interests, upsert, upsert score
+    // Direct await calls: skills, interests, blocked, candidates, batch skills, batch interests, batch profiles, upsert, upsert score
     mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockResult.mockResolvedValueOnce({ data: [], error: null });
@@ -963,10 +964,15 @@ describe("generateMatchesForUser", () => {
       ],
       error: null,
     });
-    mockResult.mockResolvedValueOnce({ data: [], error: null });
-    mockResult.mockResolvedValueOnce({ data: [], error: null });
-    mockResult.mockResolvedValueOnce({ data: null, error: null });
-    mockResult.mockResolvedValueOnce({ data: null, error: null });
+    // Batch calls replace per-candidate queries
+    mockResult.mockResolvedValueOnce({ data: [], error: null }); // batch skills
+    mockResult.mockResolvedValueOnce({ data: [], error: null }); // batch interests
+    mockResult.mockResolvedValueOnce({
+      data: [{ id: "user-2", collaboration_readiness: "open" }],
+      error: null,
+    }); // batch profiles
+    mockResult.mockResolvedValueOnce({ data: null, error: null }); // upsert
+    mockResult.mockResolvedValueOnce({ data: null, error: null }); // upsert score
 
     // Act
     await generateMatchesForUser("user-1");
@@ -1002,8 +1008,8 @@ describe("generateMatchesForUser", () => {
       data: { user_id: "user-1", embedding: [1, 0, 0], status: "completed" },
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockSingle.mockResolvedValueOnce({
       data: { id: "user-1", collaboration_readiness: "open" },
       error: null,
@@ -1012,9 +1018,9 @@ describe("generateMatchesForUser", () => {
       data: { min_match_percentage: null },
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
     // Candidate fetch error
-    mockSingle.mockResolvedValueOnce({
+    mockResult.mockResolvedValueOnce({
       data: null,
       error: { code: "500", message: "Database error" },
     });
@@ -1032,8 +1038,8 @@ describe("generateMatchesForUser", () => {
       data: { user_id: "user-1", embedding: [1, 0, 0], status: "completed" },
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockSingle.mockResolvedValueOnce({
       data: { id: "user-1", collaboration_readiness: "open" },
       error: null,
@@ -1042,14 +1048,18 @@ describe("generateMatchesForUser", () => {
       data: { min_match_percentage: null },
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
     // Candidate without embedding
-    mockSingle.mockResolvedValueOnce({
+    mockResult.mockResolvedValueOnce({
       data: [
         { user_id: "user-2", embedding: null, status: "completed" },
       ],
       error: null,
     });
+    // Batch calls (still executed with empty candidateIds after filtering)
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null });
 
     // Act
     const result = await generateMatchesForUser("user-1");
@@ -1060,7 +1070,7 @@ describe("generateMatchesForUser", () => {
 
   it("includes scoreBreakdown in each match suggestion", async () => {
     // Arrange
-    // .single() calls: embedding, profile, prefs, cand profile, check existing
+    // .single() calls: embedding, profile, prefs, check existing
     mockSingle.mockResolvedValueOnce({
       data: { user_id: "user-1", embedding: [1, 0, 0], status: "completed" },
       error: null,
@@ -1073,13 +1083,9 @@ describe("generateMatchesForUser", () => {
       data: { min_match_percentage: null },
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({
-      data: { collaboration_readiness: "open" },
-      error: null,
-    });
     mockSingle.mockResolvedValueOnce({ data: null, error: null });
 
-    // Direct await calls: user skills, user interests, blocked, candidates, cand skills, cand interests, upsert, upsert score
+    // Direct await calls: skills, interests, blocked, candidates, batch skills, batch interests, batch profiles, upsert, upsert score
     mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockResult.mockResolvedValueOnce({ data: [], error: null });
@@ -1089,10 +1095,15 @@ describe("generateMatchesForUser", () => {
       ],
       error: null,
     });
-    mockResult.mockResolvedValueOnce({ data: [], error: null });
-    mockResult.mockResolvedValueOnce({ data: [], error: null });
-    mockResult.mockResolvedValueOnce({ data: null, error: null });
-    mockResult.mockResolvedValueOnce({ data: null, error: null });
+    // Batch calls replace per-candidate queries
+    mockResult.mockResolvedValueOnce({ data: [], error: null }); // batch skills
+    mockResult.mockResolvedValueOnce({ data: [], error: null }); // batch interests
+    mockResult.mockResolvedValueOnce({
+      data: [{ id: "user-2", collaboration_readiness: "open" }],
+      error: null,
+    }); // batch profiles
+    mockResult.mockResolvedValueOnce({ data: null, error: null }); // upsert
+    mockResult.mockResolvedValueOnce({ data: null, error: null }); // upsert score
 
     // Act
     const result = await generateMatchesForUser("user-1");
@@ -1111,7 +1122,7 @@ describe("generateMatchesForUser", () => {
 
   it("includes reasons array in each match suggestion", async () => {
     // Arrange
-    // .single() calls: embedding, profile, prefs, cand profile, check existing
+    // .single() calls: embedding, profile, prefs, check existing
     mockSingle.mockResolvedValueOnce({
       data: { user_id: "user-1", embedding: [1, 0, 0], status: "completed" },
       error: null,
@@ -1124,13 +1135,9 @@ describe("generateMatchesForUser", () => {
       data: { min_match_percentage: null },
       error: null,
     });
-    mockSingle.mockResolvedValueOnce({
-      data: { collaboration_readiness: "open" },
-      error: null,
-    });
     mockSingle.mockResolvedValueOnce({ data: null, error: null });
 
-    // Direct await calls: user skills, user interests, blocked, candidates, cand skills, cand interests, upsert, upsert score
+    // Direct await calls: skills, interests, blocked, candidates, batch skills, batch interests, batch profiles, upsert, upsert score
     mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockResult.mockResolvedValueOnce({ data: [], error: null });
@@ -1140,10 +1147,15 @@ describe("generateMatchesForUser", () => {
       ],
       error: null,
     });
-    mockResult.mockResolvedValueOnce({ data: [], error: null });
-    mockResult.mockResolvedValueOnce({ data: [], error: null });
-    mockResult.mockResolvedValueOnce({ data: null, error: null });
-    mockResult.mockResolvedValueOnce({ data: null, error: null });
+    // Batch calls replace per-candidate queries
+    mockResult.mockResolvedValueOnce({ data: [], error: null }); // batch skills
+    mockResult.mockResolvedValueOnce({ data: [], error: null }); // batch interests
+    mockResult.mockResolvedValueOnce({
+      data: [{ id: "user-2", collaboration_readiness: "open" }],
+      error: null,
+    }); // batch profiles
+    mockResult.mockResolvedValueOnce({ data: null, error: null }); // upsert
+    mockResult.mockResolvedValueOnce({ data: null, error: null }); // upsert score
 
     // Act
     const result = await generateMatchesForUser("user-1");

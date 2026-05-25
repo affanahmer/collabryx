@@ -29,7 +29,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     }
     
     const formattedPost = {
-        id: parseInt(post.id),
+        id: post.id,
         author: post.profiles.full_name ?? 'Unknown User',
         role: post.profiles.headline ?? 'User',
         time: new Date(post.created_at).toLocaleDateString(),

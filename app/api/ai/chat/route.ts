@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { assembleAndBuildPrompt } from '@/lib/rag/context-assembler'
 import { getProviderRegistry } from '@/lib/ai/providers/registry'
+import { createClient } from '@/lib/supabase/server'
 import type { StartupContext } from '@/lib/rag/types'
 
 export async function POST(request: NextRequest) {
@@ -12,6 +13,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'userId is required' },
         { status: 400 }
+      )
+    }
+
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    if (user.id !== userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 
@@ -31,7 +47,7 @@ export async function POST(request: NextRequest) {
       const provider = registry.getProvider(preferredProvider)
       result = await provider.chat(messages, systemPrompt)
     } else {
-      result = await registry.chatWithFallback(messages, { timeout: 60000 })
+      result = await registry.chatWithFallback(messages, { systemPrompt, timeout: 60000 })
     }
 
     return NextResponse.json({

@@ -621,9 +621,20 @@ export async function incrementPostCounter(
 
     if (error) {
       if (error.code === "42883") {
+        const { data: currentPost, error: fetchError } = await supabase
+          .from("posts")
+          .select(field)
+          .eq("id", postId)
+          .single()
+
+        if (fetchError || !currentPost) {
+          throw fetchError || new Error("Post not found")
+        }
+
+        const currentValue = (currentPost[field as keyof typeof currentPost] as number) || 0
         const { error: fallbackError } = await supabase
           .from("posts")
-          .update({ [field]: supabase.rpc("get_counter_with_lock", { post_id: postId, field }) })
+          .update({ [field]: currentValue + delta })
           .eq("id", postId)
 
         if (fallbackError) throw fallbackError

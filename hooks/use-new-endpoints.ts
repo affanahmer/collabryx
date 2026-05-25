@@ -235,10 +235,12 @@ export function useAnalytics() {
     setError(null);
 
     try {
+      const csrfToken = getCSRFToken();
       const response = await fetch('/api/analytics/daily', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken || '',
         },
         body: JSON.stringify({ date }),
       });

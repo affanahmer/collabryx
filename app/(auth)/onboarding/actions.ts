@@ -225,30 +225,28 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
             is_primary: index < 5,
         }))
 
-        for (const skill of skillsToInsert) {
-            const { error: skillError } = await supabase
-                .from("user_skills")
-                .upsert(skill, { onConflict: "user_id,skill_name" })
-            if (skillError) {
-                console.error("Skills insert error:", skillError)
-                // Continue despite skill errors - not critical
-            }
+        const { error: skillError } = await supabase
+            .from("user_skills")
+            .upsert(skillsToInsert, { onConflict: "user_id,skill_name" })
+        if (skillError) {
+            console.error("Skills insert error:", skillError)
+            // Continue despite skill errors - not critical
         }
     }
 
     // 3. Insert/Update Interests
     if (data.interests && data.interests.length > 0) {
-        for (const interest of data.interests) {
-            const { error: interestError } = await supabase
-                .from("user_interests")
-                .upsert({
-                    user_id: userId,
-                    interest: interest
-                }, { onConflict: "user_id,interest" })
-            if (interestError) {
-                console.error("Interests insert error:", interestError)
-                // Continue despite interest errors - not critical
-            }
+        const interestsToInsert = data.interests.map((interest) => ({
+            user_id: userId,
+            interest: interest
+        }))
+
+        const { error: interestError } = await supabase
+            .from("user_interests")
+            .upsert(interestsToInsert, { onConflict: "user_id,interest" })
+        if (interestError) {
+            console.error("Interests insert error:", interestError)
+            // Continue despite interest errors - not critical
         }
     }
 
@@ -266,13 +264,11 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
                 order_index: 0
             }))
         if (expsToInsert.length > 0) {
-            for (const exp of expsToInsert) {
-                const { error: expError } = await supabase
-                    .from("user_experiences")
-                    .upsert(exp, { onConflict: "user_id,title" })
-                if (expError) {
-                    console.error("Experience insert error:", expError)
-                }
+            const { error: expError } = await supabase
+                .from("user_experiences")
+                .upsert(expsToInsert, { onConflict: "user_id,title" })
+            if (expError) {
+                console.error("Experience insert error:", expError)
             }
         }
     }

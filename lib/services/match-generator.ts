@@ -231,21 +231,60 @@ export async function generateMatchesForUser(
   ) ?? [];
   excludeList.push(...blockedIds);
 
-  const { data: candidates, error: candError } = await supabase
+  let query = supabase
     .from("profile_embeddings")
     .select("user_id, embedding, status")
-    .eq("status", "completed")
-    .not("user_id", "in", `(${excludeList.join(",")})`);
+    .eq("status", "completed");
+
+  if (excludeList.length > 0) {
+    query = query.not("user_id", "in", `(${excludeList.join(",")})`);
+  }
+
+  const { data: candidates, error: candError } = await query;
 
   if (candError || !candidates) return [];
 
   const suggestions: GeneratedMatchSuggestion[] = [];
   const candidateSkillsMap = new Map<string, string[]>();
 
+  const candidateIds = candidates
+    .filter((c) => c.embedding)
+    .map((c) => c.user_id);
+
+  const [{ data: allCandidateSkills }, { data: allCandidateInterests }, { data: allCandidateProfiles }] = await Promise.all([
+    supabase.from("user_skills").select("user_id, skill_name").in("user_id", candidateIds),
+    supabase.from("user_interests").select("user_id, interest").in("user_id", candidateIds),
+    supabase.from("profiles").select("id, collaboration_readiness").in("id", candidateIds),
+  ]);
+
+  const batchSkillsMap = new Map<string, string[]>();
+  const batchInterestsMap = new Map<string, string[]>();
+  const batchActivityMap = new Map<string, string>();
+
+  for (const row of allCandidateSkills ?? []) {
+    const list = batchSkillsMap.get(row.user_id) ?? [];
+    list.push(row.skill_name);
+    batchSkillsMap.set(row.user_id, list);
+  }
+
+  for (const row of allCandidateInterests ?? []) {
+    const list = batchInterestsMap.get(row.user_id) ?? [];
+    list.push(row.interest);
+    batchInterestsMap.set(row.user_id, list);
+  }
+
+  for (const row of allCandidateProfiles ?? []) {
+    batchActivityMap.set(row.id, row.collaboration_readiness ?? "");
+  }
+
   for (const candidate of candidates) {
     if (!candidate.embedding) continue;
 
-    const candData = await fetchCandidateData(supabase, candidate.user_id);
+    const candData = {
+      skills: batchSkillsMap.get(candidate.user_id) ?? [],
+      interests: batchInterestsMap.get(candidate.user_id) ?? [],
+      activity: batchActivityMap.get(candidate.user_id) ?? "",
+    };
     candidateSkillsMap.set(candidate.user_id, candData.skills);
 
     const breakdown = calculateMatchScore(

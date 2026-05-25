@@ -54,8 +54,9 @@ export async function sendConnectionRequest(targetUserId: string) {
         .from('notifications')
         .insert({
           user_id: targetUserId,
-          type: 'connection_request',
+          type: 'connect',
           content: `${user.id} wants to connect with you`,
+          resource_id: data.id,
         })
       
       if (notifError) {
@@ -118,8 +119,9 @@ export async function acceptConnectionRequest(requestId: string) {
         .from('notifications')
         .insert({
           user_id: request.requester_id,
-          type: 'connection_accepted',
+          type: 'connect',
           content: `${user.id} accepted your connection request`,
+          resource_id: requestId,
         })
       
       if (notifError) {

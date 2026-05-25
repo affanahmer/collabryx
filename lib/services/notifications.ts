@@ -79,6 +79,7 @@ export async function fetchNotifications(
       .select(`
         *,
         actor:profiles (
+          full_name,
           display_name,
           avatar_url
         )

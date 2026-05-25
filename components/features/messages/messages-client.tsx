@@ -21,16 +21,29 @@ export function MessagesClient({ initialChatId = null }: MessagesClientProps) {
             const { data: { user } } = await supabase.auth.getUser()
             
             if (user && selectedChatId) {
-                // Check if connected via connections table
-                const { data: connection } = await supabase
-                    .from("connections")
-                    .select("status")
-                    .or(`user_id_1.eq.${user.id},user_id_2.eq.${user.id}`)
-                    .or(`user_id_1.eq.${selectedChatId},user_id_2.eq.${selectedChatId}`)
-                    .eq("status", "accepted")
+                // Get conversation participants first
+                const { data: conv } = await supabase
+                    .from("conversations")
+                    .select("participant_1, participant_2")
+                    .eq("id", selectedChatId)
                     .single()
-                
-                setIsConnected(!!connection)
+
+                if (conv) {
+                    const otherUserId = conv.participant_1 === user.id 
+                        ? conv.participant_2 
+                        : conv.participant_1
+                    
+                    const { data: connection } = await supabase
+                        .from("connections")
+                        .select("status")
+                        .or(`and(requester_id.eq.${user.id},receiver_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},receiver_id.eq.${user.id})`)
+                        .eq("status", "accepted")
+                        .single()
+                    
+                    setIsConnected(!!connection)
+                } else {
+                    setIsConnected(null)
+                }
             }
         }
         

@@ -173,13 +173,16 @@ export function useRealtimeNotifications() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (!user) return
 
-      // Use user-specific channel instead of postgres_changes for efficiency
+      // Subscribe to postgres_changes on notifications table
       channel = supabase
-        .channel(`notifications:user:${user.id}`)
+        .channel('notifications_realtime')
         .on(
-          'broadcast',
+          'postgres_changes',
           {
-            event: 'new_notification',
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
           },
           () => {
             // Invalidate queries to refetch

@@ -101,6 +101,17 @@ export async function sendNotification(
     return { success: false, error: error.message };
   }
 
+  // Broadcast for real-time delivery (best-effort)
+  try {
+    supabase.channel(`notifications:user:${input.userId}`).send({
+      type: 'broadcast',
+      event: 'new_notification',
+      payload: { id: data.id },
+    });
+  } catch {
+    // Best-effort broadcast - notification already persisted to DB
+  }
+
   return { success: true, notificationId: data.id };
 }
 

@@ -17,6 +17,16 @@ export function useAIStream(options: UseAIStreamOptions) {
   const [error, setError] = useState<Error | null>(null)
   const currentMessageRef = useRef<string>('')
   const messagesRef = useRef<AIMessage[]>([])
+  const [sessionId] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('ai-mentor-session-id')
+      if (stored) return stored
+      const newId = crypto.randomUUID()
+      sessionStorage.setItem('ai-mentor-session-id', newId)
+      return newId
+    }
+    return crypto.randomUUID()
+  })
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -42,7 +52,7 @@ export function useAIStream(options: UseAIStreamOptions) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: options.userId,
-          sessionId: options.sessionId || crypto.randomUUID(),
+          sessionId: options.sessionId || sessionId,
           messages: [...messagesRef.current, userMessage],
           query: content
         })

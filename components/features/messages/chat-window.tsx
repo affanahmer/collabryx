@@ -55,31 +55,23 @@ export function ChatWindow({ chatId, onBackToList, isConnected }: ChatWindowProp
             try {
                 const supabase = createClient()
                 
-                // Get connection to find the other user
-                const { data: connection } = await supabase
-                    .from("connections")
-                    .select(`
-                        requester_id,
-                        receiver_id,
-                        requester:profiles!connections_requester_id_fkey (
-                            display_name,
-                            full_name,
-                            avatar_url
-                        ),
-                        receiver:profiles!connections_receiver_id_fkey (
-                            display_name,
-                            full_name,
-                            avatar_url
-                        )
-                    `)
+                // Get conversation to find the other user
+                const { data: conversation } = await supabase
+                    .from("conversations")
+                    .select("participant_1, participant_2")
                     .eq("id", chatId)
                     .single()
 
-                if (connection) {
-                    const isRequester = connection.requester_id === currentUserId
-                    const otherUser = isRequester 
-                        ? connection.receiver?.[0] 
-                        : connection.requester?.[0]
+                if (conversation) {
+                    const otherUserId = conversation.participant_1 === currentUserId 
+                        ? conversation.participant_2 
+                        : conversation.participant_1
+                    
+                    const { data: otherUser } = await supabase
+                        .from("profiles")
+                        .select("display_name, full_name, avatar_url")
+                        .eq("id", otherUserId)
+                        .single()
                     
                     const name = otherUser?.display_name || otherUser?.full_name || "Unknown"
                     setChatUserInfo({

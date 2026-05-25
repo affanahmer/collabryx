@@ -53,7 +53,7 @@ async function fetchConversations(): Promise<Conversation[]> {
     const conversationsPromises = (conversations || []).map(async (conv) => {
         const isParticipant1 = conv.participant_1 === user.id
         const otherUser = isParticipant1 ? conv.receiver?.[0] : conv.requester?.[0]
-        const unreadCount = isParticipant1 ? conv.unread_count_2 : conv.unread_count_1
+        const unreadCount = isParticipant1 ? conv.unread_count_1 : conv.unread_count_2
 
         return {
             id: conv.id,

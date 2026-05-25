@@ -5,7 +5,6 @@
 
 import { logger } from "@/lib/logger"
 import { TOAST_MESSAGES } from "@/lib/constants/toast-messages"
-import { toast } from "sonner"
 
 const PYTHON_WORKER_URL = process.env.NEXT_PUBLIC_PYTHON_WORKER_URL || "http://localhost:8000"
 
@@ -72,7 +71,7 @@ export async function generateMatches(
       throw new Error(data.error)
     }
 
-    toast.success(TOAST_MESSAGES.SUCCESS("Match generation"), {
+    console.log(TOAST_MESSAGES.SUCCESS("Match generation"), {
       description: `Generated ${data.suggestions_created} match suggestions`,
     })
 
@@ -86,7 +85,7 @@ export async function generateMatches(
     
     logger.app.error("Match generation failed", error as Error)
     
-    toast.error(TOAST_MESSAGES.ERROR("generate matches"), {
+    console.error(TOAST_MESSAGES.ERROR("generate matches"), {
       description: errorMessage,
     })
 
@@ -121,7 +120,7 @@ export async function generateBatchMatches(
 
     const data = await response.json()
 
-    toast.success(TOAST_MESSAGES.SUCCESS("Batch match generation"), {
+    console.log(TOAST_MESSAGES.SUCCESS("Batch match generation"), {
       description: data.message || "Batch processing started",
     })
 
@@ -136,7 +135,7 @@ export async function generateBatchMatches(
     
     logger.app.error("Batch match generation failed", error as Error)
     
-    toast.error(TOAST_MESSAGES.ERROR("start batch generation"), {
+    console.error(TOAST_MESSAGES.ERROR("start batch generation"), {
       description: errorMessage,
     })
 

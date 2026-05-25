@@ -91,13 +91,13 @@ export class ProviderRegistry {
   ): Promise<AIProviderResponse> {
     if (timeoutMs) {
       return Promise.race([
-        chatFn(messages, systemPrompt),
+        systemPrompt ? chatFn(messages, systemPrompt) : chatFn(messages),
         new Promise<AIProviderResponse>((_, reject) =>
           setTimeout(() => reject(new Error('Provider timeout')), timeoutMs)
         )
       ])
     }
-    return chatFn(messages, systemPrompt)
+    return systemPrompt ? chatFn(messages, systemPrompt) : chatFn(messages)
   }
 }
 

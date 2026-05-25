@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Apply rate limiting (10 requests per hour per user)
-  const rateLimitResult = rateLimit(request, 'embeddings');
+  const rateLimitResult = rateLimit(request, 'matches');
   if (!rateLimitResult.allowed && rateLimitResult.response) {
     return rateLimitResult.response;
   }

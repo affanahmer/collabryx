@@ -127,7 +127,7 @@ async function callAI(messages: Array<{ role: string; content: string }>, system
 
   return breaker.execute(async () => {
     if (provider === 'anthropic') {
-      const anthropicMessages = messages.slice(1).map(m => ({
+      const anthropicMessages = messages.map(m => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       }))
@@ -154,7 +154,10 @@ async function callAI(messages: Array<{ role: string; content: string }>, system
         },
         body: JSON.stringify({
           model: 'qwen-plus',
-          messages,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...messages,
+          ],
           max_tokens: 500,
           temperature: 0.7,
         }),
@@ -169,10 +172,13 @@ async function callAI(messages: Array<{ role: string; content: string }>, system
     }
 
     // Default: OpenAI
-    const openaiMessages = messages.map(m => ({
-      role: m.role as 'system' | 'user' | 'assistant',
-      content: m.content,
-    }))
+    const openaiMessages = [
+      { role: 'system' as const, content: systemPrompt },
+      ...messages.map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })),
+    ]
     const openaiClient = getOpenAIClient()
     const response = await openaiClient.chat.completions.create({
       model: 'gpt-4-turbo-preview',
@@ -301,13 +307,10 @@ export async function sendMessage(sessionId: string, content: string) {
   const { context, systemPrompt, warnings } = await assembleAndBuildPrompt({ userId: user.id, query: content, sessionId, messages: ragMessages })
 
   // Prepare messages for LLM with RAG-enhanced system prompt
-  const llmMessages = [
-    { role: 'system' as const, content: systemPrompt },
-    ...ragMessages.map(m => ({
-      role: m.role,
-      content: m.content,
-    })),
-  ]
+  const llmMessages = ragMessages.map(m => ({
+    role: m.role,
+    content: m.content,
+  }))
 
   // Call LLM API with circuit breaker
   let aiResponse: string
@@ -334,7 +337,7 @@ export async function sendMessage(sessionId: string, content: string) {
     return { error: aiMsgError }
   }
 
-  revalidatePath('/assistant')
+  revalidatePath('/(auth)/ai-mentor')
 
   return {
     data: aiMessage,
@@ -430,7 +433,7 @@ export async function archiveSession(sessionId: string) {
     return { error }
   }
 
-  revalidatePath('/assistant')
+  revalidatePath('/(auth)/ai-mentor')
 
   return { success: true }
 }
@@ -446,11 +449,23 @@ export async function saveMessageToProfile(messageId: string, insight: string) {
     return { error: new Error('Unauthorized') }
   }
 
+  // Read current bio to append insight
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('bio')
+    .eq('id', user.id)
+    .single()
+
+  const currentBio = profile?.bio || ''
+  const updatedBio = currentBio
+    ? `${currentBio}\n\n---\n${insight}`
+    : insight
+
   // Update user's profile with insight
   const { error } = await supabase
     .from('profiles')
     .update({
-      bio: insight,
+      bio: updatedBio,
     })
     .eq('id', user.id)
 

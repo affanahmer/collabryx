@@ -5,6 +5,19 @@ import type { RetrievedContext } from './types'
 
 let openaiInstance: OpenAI | null = null
 
+// Module-level BM25 index cache to avoid rebuilding on every query
+interface BM25Cache {
+  index: BM25 | null
+  timestamp: number
+}
+
+const bm25Cache: BM25Cache = {
+  index: null,
+  timestamp: 0
+}
+
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
 function getOpenAIClient(): OpenAI {
   if (!openaiInstance) {
     openaiInstance = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -120,6 +133,19 @@ async function searchKeywordIndex(
 ): Promise<RetrievedContext[]> {
   const supabase = await createClient()
 
+  // Check if cached BM25 index is still valid (reuse to avoid rebuilding on every query)
+  const now = Date.now()
+  if (bm25Cache.index && (now - bm25Cache.timestamp) < CACHE_TTL_MS) {
+    const results = bm25Cache.index.search(query, limit)
+    const maxScore = results.length > 0 ? results[0].score : 1
+    return results.map(result => ({
+      content: result.doc.text,
+      score: maxScore > 0 ? result.score / maxScore : 0,
+      source: 'keyword' as const,
+      metadata: result.doc.metadata ?? {}
+    }))
+  }
+
   const { data: profiles, error } = await supabase
     .from('profiles')
     .select('id, display_name, headline, bio, looking_for, skills, interests')
@@ -145,6 +171,10 @@ async function searchKeywordIndex(
 
   const bm25 = new BM25()
   bm25.index(documents)
+
+  // Update cache
+  bm25Cache.index = bm25
+  bm25Cache.timestamp = now
 
   const results = bm25.search(query, limit)
 

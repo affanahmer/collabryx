@@ -103,16 +103,13 @@ export async function getMatchScore(
  * Uses weighted distribution based on match percentage
  */
 export function parseMatchScoreBreakdown(overallScore: number): MatchScoreBreakdown {
-  // Base variance for natural variation
-  const baseVariance = () => Math.floor(Math.random() * 10) - 5 // -5 to +5
-  
-  // Calculate weighted scores based on overall
-  const skills = Math.min(100, Math.max(0, overallScore + baseVariance()))
-  const interests = Math.min(100, Math.max(0, overallScore + baseVariance() + 2))
-  const goals = Math.min(100, Math.max(0, overallScore + baseVariance() - 1))
-  const availability = Math.min(100, Math.max(0, overallScore + baseVariance() - 2))
-  const stage = Math.min(100, Math.max(0, overallScore + baseVariance() + 1))
-  const complementary = Math.min(100, Math.max(0, overallScore + baseVariance() + 3))
+  // Deterministic weighted distribution based on overall score
+  const skills = Math.min(100, Math.max(0, overallScore))
+  const interests = Math.min(100, Math.max(0, overallScore + 2))
+  const goals = Math.min(100, Math.max(0, overallScore - 1))
+  const availability = Math.min(100, Math.max(0, overallScore - 2))
+  const stage = Math.min(100, Math.max(0, overallScore + 1))
+  const complementary = Math.min(100, Math.max(0, overallScore + 3))
   
   return { skills, interests, goals, availability, stage, complementary }
 }

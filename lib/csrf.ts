@@ -68,7 +68,7 @@ export async function setCSRFToken(): Promise<string> {
   // The browser still sends this cookie automatically with cross-site requests
   // For CSRF protection, we validate that the cookie matches a header value
   cookieStore.set(CSRF_COOKIE_NAME, token, {
-    httpOnly: true,
+    httpOnly: false,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     maxAge: TOKEN_EXPIRY / 1000,

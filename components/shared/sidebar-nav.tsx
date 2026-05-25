@@ -27,7 +27,12 @@ import {
     Briefcase,
     Bell,
     Settings,
-    LucideIcon
+    LucideIcon,
+    Activity,
+    BarChart3,
+    Bookmark,
+    Shield,
+    HelpCircle
 } from "lucide-react"
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler"
 import { useUser } from "@/hooks/use-user"
@@ -91,6 +96,26 @@ export function SidebarNav({ className, isMobile, ...props }: SidebarNavProps) {
             ]
         },
         {
+            label: "DISCOVER",
+            items: [
+                {
+                    title: "Activity",
+                    href: "/activity",
+                    icon: Activity,
+                },
+                {
+                    title: "Notifications",
+                    href: "/notifications",
+                    icon: Bell,
+                },
+                {
+                    title: "Analytics",
+                    href: "/analytics",
+                    icon: BarChart3,
+                },
+            ]
+        },
+        {
             label: "AI TOOLS",
             items: [
                 {
@@ -107,6 +132,26 @@ export function SidebarNav({ className, isMobile, ...props }: SidebarNavProps) {
                     title: "My Profile",
                     href: "/my-profile",
                     icon: UserCircle,
+                },
+                {
+                    title: "Bookmarks",
+                    href: "/bookmarks",
+                    icon: Bookmark,
+                },
+                {
+                    title: "Privacy",
+                    href: "/privacy",
+                    icon: Shield,
+                },
+            ]
+        },
+        {
+            label: "SUPPORT",
+            items: [
+                {
+                    title: "Help",
+                    href: "/help",
+                    icon: HelpCircle,
                 },
             ]
         }

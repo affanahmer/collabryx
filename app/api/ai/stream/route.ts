@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { assembleAndBuildPrompt } from '@/lib/rag/context-assembler'
 import { getProviderRegistry } from '@/lib/ai/providers/registry'
 import { createMessageStream } from '@/lib/ai/streaming'
+import { createClient } from '@/lib/supabase/server'
 import type { Message } from '@/lib/ai/providers/base'
 import type { StartupContext } from '@/lib/rag/types'
 
@@ -14,6 +15,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'userId is required' },
         { status: 400 }
+      )
+    }
+
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    if (user.id !== userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
       )
     }
 
