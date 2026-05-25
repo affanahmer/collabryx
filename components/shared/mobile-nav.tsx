@@ -20,7 +20,7 @@ import { useUser } from "@/hooks/use-user"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 
 
@@ -40,10 +40,12 @@ export function MobileNav() {
     }
 
     // Close sheet when route changes
-    if (pathname !== prevPathname) {
-        setPrevPathname(pathname)
-        setOpen(false)
-    }
+    useEffect(() => {
+        if (pathname !== prevPathname) {
+            setPrevPathname(pathname)
+            setOpen(false)
+        }
+    }, [pathname])
 
     return (
         <>

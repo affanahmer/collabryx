@@ -196,7 +196,6 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
                 location: data.location || null,
                 website_url: validLinks.length > 0 ? JSON.stringify(validLinks) : null,
                 looking_for: data.goals || [],
-                onboarding_completed: true,
                 profile_completion: completionPercentage,
                 updated_at: new Date().toISOString()
             }, { onConflict: "id" })
@@ -259,7 +258,7 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
                 title: exp.title || exp.company || "Untitled",
                 company: exp.company || null,
                 description: exp.description || null,
-                start_date: exp.title || exp.company ? new Date().toISOString().split('T')[0] : null,
+                start_date: null,
                 is_current: true,
                 order_index: 0
             }))
@@ -271,6 +270,17 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
                 console.error("Experience insert error:", expError)
             }
         }
+    }
+
+    // 5. Mark onboarding as completed (deferred after all inserts succeed)
+    const { error: flagError } = await supabase
+        .from("profiles")
+        .update({ onboarding_completed: true, updated_at: new Date().toISOString() })
+        .eq("id", userId)
+
+    if (flagError) {
+        console.error("Onboarding flag update error:", flagError)
+        // Non-critical: profile was created, but flag wasn't set
     }
 
     // RELIABLE: Queue embedding request in database FIRST (source of truth)
