@@ -4,7 +4,7 @@
  * Includes circuit breaker for fault tolerance
  */
 
-export type BackendMode = 'auto' | 'docker' | 'render'
+export type BackendMode = 'auto' | 'docker' | 'render' | 'edge-only'
 
 export interface BackendConfig {
   endpoint: string | null  // null = no backend available

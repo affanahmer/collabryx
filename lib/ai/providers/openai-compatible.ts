@@ -129,12 +129,13 @@ export class OpenAICompatibleProvider implements AIProvider {
       'Content-Type': 'application/json',
     }
 
+    // Merge extra headers first (may contain provider-specific auth)
+    Object.assign(headers, this.extraHeaders)
+
+    // Set Authorization AFTER extraHeaders so it always takes precedence
     if (this.useBearerAuth && this.config.apiKey) {
       headers['Authorization'] = `Bearer ${this.config.apiKey}`
     }
-
-    // Merge extra headers
-    Object.assign(headers, this.extraHeaders)
 
     return headers
   }
