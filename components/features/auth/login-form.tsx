@@ -131,18 +131,7 @@ export function LoginForm() {
         }
     }
 
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault()
-        e.stopPropagation()
-        
-        if (!isMounted) return
-        
-        const formData = new FormData(e.currentTarget)
-        const email = formData.get('email') as string
-        const password = formData.get('password') as string
-        
-        await onLoginSubmit(email, password)
-    }
+    
 
     const handleSocialLogin = async (provider: "google" | "github" | "apple") => {
         setProviderToShow(provider)
@@ -222,7 +211,7 @@ export function LoginForm() {
                         </div>
                     )}
                     <form 
-                        onSubmit={handleSubmit}
+                        onSubmit={form.handleSubmit((data) => onLoginSubmit(data.email, data.password))}
                         className="space-y-4"
                         aria-labelledby="login-heading"
                         noValidate
@@ -280,7 +269,7 @@ export function LoginForm() {
                                 </p>
                             )}
                         </div>
-                        <Button type="submit" className={buttonClasses} disabled={isLoading || !isMounted}>
+                        <Button type="submit" className={buttonClasses} disabled={isLoading || !isMounted} style={{ transitionDelay: isMounted ? '0ms' : '300ms' }}>
                             {isLoading ? <Loader2 className="animate-spin" /> : "Sign In"}
                         </Button>
                     </form>
