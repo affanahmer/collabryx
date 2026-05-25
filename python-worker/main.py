@@ -666,6 +666,7 @@ async def process_dead_letter_queue():
             now = datetime.utcnow().isoformat()
 
             # Get items ready for retry
+            # TODO: This synchronous .execute() blocks the asyncio event loop. Use run_in_executor() for production.
             response = (
                 supabase.table("embedding_dead_letter_queue")
                 .select("*")
@@ -972,6 +973,7 @@ async def generate_embedding(request: EmbeddingRequest):
     """
     try:
         # Check rate limit first
+        # TODO: rate_limiter.check_rate_limit() uses synchronous .execute() internally, which blocks the asyncio event loop. Use run_in_executor() for production.
         if rate_limiter:
             rate_limit_result = await rate_limiter.check_rate_limit(request.user_id)
 
