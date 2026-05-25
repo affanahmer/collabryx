@@ -1,48 +1,29 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
 
-// Import the schemas from the onboarding page
-// These are the exact schemas used in production
+// Import the actual production schemas to prevent schema drift
+import { onboardingDataSchema } from '@/lib/validations/onboarding'
+
+// Derive sub-schemas from the actual production schema
 const basicInfoSchema = z.object({
-  fullName: z.string()
-    .min(2, "Full name must be at least 2 characters.")
-    .max(100, "Full name must be less than 100 characters.")
-    .regex(/^[A-Za-z\s]+$/, "Name can only contain letters and spaces"),
-  displayName: z.string()
-    .max(30, "Display name must be less than 30 characters.")
-    .regex(/^[a-z0-9_]*$/, "Display name can only contain lowercase letters, numbers, and underscores.")
-    .optional()
-    .or(z.literal("")),
-  headline: z.string()
-    .min(5, "Headline must be at least 5 characters.")
-    .max(100, "Headline must be less than 100 characters.")
-    .regex(/^[a-zA-Z0-9\s@.,&'()-]+$/, "Headline can only contain letters, numbers, and basic punctuation."),
-  location: z.string()
-    .max(100, "Location must be less than 100 characters.")
-    .optional()
-    .or(z.literal("")),
+  fullName: onboardingDataSchema.shape.fullName,
+  displayName: onboardingDataSchema.shape.displayName,
+  headline: onboardingDataSchema.shape.headline,
+  location: onboardingDataSchema.shape.location,
 })
 
 const skillsSchema = z.object({
-  skills: z.array(z.string()).min(1, "Please add at least one skill."),
+  skills: onboardingDataSchema.shape.skills,
 })
 
 const interestsGoalsSchema = z.object({
-  interests: z.array(z.string()).min(1, "Please add at least one interest."),
-  goals: z.array(z.string()).optional(),
+  interests: onboardingDataSchema.shape.interests,
+  goals: onboardingDataSchema.shape.goals,
 })
 
 const experienceSchema = z.object({
-  experiences: z.array(z.object({
-    title: z.string().optional().or(z.literal("")),
-    company: z.string().optional().or(z.literal("")),
-    description: z.string().optional().or(z.literal("")),
-  })).optional(),
-  links: z.array(z.object({
-    platform: z.string(),
-    url: z.string().optional().or(z.literal("")),
-  })).optional(),
+  experiences: onboardingDataSchema.shape.experiences,
+  links: onboardingDataSchema.shape.links,
 })
 
 describe('Onboarding Validation', () => {
