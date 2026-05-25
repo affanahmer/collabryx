@@ -34,7 +34,6 @@ export function MessageInput({ conversationId, onTyping, onStopTyping }: Message
         if (success) {
             setMessage("")
             handleStopTyping()
-            toast.success("Message sent")
         } else {
             toast.error("Failed to send message")
         }
