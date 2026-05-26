@@ -143,16 +143,19 @@ export function calculateHybridScore(params: FeedScorerInput): number {
     WEIGHTS.engagement * engagementScore +
     WEIGHTS.recency * recencyScore;
 
+  // Make boosts additive instead of multiplicative to avoid nonlinear compounding (#141)
+  // Each boost adds a percentage of the original score: score + (score * 0.5) + (score * 0.2) + ...
+  const baseScore = score;
   if (params.isConnected) {
-    score *= BOOSTS.connection;
+    score += baseScore * (BOOSTS.connection - 1);
   }
 
   if (params.hasSharedInterests) {
-    score *= BOOSTS.sharedInterests;
+    score += baseScore * (BOOSTS.sharedInterests - 1);
   }
 
   if (params.intentMatch) {
-    score *= BOOSTS.intentMatch;
+    score += baseScore * (BOOSTS.intentMatch - 1);
   }
 
   return Math.min(1.0, score);
@@ -182,10 +185,12 @@ export function scorePostForUser(
     WEIGHTS.engagement * engagementScore +
     WEIGHTS.recency * recencyScore;
 
+  // Make boosts additive instead of multiplicative to avoid nonlinear compounding (#141)
+  const baseScore = score;
   let connectionBoost = 1;
   if (params.isConnected) {
     connectionBoost = BOOSTS.connection;
-    score *= connectionBoost;
+    score += baseScore * (BOOSTS.connection - 1);
   }
 
   const factors: Record<string, unknown> = {
@@ -197,12 +202,12 @@ export function scorePostForUser(
 
   if (params.hasSharedInterests) {
     factors.shared_interests_boost = BOOSTS.sharedInterests;
-    score *= BOOSTS.sharedInterests;
+    score += baseScore * (BOOSTS.sharedInterests - 1);
   }
 
   if (params.intentMatch) {
     factors.intent_match_boost = BOOSTS.intentMatch;
-    score *= BOOSTS.intentMatch;
+    score += baseScore * (BOOSTS.intentMatch - 1);
   }
 
   score = Math.min(1.0, score);
