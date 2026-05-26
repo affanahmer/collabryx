@@ -232,6 +232,9 @@ export async function connectWithMatch(matchedUserId: string): Promise<{ error: 
       .eq("matched_user_id", matchedUserId)
 
     if (updateError) {
+      // TODO: Replace manual rollback with database transactions. The current approach
+      // has a race condition where the connection insert succeeds but the match_suggestions
+      // update fails, and the manual rollback delete may also fail, leaving orphaned rows. (#147)
       // Rollback: delete the connection if status update fails
       logger.app.error("Failed to update match status, rolling back connection", {
         error: updateError.message,
