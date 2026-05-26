@@ -14,9 +14,9 @@ test.describe('Onboarding Flow - Complete E2E Tests', () => {
     for (const skill of skills) {
       const combobox = page.getByPlaceholder(/search skills/i)
       await combobox.fill(skill)
-      await page.waitForTimeout(200) // Wait for dropdown
+      // Wait for dropdown option to appear instead of arbitrary timeout
+      await page.getByRole('option').first().waitFor({ timeout: 5000 })
       await combobox.press('Enter')
-      await page.waitForTimeout(100)
       
       // Select proficiency level if prompted
       const proficiencyButton = page.getByRole('button', { name: /^(beginner|intermediate|advanced|expert)$/i })
@@ -31,9 +31,9 @@ test.describe('Onboarding Flow - Complete E2E Tests', () => {
     for (const interest of interests) {
       const combobox = page.getByPlaceholder(/search interests/i)
       await combobox.fill(interest)
-      await page.waitForTimeout(200)
+      // Wait for dropdown option to appear instead of arbitrary timeout
+      await page.getByRole('option').first().waitFor({ timeout: 5000 })
       await combobox.press('Enter')
-      await page.waitForTimeout(100)
     }
   }
 
@@ -320,8 +320,8 @@ test.describe('Onboarding Flow - Complete E2E Tests', () => {
 
       await page.getByRole('button', { name: 'Skip & Complete' }).click()
 
-      // Wait for completion
-      await page.waitForTimeout(2000)
+      // Wait for redirect to dashboard after completion
+      await page.waitForURL('**/dashboard', { timeout: 10000 })
 
       // sessionStorage should be cleared
       const sessionStorageData = await page.evaluate(() => {
