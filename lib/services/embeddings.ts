@@ -270,8 +270,8 @@ export async function checkEmbeddingRateLimit(_userId?: string): Promise<{
 
     if (rpcError) {
       return {
-        allowed: true,
-        remaining: 3,
+        allowed: false,
+        remaining: 0,
         resetAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
       };
     }
@@ -285,8 +285,8 @@ export async function checkEmbeddingRateLimit(_userId?: string): Promise<{
   } catch (error) {
     console.error("Error checking embedding rate limit:", error);
     return {
-      allowed: true,
-      remaining: 10,
+      allowed: false,
+      remaining: 0,
       resetAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     };
   }
