@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
@@ -58,13 +58,18 @@ async function fetchChatConversations(): Promise<Conversation[]> {
 
     if (error) throw error
 
-    return data || []
+    // Runtime type narrowing to ensure data conforms to Conversation
+    const rawData: unknown[] = data || []
+    return rawData.filter((item): item is Conversation => {
+      if (!item || typeof item !== 'object') return false
+      const d = item as Record<string, unknown>
+      return typeof d.id === 'string' && typeof d.participant_1 === 'string' && typeof d.participant_2 === 'string'
+    })
 }
 
 export function useChat(): UseChatReturn {
     const queryClient = useQueryClient()
     const router = useRouter()
-    const isMountedRef = useRef(false)
 
     const {
         data: conversations = [],
@@ -94,27 +99,34 @@ export function useChat(): UseChatReturn {
     }, [refetch])
 
     useEffect(() => {
-        isMountedRef.current = true
         const supabase = createClient()
         const channel = supabase
             .channel("chat-conversations")
             .on(
                 "postgres_changes",
                 {
-                    event: "*",
+                    event: "INSERT",
                     schema: "public",
                     table: "conversations",
                 },
                 () => {
-                    if (isMountedRef.current) {
-                        queryClient.invalidateQueries({ queryKey: CHAT_CONVERSATIONS_QUERY_KEY })
-                    }
+                    queryClient.invalidateQueries({ queryKey: CHAT_CONVERSATIONS_QUERY_KEY })
+                }
+            )
+            .on(
+                "postgres_changes",
+                {
+                    event: "UPDATE",
+                    schema: "public",
+                    table: "conversations",
+                },
+                () => {
+                    queryClient.invalidateQueries({ queryKey: CHAT_CONVERSATIONS_QUERY_KEY })
                 }
             )
             .subscribe()
 
         return () => {
-            isMountedRef.current = false
             supabase.removeChannel(channel)
         }
     }, [queryClient])
