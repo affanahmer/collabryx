@@ -2,12 +2,20 @@ import { NextRequest, NextResponse } from 'next/server'
 import { assembleAndBuildPrompt } from '@/lib/rag/context-assembler'
 import { getProviderRegistry } from '@/lib/ai/providers/registry'
 import { createClient } from '@/lib/supabase/server'
+import { rateLimit } from '@/lib/rate-limit'
+import type { AssemblerOptions } from '@/lib/rag/context-assembler'
 import type { StartupContext } from '@/lib/rag/types'
 
 export async function POST(request: NextRequest) {
+  // Rate limiting (#35)
+  const rateLimitResult = rateLimit(request, 'api')
+  if (!rateLimitResult.allowed && rateLimitResult.response) {
+    return rateLimitResult.response
+  }
+
   try {
     const body = await request.json()
-    const { userId, sessionId, messages, query, preferredProvider, otherUserIds, startupContext } = body
+    const { userId, sessionId, messages, query, preferredProvider, otherUserIds, startupContext, limit = 10 } = body
 
     if (!userId) {
       return NextResponse.json(
@@ -38,13 +46,21 @@ export async function POST(request: NextRequest) {
       messages: messages || [],
       otherUserIds: otherUserIds as string[] | undefined,
       startupContext: startupContext as StartupContext | null | undefined,
-    })
+      limit,
+    } as AssemblerOptions & { limit?: number })
 
     const registry = getProviderRegistry()
 
     let result
     if (preferredProvider) {
-      const provider = registry.getProvider(preferredProvider)
+      // Wrap getProvider in try/catch to handle unknown provider (#34)
+      let provider
+      try {
+        provider = registry.getProvider(preferredProvider)
+      } catch {
+        console.warn(`Unknown provider "${preferredProvider}", falling back to default`)
+        provider = registry.getProvider()
+      }
       result = await provider.chat(messages, systemPrompt)
     } else {
       result = await registry.chatWithFallback(messages, { systemPrompt, timeout: 60000 })

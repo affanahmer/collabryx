@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Check if user is admin (you can customize this logic)
+  // TODO: Add TTL-based cache invalidation for admin role check (#37)
   const { data: userProfile } = await supabase
     .from("profiles")
     .select("role")
