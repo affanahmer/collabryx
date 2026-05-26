@@ -264,9 +264,8 @@ export async function checkEmbeddingRateLimit(_userId?: string): Promise<{
   try {
     const userId = _userId || user.id;
 
-    const { data, error: rpcError } = await supabase
-      .rpc('check_embedding_rate_limit', { p_user_id: userId })
-      .single();
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('check_embedding_rate_limit', { p_user_id: userId });
 
     if (rpcError) {
       return {
@@ -276,11 +275,14 @@ export async function checkEmbeddingRateLimit(_userId?: string): Promise<{
       };
     }
 
+    type RateLimitResult = { allowed: boolean; remaining: number; reset_at: string };
+    const result = rpcData as RateLimitResult | null;
+
     return {
-      allowed: data.allowed,
-      remaining: data.remaining,
-      resetAt: data.reset_at,
-      retryAfter: data.allowed ? undefined : 3600,
+      allowed: result?.allowed ?? false,
+      remaining: result?.remaining ?? 0,
+      resetAt: result?.reset_at ?? new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      retryAfter: result?.allowed ? undefined : 3600,
     };
   } catch (error) {
     console.error("Error checking embedding rate limit:", error);
