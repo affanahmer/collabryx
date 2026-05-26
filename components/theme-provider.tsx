@@ -25,7 +25,8 @@ function applyTheme(theme: Theme) {
   root.classList.remove("light", "dark")
   root.classList.add(resolved)
   // Also set cookie for SSR awareness (max-age 1 year)
-  document.cookie = `${STORAGE_KEY}=${theme}; path=/; max-age=31536000; SameSite=Lax`
+  const isProduction = typeof process !== 'undefined' && process.env.NODE_ENV === 'production'
+  document.cookie = `${STORAGE_KEY}=${theme}; path=/; max-age=31536000; SameSite=Lax${isProduction ? '; Secure' : ''}`
   return resolved
 }
 
@@ -47,6 +48,7 @@ export function ThemeProvider({
     if (typeof window === "undefined") return defaultTheme
     try {
       const stored = localStorage.getItem(STORAGE_KEY) as Theme | null
+      if (!stored || !['light','dark','system'].includes(stored)) return 'system'
       return stored ?? defaultTheme
     } catch {
       return defaultTheme
