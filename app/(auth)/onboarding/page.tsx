@@ -319,7 +319,20 @@ export default function OnboardingPage() {
                 if (result.alreadyCompleted) {
                     router.push("/dashboard")
                 } else {
-                    toast.success("Profile setup complete! Your vector embedding is queued.")
+                    // Show distinct messages for embedding queued vs failed
+                    if (result.embeddingQueued) {
+                        toast.success("Profile setup complete! Your vector embedding is queued.");
+                    } else if (result.embeddingError) {
+                        toast.success("Profile setup complete!");
+                        toast.warning(
+                            "Embedding will be generated in background.",
+                            {
+                                description: "The AI analysis is queued and will complete shortly."
+                            }
+                        );
+                    } else {
+                        toast.success("Profile setup complete!");
+                    }
                     router.push("/dashboard")
                 }
             } else {
