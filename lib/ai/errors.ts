@@ -13,7 +13,8 @@ export class MiniMaxAPIError extends AIProviderError {
   constructor(
     message: string,
     statusCode?: number,
-    public readonly errorCode?: number
+    public readonly errorCode?: number,
+    public readonly retryAfterMs?: number
   ) {
     super(message, 'minimax', statusCode)
     this.name = 'MiniMaxAPIError'
