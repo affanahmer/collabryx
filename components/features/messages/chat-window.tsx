@@ -89,12 +89,16 @@ export function ChatWindow({ chatId, onBackToList, isConnected }: ChatWindowProp
         fetchChatUserInfo()
     }, [chatId, currentUserId])
 
-    // Mark messages as read when viewing conversation
+    // Mark messages as read when viewing conversation (debounced, chatId only)
     useEffect(() => {
-        if (chatId && currentUserId) {
+        if (!chatId || !currentUserId) return
+
+        const timer = setTimeout(() => {
             markAsRead(chatId)
-        }
-    }, [chatId, currentUserId, markAsRead])
+        }, 500)
+
+        return () => clearTimeout(timer)
+    }, [chatId, currentUserId])
 
     if (!chatId) {
         return (
