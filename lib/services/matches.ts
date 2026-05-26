@@ -233,15 +233,29 @@ export async function connectWithMatch(matchedUserId: string): Promise<{ error: 
 
     if (updateError) {
       // Rollback: delete the connection if status update fails
-      logger.app.error("Failed to update match status, rolling back connection", updateError)
-      await supabase.from("connections").delete().eq("id", connectionData.id)
+      logger.app.error("Failed to update match status, rolling back connection", {
+        error: updateError.message,
+        connectionId: connectionData.id,
+        matchedUserId,
+      })
+      const { error: rollbackError } = await supabase.from("connections").delete().eq("id", connectionData.id)
+      if (rollbackError) {
+        logger.app.error("Rollback also failed — orphaned connection row", {
+          connectionId: connectionData.id,
+          rollbackError: rollbackError.message,
+        })
+      }
       throw updateError
     }
 
     return { error: null }
   } catch (error) {
-    logger.app.error("Failed to connect with match", error)
-    return { error: error instanceof Error ? error : new Error("Failed to connect with match") }
+    const message = error instanceof Error ? error.message : "Failed to connect with match"
+    logger.app.error("Failed to connect with match", {
+      error: message,
+      matchedUserId,
+    })
+    return { error: new Error(message) }
   }
 }
 
