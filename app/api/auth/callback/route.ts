@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
 import { devLog, isDebugEnabled } from "@/lib/services/development"
 
@@ -25,9 +26,25 @@ export async function GET(request: NextRequest) {
     if (!isValidRedirect(next)) {
         next = '/dashboard'
     }
-    
+
     const timestamp = new Date().toISOString()
     const isDebug = isDebugEnabled()
+
+    // State validation for OAuth callback security (#31)
+    // The state cookie should be set by the login route before initiating OAuth
+    const state = searchParams.get("state")
+    const cookieStore = await cookies()
+    const storedState = cookieStore.get("oauth_state")?.value
+    if (storedState && state !== storedState) {
+      if (isDebug) {
+        devLog("auth", "❌ OAuth state mismatch", {
+          hasState: !!state,
+          hasStoredState: !!storedState,
+          timestamp,
+        })
+      }
+      return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent("invalid_state")}`)
+    }
 
     if (isDebug) {
         devLog("auth", "=== AUTH CALLBACK RECEIVED ===", {
@@ -100,9 +117,10 @@ export async function GET(request: NextRequest) {
             
 
             
-            // Redirect with error message for user
+            // Sanitize and wrap error in encodeURIComponent before forwarding (#30)
+            const sanitizedError = encodeURIComponent("authentication_failed")
             return NextResponse.redirect(
-                `${origin}/login?error=authentication_failed`
+                `${origin}/login?error=${sanitizedError}`
             )
         }
     }
@@ -116,5 +134,5 @@ export async function GET(request: NextRequest) {
         })
     }
     
-    return NextResponse.redirect(`${origin}/login?error=auth_callback_error`)
+    return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent("auth_callback_error")}`)
 }
