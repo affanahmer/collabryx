@@ -115,6 +115,8 @@ export interface GeneratedMatchSuggestion {
 }
 
 function getAdminClient(): SupabaseAdmin {
+  // TODO: Restrict admin client usage to admin-only endpoints. The service_role client
+  // bypasses RLS, so it must not be used for user-facing queries. (#146)
   const serviceRoleKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
   if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured");
@@ -159,6 +161,7 @@ async function persistMatchScores(
   suggestions: GeneratedMatchSuggestion[],
   allCandidateSkills: Map<string, string[]>,
 ) {
+  // TODO: Batch these queries using .in() filter instead of per-suggestion loop to eliminate N+1 queries. (#144)
   for (const s of suggestions) {
     const { data: existing } = await supabase
       .from("match_suggestions")
@@ -257,7 +260,7 @@ export async function generateMatchesForUser(
     .eq("status", "completed");
 
   if (excludeList.length > 0) {
-    query = query.not("user_id", "in", `(${excludeList.join(",")})`);
+    query = query.not("user_id", "in", excludeList);
   }
 
   const { data: candidates, error: candError } = await query;
