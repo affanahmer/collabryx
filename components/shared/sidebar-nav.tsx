@@ -16,6 +16,8 @@ import {
 } from "@/components/ui/tooltip"
 import { useSidebar } from "@/components/shared/sidebar-context"
 import { NotificationsWidget } from "@/components/features/dashboard/notifications-widget"
+import { useMatches } from "@/hooks/use-matches-query"
+import { useConnectionRequests } from "@/hooks/use-connection-requests"
 import {
     LayoutDashboard,
     Sparkles,
