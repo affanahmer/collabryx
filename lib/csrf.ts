@@ -57,10 +57,9 @@ export async function setCSRFToken(): Promise<string> {
   const token = await generateCSRFToken()
   const cookieStore = await cookies()
 
-  // httpOnly: true prevents XSS from reading the token — SameSite:strict alone is insufficient
-  // The token must be read from a meta tag or API response and set as a request header
+  // httpOnly: false is required for the double-submit cookie pattern — client JS must read the token to send as X-CSRF-Token header. SameSite:strict provides the primary CSRF protection.
   cookieStore.set(CSRF_COOKIE_NAME, token, {
-    httpOnly: true,
+    httpOnly: false,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     maxAge: TOKEN_EXPIRY / 1000,
