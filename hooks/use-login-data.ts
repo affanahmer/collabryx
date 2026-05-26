@@ -7,7 +7,7 @@
  * - User profile
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { fetchPosts } from '@/lib/services/posts'
@@ -59,6 +59,7 @@ async function retry<T>(
 export function useLoginData() {
   const [isReady, setIsReady] = useState(false)
   const retryCountRef = useRef(0)
+  const supabase = useMemo(() => createClient(), [])
 
   // Fetch posts
   const postsQuery = useQuery({
@@ -93,7 +94,6 @@ export function useLoginData() {
     queryKey: ['profile'],
     queryFn: async () => {
       try {
-        const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         
         if (!user) return null
@@ -126,7 +126,6 @@ export function useLoginData() {
     queryKey: ['notifications'],
     queryFn: async () => {
       try {
-        const supabase = createClient()
         const { data: { user } } = await supabase.auth.getUser()
         
         if (!user) return []

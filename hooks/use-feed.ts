@@ -49,10 +49,11 @@ export async function scorePosts(
   persist: boolean = false
 ): Promise<{ data: FeedScoreResponse['data'] | null; error: Error | null }> {
   try {
-    const csrfToken = document.cookie
-      .split('; ')
-      .find(row => row.startsWith('csrf_token='))
-      ?.split('=')[1] || ''
+    const csrfToken = (() => {
+      try {
+        return document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1] || ''
+      } catch { return '' }
+    })()
 
     const response = await fetch('/api/feed/score', {
       method: 'POST',

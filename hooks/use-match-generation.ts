@@ -61,7 +61,11 @@ export async function generateMatches(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-CSRF-Token': document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1] || '',
+        'X-CSRF-Token': (() => {
+          try {
+            return document.cookie.split('; ').find(row => row.startsWith('csrf_token='))?.split('=')[1] || ''
+          } catch { return '' }
+        })(),
       },
       body: JSON.stringify({
         limit: data.limit ?? 20,
