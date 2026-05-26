@@ -336,6 +336,10 @@ export async function acceptConnectionRequest(
       }
     }
 
+    if (!existing) {
+      return { data: null, error: new Error("Connection request not found") }
+    }
+
     if (existing.receiver_id !== user.id) {
       return { data: null, error: new Error("Not authorized to accept this request") }
     }
@@ -459,6 +463,10 @@ export async function declineConnectionRequest(
       return { error: new Error(`Unexpected database state: ${err.message}`) }
     }
 
+    if (!existing) {
+      return { error: new Error("Connection request not found") }
+    }
+
     if (existing.receiver_id !== user.id) {
       return { error: new Error("Not authorized to decline this request") }
     }
@@ -517,6 +525,10 @@ export async function cancelConnectionRequest(
         return { error: new Error("Connection request not found") }
       }
       return { error: new Error(`Unexpected database state: ${err.message}`) }
+    }
+
+    if (!existing) {
+      return { error: new Error("Connection request not found") }
     }
 
     if (existing.requester_id !== user.id) {
@@ -579,6 +591,10 @@ export async function removeConnection(
         return { error: new Error("Connection not found") }
       }
       return { error: new Error(`Unexpected database state: ${err.message}`) }
+    }
+
+    if (!existing) {
+      return { error: new Error("Connection not found") }
     }
 
     if (existing.requester_id !== user.id && existing.receiver_id !== user.id) {
