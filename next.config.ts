@@ -50,12 +50,19 @@ const nextConfig: NextConfig = {
             value: 'nosniff',
           },
           {
+            // SECURITY NOTE: CSP uses 'unsafe-inline' and 'unsafe-eval' which are required
+            // by Next.js for next/image runtime and React dev mode. In production,
+            // consider using strict CSP with nonces once Next.js supports them.
+            // See: https://nextjs.org/docs/app/api-reference/config/next-config-js/contentSecurityPolicy
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
+              // SECURITY NOTE: img-src allows all HTTPS origins (https:) which is broad.
+              // next/image requires this for dynamic remote images from user uploads stored in Supabase/CDN.
+              // TODO: Restrict to specific image CDN domains once finalized.
               "img-src 'self' data: blob: https: *.supabase.co *.amazonaws.com",
               "connect-src 'self' https://*.supabase.co",
               "media-src 'self' blob:",
