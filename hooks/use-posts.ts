@@ -67,7 +67,7 @@ export function useRemoveReaction() {
   const queryClient = useQueryClient()
   
   return useMutation({
-    mutationFn: ({ postId }: { postId: string }) => removeReaction(postId),
+    mutationFn: ({ postId, emoji }: { postId: string; emoji: string }) => removeReaction(postId, emoji),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: POST_QUERY_KEYS.lists() })
     },

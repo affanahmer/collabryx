@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { createClient } from "@/lib/supabase/client"
 import { QUERY_PRESETS } from "@/lib/query-cache"
+import { formatTimeAgo } from "@/lib/utils/time-ago"
 
 export const CONVERSATIONS_QUERY_KEY = ["conversations"] as const
 
@@ -75,18 +76,7 @@ async function fetchConversations(): Promise<Conversation[]> {
     return Promise.all(conversationsPromises)
 }
 
-function formatTimeAgo(dateString: string): string {
-    const date = new Date(dateString)
-    const now = new Date()
-    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-
-    if (seconds < 60) return "Just now"
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`
-
-    return date.toLocaleDateString()
-}
+// formatTimeAgo now imported from @/lib/utils/time-ago (deduplicated)
 
 interface UseConversationsReturn {
     conversations: Conversation[]

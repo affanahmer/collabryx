@@ -54,7 +54,7 @@ export interface UserInterest {
 export interface UserExperience {
   id: string; // UUID
   user_id: string; // UUID
-  title?: string;
+  title: string;
   company?: string;
   description?: string;
   start_date?: string; // DATE
@@ -466,44 +466,6 @@ export interface AnalyticsActivityData {
 }
 
 // ===========================================
-// TABLE: user_analytics
-// ===========================================
-export interface UserAnalytics {
-  user_id: string; // UUID
-  profile_views_count: number;
-  profile_views_last_7_days: number;
-  profile_views_last_30_days: number;
-  post_impressions_count: number;
-  post_reactions_received: number;
-  post_comments_received: number;
-  posts_created_count: number;
-  match_suggestions_count: number;
-  matches_accepted_count: number;
-  match_acceptance_rate: number;
-  high_confidence_matches_count: number;
-  connections_count: number;
-  connection_requests_sent: number;
-  connection_requests_received: number;
-  mutual_connections_avg: number;
-  messages_sent_count: number;
-  messages_received_count: number;
-  conversations_count: number;
-  avg_response_time_minutes: number;
-  ai_sessions_count: number;
-  ai_messages_count: number;
-  sessions_count: number;
-  total_time_spent_minutes: number;
-  last_active?: string; // TIMESTAMPTZ
-  last_active_ip?: string;
-  engagement_score: number;
-  influence_score: number;
-  activity_streak_days: number;
-  last_calculated_at?: string; // TIMESTAMPTZ
-  created_at: string; // TIMESTAMPTZ
-  updated_at: string; // TIMESTAMPTZ
-}
-
-// ===========================================
 // TABLE: blocked_users
 // ===========================================
 export interface BlockedUser {
@@ -512,7 +474,6 @@ export interface BlockedUser {
   blocked_id: string; // UUID (the user who is blocked)
   reason?: string;
   created_at: string; // TIMESTAMPTZ
-  updated_at?: string; // TIMESTAMPTZ
 }
 
 // Blocked user with profile data for display
@@ -546,7 +507,7 @@ export interface PrivacySetting {
 export interface ProfileEmbedding {
   id: string; // UUID
   user_id: string; // UUID (UNIQUE)
-  embedding: number[] | null; // VECTOR(384)
+  embedding: string | null; // VECTOR(384) — Supabase returns VECTOR as string
   last_updated: string; // TIMESTAMPTZ
   status: 'pending' | 'processing' | 'completed' | 'failed';
   error_message?: string;
@@ -892,6 +853,18 @@ export type Database = {
         Row: FeedScore;
         Insert: Partial<FeedScore>;
         Update: Partial<FeedScore>;
+        Relationships: [];
+      };
+      post_impressions: {
+        Row: PostImpression;
+        Insert: Partial<PostImpression>;
+        Update: Partial<PostImpression>;
+        Relationships: [];
+      };
+      feed_thompson_params: {
+        Row: FeedThompsonParams;
+        Insert: Partial<FeedThompsonParams>;
+        Update: Partial<FeedThompsonParams>;
         Relationships: [];
       };
       events: {

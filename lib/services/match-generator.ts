@@ -234,26 +234,6 @@ export async function generateMatchesForUser(
   ) ?? [];
   excludeList.push(...blockedIds);
 
-  // Fetch blocked connections from connections table (status = 'blocked')
-  const { data: blockedConnections, error: blockedConnError } = await supabase
-    .from("connections")
-    .select("requester_id, receiver_id")
-    .or(`requester_id.eq.${userId},receiver_id.eq.${userId}`)
-    .eq("status", "blocked");
-
-  if (blockedConnError) {
-    logger.app.error("Error fetching blocked connections", { error: blockedConnError });
-  }
-
-  if (blockedConnections) {
-    for (const conn of blockedConnections) {
-      const blockedId = conn.requester_id === userId ? conn.receiver_id : conn.requester_id;
-      if (!excludeList.includes(blockedId)) {
-        excludeList.push(blockedId);
-      }
-    }
-  }
-
   let query = supabase
     .from("profile_embeddings")
     .select("user_id, embedding, status")

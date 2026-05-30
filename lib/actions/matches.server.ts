@@ -126,10 +126,9 @@ export async function dismissMatch(matchId: string) {
 // UPDATE MATCH PREFERENCES
 // ===========================================
 export async function updateMatchPreferences(preferences: {
-  looking_for?: string[]
-  location?: string
-  skills?: string[]
   min_match_percentage?: number
+  interested_in_types?: string[]
+  availability_match?: 'any' | 'similar' | 'complementary'
 }) {
   const supabase = await createClient()
   

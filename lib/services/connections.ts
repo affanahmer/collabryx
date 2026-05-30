@@ -10,6 +10,7 @@ import { logger } from "@/lib/logger"
 import { toast } from "sonner"
 import { z } from "zod"
 import type { Connection } from "@/types/database.types"
+import { formatTimeAgo } from "@/lib/utils/time-ago"
 
 // Module-specific logger
 const log = logger.app
@@ -645,40 +646,19 @@ export async function blockUser(
       return { error: new Error("Cannot block yourself") }
     }
 
-    // Check if connection exists
-    // Use parameterized .in() pattern instead of template-literal .or() to avoid injection (#137)
-    const { data: existingRows } = await supabase
-      .from("connections")
-      .select("id, status")
-      .in("requester_id", [user.id, userId])
-      .in("receiver_id", [user.id, userId])
-      .limit(1)
+    // Insert directly into dedicated blocked_users table
+    // Uses upsert to handle duplicate blocks (UNIQUE constraint on blocker_id + blocked_id)
+    const { error } = await supabase
+      .from("blocked_users")
+      .upsert(
+        {
+          blocker_id: user.id,
+          blocked_id: userId,
+        },
+        { onConflict: "blocker_id,blocked_id" },
+      )
 
-    const existing = existingRows?.[0] ?? null
-
-    if (existing) {
-      // Update existing connection to blocked
-      const { error } = await supabase
-        .from("connections")
-        .update({
-          status: "blocked",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", existing.id)
-
-      if (error) throw error
-    } else {
-      // Create new blocked connection
-      const { error } = await supabase
-        .from("connections")
-        .insert({
-          requester_id: user.id,
-          receiver_id: userId,
-          status: "blocked",
-        })
-
-      if (error) throw error
-    }
+    if (error) throw error
 
     return { error: null }
   } catch (error) {
@@ -759,19 +739,4 @@ function formatInitials(name: string): string {
     .toUpperCase()
     .slice(0, 2)
 }
-
-/**
- * Format timestamp to relative time string
- */
-function formatTimeAgo(dateString: string): string {
-  const date = new Date(dateString)
-  const now = new Date()
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-
-  if (seconds < 60) return "Just now"
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`
-
-  return date.toLocaleDateString()
-}
+// formatTimeAgo now imported from @/lib/utils/time-ago (deduplicated)

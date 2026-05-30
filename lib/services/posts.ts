@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client"
+import { formatTimeAgo } from "@/lib/utils/time-ago"
 import { logger } from "@/lib/logger"
 import { cosineSimilarity } from "@/lib/services/match-generator"
 import { calculateHybridScore } from "@/lib/services/feed-scorer"
@@ -773,7 +774,7 @@ export async function addReaction(
   }
 }
 
-export async function removeReaction(postId: string): Promise<{ error: Error | null }> {
+export async function removeReaction(postId: string, emoji: string): Promise<{ error: Error | null }> {
   try {
     const supabase = createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -792,6 +793,7 @@ export async function removeReaction(postId: string): Promise<{ error: Error | n
       .delete()
       .eq("post_id", postId)
       .eq("user_id", user.id)
+      .eq("emoji", emoji)
 
     if (error) throw error
 
@@ -857,22 +859,4 @@ export async function addAttachment(
   }
 }
 
-// ===========================================
-// HELPER FUNCTIONS
-// ===========================================
-
-// NOTE: formatTimeAgo also exists in other modules (e.g. notifications, comments).
-// Consider extracting to a shared utility e.g. @/lib/utils/time-ago or adding it
-// to @/lib/utils/date so all consumers use the same implementation.
-function formatTimeAgo(dateString: string): string {
-  const date = new Date(dateString)
-  const now = new Date()
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-
-  if (seconds < 60) return "Just now"
-  if (seconds < 3600) return `${Math.floor(seconds / 3600)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 86400)}h ago`
-  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`
-
-  return date.toLocaleDateString()
-}
+// formatTimeAgo now imported from @/lib/utils/time-ago (deduplicated)
