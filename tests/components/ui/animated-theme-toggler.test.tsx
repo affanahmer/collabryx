@@ -11,13 +11,25 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import React from 'react'
 
 // ---------------------------------------------------------------------------
+// Shared store for localStorage <-> useTheme mock bridge
+// Must use vi.hoisted so it's available when vi.mock factory runs
+// ---------------------------------------------------------------------------
+const { themeStore } = vi.hoisted(() => {
+  const store: Record<string, string> = {}
+  return { themeStore: store }
+})
+
+// ---------------------------------------------------------------------------
 // Mock theme-provider (useTheme needs ThemeProvider, mock it instead)
 // ---------------------------------------------------------------------------
 vi.mock("@/components/theme-provider", () => ({
   ThemeProvider: ({ children }: { children: React.ReactNode }) => React.createElement(React.Fragment, null, children),
   useTheme: () => ({
     theme: "light" as const,
-    setTheme: vi.fn(),
+    setTheme: vi.fn((newTheme: string) => {
+      // Call through to window.localStorage so mockLocalStorage.setItem spy sees it
+      window.localStorage.setItem('theme', newTheme)
+    }),
     resolvedTheme: "light" as const,
   }),
 }))
@@ -51,18 +63,17 @@ const mockStartViewTransition = vi.fn((cb: () => void) => {
 // document.documentElement mock
 const _originalDocumentElement = document.documentElement
 
-// localStorage mock
-const localStorageStore: Record<string, string> = {}
+// localStorage mock — shares themeStore with useTheme mock above
 const mockLocalStorage = {
-  getItem: vi.fn((key: string) => localStorageStore[key] ?? null),
+  getItem: vi.fn((key: string) => themeStore[key] ?? null),
   setItem: vi.fn((key: string, value: string) => {
-    localStorageStore[key] = value
+    themeStore[key] = value
   }),
   removeItem: vi.fn((key: string) => {
-    delete localStorageStore[key]
+    delete themeStore[key]
   }),
   clear: vi.fn(() => {
-    Object.keys(localStorageStore).forEach((k) => delete localStorageStore[k])
+    Object.keys(themeStore).forEach((k) => delete themeStore[k])
   }),
 }
 
@@ -112,7 +123,7 @@ import { AnimatedThemeToggler } from '@/components/ui/animated-theme-toggler'
 describe('AnimatedThemeToggler (TC-033, TC-034)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    localStorageStore['theme'] = 'light'
+    themeStore['theme'] = 'light'
     classListContains.mockReturnValue(false)
     viewTransitionCallback = null
     _mutationCallback = null

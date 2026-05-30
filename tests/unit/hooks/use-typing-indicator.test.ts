@@ -22,7 +22,13 @@ describe('useTypingIndicator (TC-069)', () => {
 
     mockChannel = {
       on: vi.fn().mockReturnThis(),
-      subscribe: vi.fn().mockReturnThis(),
+      subscribe: vi.fn((callback?: unknown) => {
+        // Invoke callback if provided (mimics real Supabase subscribe behavior)
+        if (typeof callback === 'function') {
+          callback('SUBSCRIBED')
+        }
+        return mockChannel
+      }),
       send: vi.fn(),
       unsubscribe: vi.fn(),
     }
