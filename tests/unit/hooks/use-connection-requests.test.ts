@@ -60,6 +60,10 @@ describe('useConnectionRequests', () => {
         single: vi.fn().mockResolvedValue({ data: mockConnection, error: null }),
         limit: vi.fn().mockReturnThis(),
         or: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
+        then: vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+          resolve({ data: null, error: null })
+        ),
       }
 
       mockSupabaseClient.from.mockImplementation((table: string) => {
@@ -73,6 +77,10 @@ describe('useConnectionRequests', () => {
           single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116' } }),
           limit: vi.fn().mockReturnThis(),
           or: vi.fn().mockReturnThis(),
+          in: vi.fn().mockReturnThis(),
+          then: vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+            resolve({ data: null, error: null })
+          ),
         } as unknown as ReturnType<typeof mockSupabaseClient.from>
       })
 
@@ -206,6 +214,10 @@ describe('useConnectionRequests', () => {
         order: orderFn,
         single: singleFn,
         limit: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
+        then: vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+          resolve({ data: null, error: null })
+        ),
       }
 
       mockSupabaseClient.from.mockImplementation((table: string) => {
@@ -216,6 +228,9 @@ describe('useConnectionRequests', () => {
           select: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
           single: vi.fn().mockResolvedValue({ data: null, error: new Error('table not found') }),
+          then: vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+            resolve({ data: null, error: null })
+          ),
         } as unknown as ReturnType<typeof mockSupabaseClient.from>
       })
 

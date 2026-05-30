@@ -720,6 +720,7 @@ describe("generateMatchesForUser", () => {
     mockResult.mockResolvedValueOnce({ data: [], error: null }); // 2: user skills
     mockResult.mockResolvedValueOnce({ data: [], error: null }); // 3: user interests
     mockResult.mockResolvedValueOnce({ data: [], error: null }); // 6: blocked users
+    mockResult.mockResolvedValueOnce({ data: [], error: null }); // 6b: blocked connections
     mockResult.mockResolvedValueOnce({
       data: [
         { user_id: "user-2", embedding: [1, 0, 0], status: "completed" },
@@ -954,10 +955,11 @@ describe("generateMatchesForUser", () => {
     });
     mockSingle.mockResolvedValueOnce({ data: null, error: null });
 
-    // Direct await calls: skills, interests, blocked, candidates, batch skills, batch interests, batch profiles, upsert, upsert score
+    // Direct await calls: skills, interests, blocked, blocked connections, candidates, batch skills, batch interests, batch profiles, upsert, upsert score
     mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null }); // blocked connections
     mockResult.mockResolvedValueOnce({
       data: [
         { user_id: "user-2", embedding: [1, 0, 0], status: "completed" },
@@ -1085,10 +1087,11 @@ describe("generateMatchesForUser", () => {
     });
     mockSingle.mockResolvedValueOnce({ data: null, error: null });
 
-    // Direct await calls: skills, interests, blocked, candidates, batch skills, batch interests, batch profiles, upsert, upsert score
+    // Direct await calls: skills, interests, blocked, blocked connections, candidates, batch skills, batch interests, batch profiles, upsert, upsert score
     mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null }); // blocked connections
     mockResult.mockResolvedValueOnce({
       data: [
         { user_id: "user-2", embedding: [1, 0, 0], status: "completed" },
@@ -1137,10 +1140,11 @@ describe("generateMatchesForUser", () => {
     });
     mockSingle.mockResolvedValueOnce({ data: null, error: null });
 
-    // Direct await calls: skills, interests, blocked, candidates, batch skills, batch interests, batch profiles, upsert, upsert score
+    // Direct await calls: skills, interests, blocked, blocked connections, candidates, batch skills, batch interests, batch profiles, upsert, upsert score
     mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockResult.mockResolvedValueOnce({ data: [], error: null });
     mockResult.mockResolvedValueOnce({ data: [], error: null });
+    mockResult.mockResolvedValueOnce({ data: [], error: null }); // blocked connections
     mockResult.mockResolvedValueOnce({
       data: [
         { user_id: "user-2", embedding: [1, 0, 0], status: "completed" },

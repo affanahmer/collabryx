@@ -47,6 +47,13 @@ describe('Onboarding Server Actions', () => {
     single: vi.fn(),
     upsert: vi.fn().mockReturnThis(),
     insert: vi.fn().mockReturnThis(),
+    update: vi.fn().mockReturnThis(),
+    count: vi.fn(),
+    head: vi.fn(),
+    // Thenable support for directly-awaited chains (e.g. update().eq())
+    then: vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+      resolve({ data: null, error: null })
+    ),
   }
 
   const mockUpsertQuery = {
@@ -55,6 +62,11 @@ describe('Onboarding Server Actions', () => {
     neq: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue({ data: { onboarding_completed: false }, error: null }),
     upsert: vi.fn().mockReturnThis(),
+    update: vi.fn().mockReturnThis(),
+    // Thenable support for directly-awaited chains
+    then: vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+      resolve({ data: null, error: null })
+    ),
   }
 
   const mockInsertQuery = {
@@ -63,6 +75,11 @@ describe('Onboarding Server Actions', () => {
     neq: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue({ data: { onboarding_completed: false }, error: null }),
     upsert: vi.fn().mockReturnThis(),
+    update: vi.fn().mockReturnThis(),
+    // Thenable support for directly-awaited chains
+    then: vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+      resolve({ data: null, error: null })
+    ),
   }
 
   beforeEach(async () => {
@@ -92,21 +109,33 @@ describe('Onboarding Server Actions', () => {
     mockProfileQuery.select.mockReturnThis()
     mockProfileQuery.eq.mockReturnThis()
     mockProfileQuery.neq.mockReturnThis()
+    mockProfileQuery.update.mockReturnThis()
     mockProfileQuery.single.mockResolvedValue({
       data: { onboarding_completed: false },
       error: null,
     })
     mockProfileQuery.upsert.mockReturnThis()
+    mockProfileQuery.then?.mockImplementation?.((resolve: (v: unknown) => void) =>
+      resolve({ data: null, error: null })
+    )
     mockUpsertQuery.select.mockReturnThis()
     mockUpsertQuery.eq.mockReturnThis()
     mockUpsertQuery.neq.mockReturnThis()
+    mockUpsertQuery.update.mockReturnThis()
     mockUpsertQuery.single.mockResolvedValue({ data: { onboarding_completed: false }, error: null })
     mockUpsertQuery.upsert.mockReturnThis()
+    mockUpsertQuery.then?.mockImplementation?.((resolve: (v: unknown) => void) =>
+      resolve({ data: null, error: null })
+    )
     mockInsertQuery.select.mockReturnThis()
     mockInsertQuery.eq.mockReturnThis()
     mockInsertQuery.neq.mockReturnThis()
+    mockInsertQuery.update.mockReturnThis()
     mockInsertQuery.single.mockResolvedValue({ data: { onboarding_completed: false }, error: null })
     mockInsertQuery.upsert.mockReturnThis()
+    mockInsertQuery.then?.mockImplementation?.((resolve: (v: unknown) => void) =>
+      resolve({ data: null, error: null })
+    )
     mockSupabase.rpc.mockResolvedValue({
       data: { queued: true },
       error: null,
@@ -289,12 +318,12 @@ describe('Onboarding Server Actions', () => {
         const result = await completeOnboarding(validOnboardingData, 90)
 
         expect(result.success).toBe(true)
+        // Profile upsert includes basic fields but onboarding_completed is set via separate update()
         expect(mockProfileQuery.upsert).toHaveBeenCalledWith(
           expect.objectContaining({
             id: 'test-user-123',
             full_name: 'John Doe',
             headline: 'Software Developer',
-            onboarding_completed: true,
             profile_completion: 90,
           }),
           expect.any(Object)
