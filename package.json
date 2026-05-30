@@ -104,6 +104,8 @@
     "openai": {
       "zod": "^3.24.0"
     },
-    "postcss": "^8.5.10"
+    "postcss": "^8.5.10",
+    "protobufjs": "^7.5.8",
+    "@protobufjs/utf8": "^1.1.1"
   }
 }
