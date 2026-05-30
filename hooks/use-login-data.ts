@@ -91,7 +91,7 @@ export function useLoginData() {
 
   // Fetch profile
   const profileQuery = useQuery({
-    queryKey: ['profile'],
+    queryKey: ['login-data'],
     queryFn: async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser()

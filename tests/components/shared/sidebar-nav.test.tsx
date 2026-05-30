@@ -39,7 +39,7 @@ vi.mock("@/hooks/use-matches-query", () => ({
   useCheckMatchGenerationStatus: () => ({ data: null, isLoading: false }),
 }))
 
-vi.mock("@/hooks/use-connection-requests", () => ({
+vi.mock("@/hooks/use-connections", () => ({
   useConnectionRequests: () => ({
     receivedRequests: [
       { id: "cr1", requester_id: "u1", status: "pending", created_at: "2025-01-01" },
@@ -72,7 +72,7 @@ const mockUserState = {
   error: null,
 }
 
-vi.mock('@/hooks/use-user', () => ({
+vi.mock('@/hooks/use-profile', () => ({
   useUser: () => mockUserState,
 }))
 

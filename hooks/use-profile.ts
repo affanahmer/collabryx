@@ -3,6 +3,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/types/database.types'
+import type { User } from '@supabase/supabase-js'
+import type { Database } from '@/types/database.types'
 import { generateUserEmbedding } from '@/lib/services/embeddings'
 import { TOAST_MESSAGES } from '@/lib/constants/toast-messages'
 import { toast } from 'sonner'
@@ -84,15 +86,12 @@ export function useUpdateProfile() {
       return data
     },
     onMutate: async (variables) => {
+      const currentProfileKey = PROFILE_QUERY_KEYS.current()
       await queryClient.cancelQueries({ queryKey: PROFILE_QUERY_KEYS.all })
-      const previousSnapshot = queryClient.getQueryData(PROFILE_QUERY_KEYS.all)
-      queryClient.setQueryData(PROFILE_QUERY_KEYS.all, (old: unknown) => {
-        if (!old || !Array.isArray(old)) return old
-        return old.map((item: Record<string, unknown>) =>
-          item && typeof item === 'object' && 'id' in item && 'id' in variables && item.id === variables.id
-            ? { ...item, ...variables }
-            : item,
-        )
+      const previousSnapshot = queryClient.getQueryData(currentProfileKey)
+      queryClient.setQueryData(currentProfileKey, (old: unknown) => {
+        if (!old || typeof old !== 'object') return old
+        return { ...(old as Record<string, unknown>), ...variables }
       })
       return { previousSnapshot }
     },
@@ -192,4 +191,84 @@ function getMissingFields(profile: ProfileWithRelations | null): string[] {
   if (!profile.user_experiences?.length) missing.push('experience')
 
   return missing
+}
+
+// ===========================================
+// COMBINED USER + PROFILE HOOK (merged from use-user.ts and use-user-profile.ts)
+// ===========================================
+
+type ProfileRow = Database['public']['Tables']['profiles']['Row']
+
+interface UseUserReturn {
+  user: User | null
+  profile: ProfileRow | null
+  isLoading: boolean
+  isError: boolean
+  error: Error | null
+  updateProfile: (data: Partial<ProfileRow>) => Promise<void>
+  refreshProfile: () => Promise<void>
+}
+
+export function useUser(): UseUserReturn {
+  const queryClient = useQueryClient()
+  const supabase = createClient()
+
+  const { data: userData, error: userError } = useQuery({
+    queryKey: ['user'],
+    queryFn: async () => {
+      const { data: { user }, error } = await supabase.auth.getUser()
+      if (error) throw error
+      return user
+    },
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  })
+
+  const { data: profile, error: profileError, isLoading, refetch } = useQuery({
+    queryKey: ['profile', userData?.id],
+    queryFn: async () => {
+      if (!userData?.id) return null
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, email, display_name, full_name, headline, bio, avatar_url, banner_url, location, website_url, collaboration_readiness, is_verified, verification_type, university, profile_completion, looking_for, onboarding_completed, created_at, updated_at')
+        .eq('id', userData.id)
+        .single()
+      if (error) throw error
+      return data as ProfileRow
+    },
+    enabled: !!userData?.id,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  })
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: Partial<ProfileRow>) => {
+      if (!userData?.id) throw new Error('No user ID')
+      const { error } = await supabase
+        .from('profiles')
+        .update(data)
+        .eq('id', userData.id)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] })
+      queryClient.invalidateQueries({ queryKey: ['user'] })
+    },
+  })
+
+  const error = userError || profileError || updateProfileMutation.error
+
+  return {
+    user: userData ?? null,
+    profile: profile ?? null,
+    isLoading,
+    isError: !!error,
+    error: error instanceof Error ? error : null,
+    updateProfile: async (data: Partial<ProfileRow>) => {
+      await updateProfileMutation.mutateAsync(data)
+    },
+    refreshProfile: async () => {
+      await refetch()
+    },
+  }
 }

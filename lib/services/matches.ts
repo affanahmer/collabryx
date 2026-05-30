@@ -232,10 +232,23 @@ export async function connectWithMatch(matchedUserId: string): Promise<{ error: 
       .eq("matched_user_id", matchedUserId)
 
     if (updateError) {
-      // TODO: Replace manual rollback with database transactions. The current approach
+      // TODO(#147): Replace manual rollback with database transactions. The current approach
       // has a race condition where the connection insert succeeds but the match_suggestions
-      // update fails, and the manual rollback delete may also fail, leaving orphaned rows. (#147)
-      // Rollback: delete the connection if status update fails
+      // update fails, and the manual rollback delete may also fail, leaving orphaned rows.
+      //
+      // Proposed fix: supabase.rpc('connect_with_match', { p_user_id, p_matched_user_id })
+      //
+      // CREATE OR REPLACE FUNCTION public.connect_with_match(p_user_id UUID, p_matched_user_id UUID)
+      // RETURNS void AS $$
+      // BEGIN
+      //   INSERT INTO connections (requester_id, receiver_id, status)
+      //     VALUES (p_user_id, p_matched_user_id, 'pending');
+      //   UPDATE match_suggestions SET status = 'connected'
+      //     WHERE user_id = p_user_id AND matched_user_id = p_matched_user_id;
+      // END;
+      // $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+      //
+      // Rollback: delete the connection if status update fails (best-effort)
       logger.app.error("Failed to update match status, rolling back connection", {
         error: updateError.message,
         connectionId: connectionData.id,

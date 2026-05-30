@@ -59,33 +59,15 @@ export function useNotificationPreferences(userId: string | null) {
                 console.warn("Using real API in development mode — ensure backend is running")
             }
 
-            const { data: existingPref } = await supabase
+            const { error: upsertError } = await supabase
                 .from("notification_preferences")
-                .select("id")
-                .eq("user_id", userId)
-                .single()
+                .upsert({
+                    user_id: userId,
+                    ...updates,
+                    updated_at: new Date().toISOString(),
+                })
 
-            if (existingPref) {
-                const { error: updateError } = await supabase
-                    .from("notification_preferences")
-                    .update({
-                        ...updates,
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq("user_id", userId)
-
-                if (updateError) throw updateError
-            } else {
-                const { error: insertError } = await supabase
-                    .from("notification_preferences")
-                    .insert({
-                        user_id: userId,
-                        ...updates,
-                        updated_at: new Date().toISOString(),
-                    })
-
-                if (insertError) throw insertError
-            }
+            if (upsertError) throw upsertError
 
             return { success: true }
         },

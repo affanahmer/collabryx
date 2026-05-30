@@ -26,7 +26,7 @@ import {
   useDeleteNotification,
   useRealtimeNotifications,
 } from "@/hooks/use-notifications"
-import { useConnectionRequests } from "@/hooks/use-connection-requests"
+import { useConnectionRequests } from "@/hooks/use-connections"
 import { toast } from "sonner"
 import type { Notification } from "@/types/database.types"
 

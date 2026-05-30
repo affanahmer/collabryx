@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
             if (isDebug) {
                 devLog("auth", "✅ Auth callback successful - session exchanged", {
                     userId: user?.id,
-                    email: user?.email,
+                    email: user?.email?.replace(/(.{2}).*(@.*)/, '$1***$2'),
                     emailConfirmedAt: user?.email_confirmed_at,
                     isEmailVerified: !!user?.email_confirmed_at,
                     redirecting_to: next,
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
             if (user && isDebug) {
                 const verificationStatus = user.email_confirmed_at ? "VERIFIED" : "NOT_VERIFIED"
                 devLog("auth", `📧 Email verification status: ${verificationStatus}`, {
-                    email: user.email,
+                    email: user.email?.replace(/(.{2}).*(@.*)/, '$1***$2'),
                     confirmedAt: user.email_confirmed_at,
                     willRedirectTo: next,
                 })

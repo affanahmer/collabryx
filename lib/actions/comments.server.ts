@@ -53,20 +53,40 @@ export async function createComment(formData: FormData) {
        
       if (commentError) throw commentError
       
-      // Update comment count on post within same transaction context
-      const { count, error: countError } = await supabase
-        .from('comments')
-        .select('id', { count: 'exact', head: true })
-        .eq('post_id', validated.data.post_id)
+      // TODO(#147): Replace with supabase.rpc('increment_comment_count', { p_post_id })
+      // for true atomicity. The select-then-update fallback below has a concurrent-request
+      // race condition (two overlapping creates will both read N, both write N+1 instead of N+2).
+      // Proposed RPC:
+      //
+      // CREATE OR REPLACE FUNCTION public.increment_comment_count(p_post_id UUID)
+      // RETURNS void AS $$
+      // BEGIN
+      //   UPDATE posts SET comment_count = comment_count + 1 WHERE id = p_post_id;
+      // END;
+      // $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-      if (countError) throw countError
+      // Atomic RPC — falls back to non-atomic read-then-write if RPC not deployed
+      const { error: rpcError } = await supabase
+        .rpc('increment_comment_count', { p_post_id: validated.data.post_id })
 
-      const { error: updateError } = await supabase
-        .from('posts')
-        .update({ comment_count: count || 0 })
-        .eq('id', validated.data.post_id)
-      
-      if (updateError) throw updateError
+      if (rpcError) {
+        // 42883 = undefined_function; fall back to non-atomic pattern
+        if (rpcError.code !== '42883') throw rpcError
+
+        const { count, error: countError } = await supabase
+          .from('comments')
+          .select('id', { count: 'exact', head: true })
+          .eq('post_id', validated.data.post_id)
+
+        if (countError) throw countError
+
+        const { error: updateError } = await supabase
+          .from('posts')
+          .update({ comment_count: count || 0 })
+          .eq('id', validated.data.post_id)
+        
+        if (updateError) throw updateError
+      }
       
       return commentData
     },
@@ -166,20 +186,39 @@ export async function deleteComment(commentId: string) {
 
       if (deleteError) throw deleteError
 
-      // Update comment count atomically
-      const { count, error: countError } = await supabase
-        .from('comments')
-        .select('id', { count: 'exact', head: true })
-        .eq('post_id', existingComment.post_id)
+      // TODO(#147): Replace with supabase.rpc('decrement_comment_count', { p_post_id })
+      // for true atomicity. Same race condition as createComment.
+      // Proposed RPC:
+      //
+      // CREATE OR REPLACE FUNCTION public.decrement_comment_count(p_post_id UUID)
+      // RETURNS void AS $$
+      // BEGIN
+      //   UPDATE posts SET comment_count = GREATEST(comment_count - 1, 0) WHERE id = p_post_id;
+      // END;
+      // $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
-      if (countError) throw countError
+      // Atomic RPC — falls back to non-atomic read-then-write if RPC not deployed
+      const { error: rpcError } = await supabase
+        .rpc('decrement_comment_count', { p_post_id: existingComment.post_id })
 
-      const { error: updateError } = await supabase
-        .from('posts')
-        .update({ comment_count: count || 0 })
-        .eq('id', existingComment.post_id)
-      
-      if (updateError) throw updateError
+      if (rpcError) {
+        // 42883 = undefined_function; fall back to non-atomic pattern
+        if (rpcError.code !== '42883') throw rpcError
+
+        const { count, error: countError } = await supabase
+          .from('comments')
+          .select('id', { count: 'exact', head: true })
+          .eq('post_id', existingComment.post_id)
+
+        if (countError) throw countError
+
+        const { error: updateError } = await supabase
+          .from('posts')
+          .update({ comment_count: count || 0 })
+          .eq('id', existingComment.post_id)
+        
+        if (updateError) throw updateError
+      }
       
       return { success: true }
     },

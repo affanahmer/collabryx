@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-// NOTE: This route is deprecated — auth uses supabase.auth.signInWithPassword() directly. Keep for backward compatibility.
-// CSRF: Not required here because Supabase Auth uses PKCE flow with automatic CSRF protection via the
-//       session-based auth token exchange. The client sends a code_verifier that must match the
-//       code_challenge from the initial authorization request, preventing CSRF attacks without
-//       requiring a separate CSRF token. Additionally, this endpoint does not set cookies directly;
-//       it returns JSON responses to the client which handles session management.
+import { headers } from 'next/headers'
+import { z } from 'zod'
 import { rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
@@ -39,11 +35,6 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000)
 
-interface LoginRequest {
-  email: string
-  password: string
-}
-
 /**
  * POST /api/auth/login
  * 
@@ -59,6 +50,14 @@ interface LoginRequest {
  * @returns Authentication result or error response
  */
 export async function POST(request: NextRequest) {
+  // CSRF protection (#33) — validate same-origin
+  const headersList = await headers()
+  const origin = headersList.get('origin')
+  const host = headersList.get('host')
+  if (origin && host && !origin.endsWith(host)) {
+    return NextResponse.json({ error: 'Invalid origin' }, { status: 403 })
+  }
+
   // Apply general rate limit first
   const generalRateLimit = rateLimit(request, 'general')
   if (!generalRateLimit.allowed && generalRateLimit.response) {
@@ -69,27 +68,24 @@ export async function POST(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 
              request.headers.get('x-real-ip') || 
              'unknown'
-  
+   
   try {
-    const body = await request.json() as LoginRequest
-    const { email, password } = body
+    const body = await request.json()
 
-    // Validate input
-    if (!email || !password) {
+    const loginSchema = z.object({
+      email: z.string().email(),
+      password: z.string().min(8)
+    })
+
+    const parsed = loginSchema.safeParse(body)
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: parsed.error.issues[0]?.message || 'Invalid input' },
         { status: 400 }
       )
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: 'Invalid email format' },
-        { status: 400 }
-      )
-    }
+    const { email, password } = parsed.data
 
     // Create rate limit keys for email-only and combined tracking
     const emailOnlyKey = `login:${email.toLowerCase()}`

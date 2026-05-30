@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { headers } from 'next/headers'
 import { assembleAndBuildPrompt } from '@/lib/rag/context-assembler'
 import { getProviderRegistry } from '@/lib/ai/providers/registry'
 import { createClient } from '@/lib/supabase/server'
@@ -7,6 +8,14 @@ import type { AssemblerOptions } from '@/lib/rag/context-assembler'
 import type { StartupContext } from '@/lib/rag/types'
 
 export async function POST(request: NextRequest) {
+  // CSRF protection (#33) — validate same-origin
+  const headersList = await headers()
+  const origin = headersList.get('origin')
+  const host = headersList.get('host')
+  if (origin && host && !origin.endsWith(host)) {
+    return NextResponse.json({ error: 'Invalid origin' }, { status: 403 })
+  }
+
   // Rate limiting (#35)
   const rateLimitResult = rateLimit(request, 'api')
   if (!rateLimitResult.allowed && rateLimitResult.response) {

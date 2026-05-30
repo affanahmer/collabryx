@@ -59,7 +59,7 @@ function PostForm() {
 **Usage Example:**
 ```tsx
 import { useAIMentor } from '@/hooks/use-new-endpoints';
-import { useUser } from '@/hooks/use-user';
+import { useUser } from '@/hooks/use-profile';
 
 function AIMentorChat() {
   const { user } = useUser();

@@ -60,7 +60,7 @@ export function usePrivacySettings(userId: string | null) {
 
             const { data: existingSettings } = await supabase
                 .from("privacy_settings")
-                .select("id")
+                .select("user_id")
                 .eq("user_id", userId)
                 .single()
 

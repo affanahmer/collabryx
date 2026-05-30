@@ -31,7 +31,7 @@ vi.mock("@/hooks/use-matches-query", () => ({
   useCheckMatchGenerationStatus: () => ({ data: null, isLoading: false }),
 }))
 
-vi.mock("@/hooks/use-connection-requests", () => ({
+vi.mock("@/hooks/use-connections", () => ({
   useConnectionRequests: () => ({
     receivedRequests: [],
     sentRequests: [],
@@ -72,7 +72,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
 }))
 
-vi.mock('@/hooks/use-user', () => ({
+vi.mock('@/hooks/use-profile', () => ({
   useUser: () => ({
     user: {
       id: 'test-user-123',

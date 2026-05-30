@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { z } from 'zod'
-import { useConnectionRequests } from '@/hooks/use-connection-requests'
+import { useConnectionRequests } from '@/hooks/use-connections'
 import { mockSupabaseClient } from '@/tests/setup/mocks'
 
 // Mock logger to suppress console noise in tests

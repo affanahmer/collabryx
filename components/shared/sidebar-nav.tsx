@@ -17,7 +17,7 @@ import {
 import { useSidebar } from "@/components/shared/sidebar-context"
 import { NotificationsWidget } from "@/components/features/dashboard/notifications-widget"
 import { useMatches } from "@/hooks/use-matches-query"
-import { useConnectionRequests } from "@/hooks/use-connection-requests"
+import { useConnectionRequests } from "@/hooks/use-connections"
 import {
     LayoutDashboard,
     Sparkles,
@@ -38,7 +38,7 @@ import {
     HelpCircle
 } from "lucide-react"
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler"
-import { useUser } from "@/hooks/use-user"
+import { useUser } from "@/hooks/use-profile"
 
 interface SidebarNavProps extends React.HTMLAttributes<HTMLDivElement> {
     isMobile?: boolean
