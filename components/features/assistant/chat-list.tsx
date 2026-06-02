@@ -52,6 +52,7 @@ export function ChatList({
       role: m.role as 'user' | 'assistant',
       content: m.content,
       structured: undefined as AIStructuredResponse | undefined,
+      isStreaming: false,
     }))
     const ext = externalMessages.map((m, i) => {
       const isStreaming = isStreamingLast && i === lastExtIndex
