@@ -9,9 +9,10 @@
  *
  * Priority ordering rationale:
  * Lower priority number = HIGHER priority (tried first during fallback).
- * - minimax (10): Tried first — fastest/cheapest model, suitable for simple tasks
- * - openai   (20): Default fallback — balanced capability and cost
- * - anthropic (30): Last resort — most capable/powerful model for complex tasks
+ * - openrouter  (5):  Tried first — OpenRouter with DeepSeek V4 Flash (or any model)
+ * - minimax    (10):  Fast/cheap fallback, suitable for simple tasks
+ * - openai     (20):  Default fallback — balanced capability and cost
+ * - anthropic  (30):  Last resort — most capable/powerful model for complex tasks
  *
  * This inverted scheme (lower=higher) allows inserting new providers at any
  * priority level without renumbering existing entries.
@@ -29,6 +30,31 @@ autoRegisterProviders(registry)
 
 // Step 2: Register legacy providers if env vars exist and not already registered
 // These provide backward compatibility for existing deployments
+
+// OpenRouter — primary provider (highest priority, tried first)
+// Uses OpenAI-compatible format with recommended identity headers
+if (process.env.OPENROUTER_API_KEY && !registry.getAvailableProviders().includes('openrouter')) {
+  const openRouterHeaders: Record<string, string> = {
+    'HTTP-Referer': process.env['OPENROUTER_REFERER'] || process.env['NEXT_PUBLIC_APP_URL'] || 'http://localhost:3000',
+    'X-OpenRouter-Title': process.env['OPENROUTER_TITLE'] || 'Collabryx',
+  }
+
+  registry.registerProvider({
+    name: 'openrouter',
+    provider: new OpenAICompatibleProvider({
+      name: 'openrouter',
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
+      model: process.env.OPENROUTER_MODEL || 'deepseek/deepseek-v4-flash',
+      maxTokens: parseInt(process.env.OPENROUTER_MAX_TOKENS || '8192', 10),
+      temperature: parseFloat(process.env.OPENROUTER_TEMPERATURE || '0.7'),
+      timeout: parseInt(process.env.OPENROUTER_TIMEOUT || '120000', 10),
+      extraHeaders: openRouterHeaders,
+    }),
+    priority: 5,
+    capabilities: ['chat', 'streaming'],
+  })
+}
 
 if (process.env.MINIMAX_API_KEY && !registry.getAvailableProviders().includes('minimax')) {
   registry.registerProvider({

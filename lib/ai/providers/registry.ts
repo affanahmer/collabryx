@@ -155,6 +155,13 @@ export function autoRegisterProviders(registry: ProviderRegistry): void {
           capabilities: ['chat', 'streaming'],
         })
       } else {
+        // Auto-detect OpenRouter and inject identity headers for leaderboard rankings
+        const extraHeaders: Record<string, string> = {}
+        if (baseURL.includes('openrouter.ai')) {
+          extraHeaders['HTTP-Referer'] = process.env['OPENROUTER_REFERER'] || process.env['NEXT_PUBLIC_APP_URL'] || 'http://localhost:3000'
+          extraHeaders['X-OpenRouter-Title'] = process.env['OPENROUTER_TITLE'] || 'Collabryx'
+        }
+
         // All other providers use OpenAI-compatible format
         const provider = new OpenAICompatibleProvider({
           name,
@@ -164,6 +171,7 @@ export function autoRegisterProviders(registry: ProviderRegistry): void {
           maxTokens,
           temperature,
           timeout,
+          extraHeaders: Object.keys(extraHeaders).length > 0 ? extraHeaders : undefined,
         })
 
         registry.registerProvider({

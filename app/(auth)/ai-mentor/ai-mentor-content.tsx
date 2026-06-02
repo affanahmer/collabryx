@@ -1,77 +1,88 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { useAIStream } from '@/hooks/use-ai-stream'
-import { StreamingMessage } from '@/components/features/ai-mentor/streaming-message'
 import { useAuth } from '@/hooks/use-auth'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { ChatList } from '@/components/features/assistant/chat-list'
+import { ChatInput } from '@/components/features/assistant/chat-input'
+import { cn } from '@/lib/utils'
+import { glass } from '@/lib/utils/glass-variants'
+import { Lightbulb } from 'lucide-react'
+import type { AIStructuredResponse, StartupIdeaAction } from '@/types/ai-responses'
+import { isAIStructuredResponse } from '@/types/ai-responses'
 
 export default function AIMentorContent() {
-  const [input, setInput] = useState('')
   const { user } = useAuth()
-  const { messages, isStreaming, sendMessage, error } = useAIStream({ userId: user?.id ?? '' })
+  const [sessionId] = useState(() => crypto.randomUUID())
+  const [, setRefreshKey] = useState(0)
+  const { messages, isStreaming, sendMessage, error } = useAIStream({
+    userId: user?.id ?? '',
+    sessionId,
+  })
+  const externalMessages = useMemo(() => {
+    return messages.map((msg) => {
+      let structured: AIStructuredResponse | undefined
+      if (msg.role === 'assistant') {
+        try {
+          const parsed = JSON.parse(msg.content)
+          if (isAIStructuredResponse(parsed)) structured = parsed
+        } catch { /* not JSON */ }
+      }
+      return { role: msg.role as 'user' | 'assistant', content: msg.content, structured }
+    })
+  }, [messages])
+  const handleSuggestionClick = useCallback((s: string) => sendMessage(s), [sendMessage])
+  const handleIdeaAction = useCallback((ideaId: number, action: StartupIdeaAction) => {
+    const m: Record<StartupIdeaAction, string> = {
+      validate: `Tell me more about validating idea #${ideaId}`,
+      find_cofounder: `Help me find a co-founder for idea #${ideaId}`,
+      market_research: `Do market research for idea #${ideaId}`,
+      build_mvp: `How do I build an MVP for idea #${ideaId}?`,
+      competitor_analysis: `Analyze competitors for idea #${ideaId}`,
+      fundraising: `How do I raise funds for idea #${ideaId}?`,
+      team_building: `What team do I need for idea #${ideaId}?`,
+      customer_interviews: `Help me plan customer interviews for idea #${ideaId}`,
+    }
+    sendMessage(m[action])
+  }, [sendMessage])
+  const handleMessageSent = useCallback(() => setRefreshKey((k) => k + 1), [])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || isStreaming) return
-    sendMessage(input.trim())
-    setInput('')
+  if (!user) {
+    return (
+      <div className='flex items-center justify-center min-h-[60vh]'>
+        <div className='h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent' />
+      </div>
+    )
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-            <div className="rounded-full bg-primary/10 p-6">
-              <svg className="h-12 w-12 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-semibold">AI Mentor</h2>
-            <p className="text-muted-foreground max-w-md">
-              Ask me anything about building your project, growing your skills, or finding the right path.
-            </p>
+    <div className='flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto'>
+      <div className={cn('px-4 md:px-6 py-3 md:py-4 border-b', glass('header'))}>
+        <div className='flex items-center gap-2'>
+          <div className='rounded-full bg-primary/10 p-1.5'>
+            <Lightbulb className='h-4 w-4 text-primary' />
           </div>
-        )}
-
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] rounded-lg px-4 py-2 ${
-              msg.role === 'user'
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted'
-            }`}>
-              {msg.role === 'assistant' ? (
-                <StreamingMessage content={msg.content} isStreaming={isStreaming && i === messages.length - 1} />
-              ) : (
-                <p className="text-sm">{msg.content}</p>
-              )}
-            </div>
-          </div>
-        ))}
-
-        {error && (
-          <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm">
-            {error?.message || 'An unexpected error occurred'}
-          </div>
-        )}
+          <h1 className='text-lg font-semibold'>AI Mentor</h1>
+        </div>
+        <p className='text-xs md:text-sm text-muted-foreground mt-0.5'>
+          Get personalized startup ideas based on your skills and interests
+        </p>
       </div>
-
-      <div className="border-t p-4 bg-background">
-        <form onSubmit={handleSubmit} className="flex gap-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask your AI mentor..."
-            disabled={isStreaming}
-            className="flex-1"
-          />
-          <Button type="submit" disabled={!input.trim() || isStreaming}>
-            {isStreaming ? 'Sending...' : 'Send'}
-          </Button>
-        </form>
+      {error && (
+        <div className='mx-4 mt-2 bg-destructive/10 text-destructive p-2.5 rounded-md text-xs md:text-sm'>
+          {error?.message || 'An unexpected error occurred. Please try again.'}
+        </div>
+      )}
+      <ChatList
+        sessionId={sessionId}
+        externalMessages={externalMessages}
+        isLoadingExternal={isStreaming}
+        onSuggestionClick={handleSuggestionClick}
+        onIdeaAction={handleIdeaAction}
+        onRefresh={handleMessageSent}
+      />
+      <div className={cn('border-t p-3 md:p-4 bg-background', glass('footer'))}>
+        <ChatInput sessionId={sessionId} onMessageSent={handleMessageSent} />
       </div>
     </div>
   )
