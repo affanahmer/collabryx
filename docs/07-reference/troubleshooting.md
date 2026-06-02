@@ -215,7 +215,7 @@ bun run typecheck
 ### Issue: Slow page loads
 
 **Solutions:**
-1. Check bundle size: `bun run build:analyze`
+1. Check bundle size with `bun run build` and verify output size
 2. Optimize images with `next/image`
 3. Implement lazy loading
 4. Check database query performance
@@ -248,6 +248,6 @@ If your issue isn't listed here:
 
 ---
 
-**Last Updated**: 2026-03-14
+**Last Updated**: 2026-06-02
 
 [← Back to Docs](./README.md)

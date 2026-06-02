@@ -133,6 +133,13 @@ graph TD
         Profile[profile/]
         Onboarding[onboarding/]
         Settings[settings/]
+        Activity[activity/]
+        Analytics[analytics/]
+        Assistant[assistant/]
+        Connections[connections/]
+        Landing[landing/]
+        Notifications[notifications/]
+        AI-Mentor[ai-mentor/]
     end
     
     subgraph Shared["Shared Components"]
@@ -516,11 +523,17 @@ graph TB
         BotDetect[Bot Detection]
         CSRF[CSRF Protection]
     end
+
+    subgraph L6["Layer 6: Session"]
+        SessionExpiry[Session Expiry Warning]
+        AuthSync[Auth State Sync]
+    end
     
     L1 --> L2
     L2 --> L3
     L3 --> L4
     L4 --> L5
+    L5 --> L6
 ```
 
 ### RLS Policy Flow
@@ -549,13 +562,13 @@ graph TD
 
 ## Related Documentation
 
-- [Architecture Overview](./ARCHITECTURE.md) - Detailed architecture documentation
-- [Deployment Guide](./DEPLOYMENT.md) - Deployment instructions
-- [API Reference](./API-REFERENCE.md) - All API endpoints
-- [Security Guide](./SECURITY.md) - Security features
+- [Architecture Overview](./overview.md) - Detailed architecture documentation
+- [Deployment Guide](../05-deployment/overview.md) - Deployment instructions
+- [API Reference](../03-core-features/api-reference.md) - All API endpoints
+- [Security Guide](../SECURITY.md) - Security features
 
 ---
 
 **Document Version:** 1.0.0  
-**Last Reviewed:** 2026-03-16  
+**Last Reviewed:** 2026-06-02  
 **Maintained By:** Architecture Team

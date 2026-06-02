@@ -294,9 +294,7 @@ shadow-[0_4px_32px_0_rgba(59,130,246,0.06)]
 
 ## 📚 Related Documentation
 
-- [Architecture Overview](./ARCHITECTURE.md)
-- [Component Guidelines](./02-architecture/components.md)
-- [Styling Guide](./02-architecture/styling.md)
+- [Architecture Overview](../docs/02-architecture/overview.md)
 - [Glass Variants Implementation](../lib/utils/glass-variants.ts)
 
 ---

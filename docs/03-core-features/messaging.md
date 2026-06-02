@@ -33,7 +33,7 @@ Collabryx messaging system features:
 │                    Messaging Architecture                    │
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
-│  Client → useChat Hook → Supabase Realtime → Database       │
+│  Client → useMessages Hook → Supabase Realtime → Database   │
 │                                                             │
 │  Components:                                                │
 │  - Conversation List                                        │
@@ -72,17 +72,44 @@ CREATE TABLE messages (
 ### React Hook
 
 ```typescript
-// hooks/use-chat.ts
-export function useChat(conversationId: string) {
-  const [messages, setMessages] = useState<Message[]>([])
+// hooks/use-messages.ts
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { createClient } from "@/lib/supabase/client"
+
+export function useMessages(conversationId: string) {
+  const queryClient = useQueryClient()
   const supabase = createClient()
   
-  // Load messages
-  useEffect(() => {
-    loadMessages()
-  }, [conversationId])
+  // Fetch messages
+  const { data: messages, isLoading } = useQuery({
+    queryKey: ["messages", conversationId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: true })
+      return data ?? []
+    },
+  })
   
-  // Subscribe to new messages
+  // Send message mutation
+  const sendMessage = useMutation({
+    mutationFn: async (content: string) => {
+      const { data, error } = await supabase.from("messages").insert({
+        conversation_id: conversationId,
+        content,
+        sender_id: currentUser.id,
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["messages", conversationId] })
+    },
+  })
+  
+  // Subscribe to new messages via Realtime
   useEffect(() => {
     const channel = supabase
       .channel(`messages:${conversationId}`)
@@ -92,24 +119,15 @@ export function useChat(conversationId: string) {
         table: 'messages',
         filter: `conversation_id=eq.${conversationId}`
       }, (payload) => {
-        setMessages(prev => [...prev, payload.new as Message])
+        queryClient.setQueryData(["messages", conversationId], 
+          (old: Message[]) => [...(old || []), payload.new as Message])
       })
       .subscribe()
     
-    return () => {
-      supabase.removeChannel(channel)
-    }
+    return () => { supabase.removeChannel(channel) }
   }, [conversationId])
   
-  const sendMessage = async (content: string) => {
-    await supabase.from('messages').insert({
-      conversation_id: conversationId,
-      content,
-      sender_id: currentUser.id
-    })
-  }
-  
-  return { messages, sendMessage }
+  return { messages, isLoading, sendMessage }
 }
 ```
 
@@ -144,37 +162,25 @@ const sendTypingIndicator = () => {
 
 ---
 
-## API Reference
+## Server Actions Reference
 
-### GET /api/conversations
+The messaging system uses Server Actions from `lib/actions/conversations.server.ts`:
 
-Get all conversations for current user.
+### getOrCreateConversation(otherUserId: string)
 
-**Response:**
-```json
-{
-  "conversations": [
-    {
-      "id": "uuid",
-      "participants": [...],
-      "last_message": {...},
-      "unread_count": 3
-    }
-  ]
-}
-```
+Get or create a direct message conversation.
 
-### POST /api/messages
+### sendMessage(conversationId: string, content: string)
 
-Send a new message.
+Send a message in a conversation.
 
-**Request:**
-```json
-{
-  "conversation_id": "uuid",
-  "content": "Hello!"
-}
-```
+### getMessages(conversationId: string)
+
+Get all messages for a conversation.
+
+### markConversationAsRead(conversationId: string)
+
+Mark all messages in a conversation as read.
 
 ---
 

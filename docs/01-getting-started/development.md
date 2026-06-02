@@ -22,7 +22,7 @@ Complete guide for developing with the Collabryx codebase.
 
 ### First-Time Setup
 
-If you haven't already, complete the [Installation Guide](./INSTALLATION.md) first.
+If you haven't already, complete the [Installation Guide](./installation.md) first.
 
 ### Development Server
 
@@ -137,7 +137,7 @@ git push origin feature/your-feature-name
 |---------|-------------|-------|
 | `bun run docker:up` | Start Python worker | Start embedding service |
 | `bun run docker:down` | Stop Python worker | Stop embedding service |
-| `bun run docker:down:clean` | Stop + deep cleanup | Remove orphaned containers |
+| `bun run docker:clean` | Stop + deep cleanup | Remove orphaned containers |
 | `bun run docker:logs` | Stream logs | Debug issues |
 | `bun run docker:logs:recent` | Show last 50 lines | Quick log check |
 | `bun run docker:health` | Health check | Verify service status |
@@ -748,6 +748,6 @@ const MyServerComponent = async () => {
 
 ---
 
-**Need help?** Check the [Installation Guide](./INSTALLATION.md) or [Architecture Guide](./ARCHITECTURE.md).
+**Need help?** Check the [Installation Guide](./installation.md) or [Architecture Guide](../02-architecture/overview.md).
 
-[← Back to README](../README.md) | [Architecture Guide →](./ARCHITECTURE.md)
+[← Back to README](../README.md) | [Architecture Guide →](../02-architecture/overview.md)

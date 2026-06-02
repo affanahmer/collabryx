@@ -177,31 +177,26 @@ Vercel is built by the creators of Next.js and offers the best Next.js deploymen
 
 ---
 
-### Option 2: Netlify
+### Option 2: Render (for Python Worker)
 
-#### Quick Deploy
-
-```bash
-# Install Netlify CLI
-bun install -g netlify-cli
-
-# Login to Netlify
-netlify login
-
-# Initialize and deploy
-netlify init
-netlify deploy --prod
-```
-
-#### Configuration (`netlify.toml`)
-
-```toml
-[build]
-  command = "bun run build"
-  publish = ".next"
-
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
+```yaml
+# render.yaml (project root)
+services:
+  - type: web
+    name: collabryx-worker
+    env: docker
+    dockerContext: ./python-worker
+    dockerfilePath: ./python-worker/Dockerfile
+    region: oregon
+    plan: standard
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://collabryx.com
 ```
 
 ---
@@ -348,11 +343,11 @@ psql postgresql://[CONNECTION_STRING]
 #### Vercel
 Settings → Environment Variables → Add
 
-#### Netlify
-Site Settings → Environment Variables → Add
-
 #### Docker
 Pass via `-e` flag or `.env` file with `docker-compose`
+
+#### Render
+Dashboard → Environment → Add Environment Variable
 
 ### Production Environment Variables
 
@@ -442,22 +437,10 @@ Name: www
 Value: cname.vercel-dns.com
 ```
 
-#### For Netlify
-```
-Type: A
-Name: @
-Value: 75.2.60.5
-
-Type: CNAME
-Name: www
-Value: your-site.netlify.app
-```
-
 ### SSL/TLS Certificate
 
 Most platforms automatically provision SSL certificates via Let's Encrypt:
 - **Vercel**: Automatic
-- **Netlify**: Automatic
 - **Self-hosted**: Use Certbot
 
 ```bash
@@ -474,59 +457,12 @@ sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
 
 ### GitHub Actions
 
-Create `.github/workflows/deploy.yml`:
+Actual CI/CD configurations are in `.github/workflows/`:
 
-```yaml
-name: Deploy to Production
+- `ci.yml` - Continuous integration (lint, typecheck, test)
+- `security.yml` - Security scanning
 
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '20'
-          
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
-        
-      - name: Run linter
-        run: bun run lint
-        
-      - name: Build
-        run: bun run build
-        env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v20
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.ORG_ID }}
-          vercel-project-id: ${{ secrets.PROJECT_ID }}
-          vercel-args: '--prod'
-```
-
-### Environment Secrets
-
-Add to GitHub repository:
-Settings → Secrets and variables → Actions → New repository secret
-
-Required secrets:
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `VERCEL_TOKEN`
-- `ORG_ID`
-- `PROJECT_ID`
+These are automatically triggered on push and pull request events.
 
 ---
 
@@ -559,9 +495,6 @@ Check logs:
 ```bash
 # Vercel
 vercel logs
-
-# Netlify
-netlify logs
 
 # PM2
 pm2 logs collabryx
@@ -674,6 +607,4 @@ psql -h [HOST] -U [USER] -d [DB] < backup.sql
 
 ---
 
-**Need help?** Check [Development Guide](./DEVELOPMENT.md) or open an issue.
-
-[← Back to README](../README.md) | [Contributing Guide →](./CONTRIBUTING.md)
+[← Back to README](../README.md) | [Contributing Guide →](../06-contributing/guide.md)

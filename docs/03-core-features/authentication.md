@@ -181,6 +181,8 @@ export async function middleware(request: NextRequest) {
 }
 ```
 
+> **Note**: The actual middleware is located at `proxy.ts` (project root) and uses Next.js middleware convention. It handles session refresh and redirect logic for all protected routes under `/(auth)`.
+
 ---
 
 ## Session Management
@@ -290,7 +292,7 @@ const { data, error } = await supabase
 
 ---
 
-**Last Updated**: 2026-03-14  
+**Last Updated**: 2026-06-02  
 **Version**: 2.0.0
 
 [← Back to Docs](../README.md)

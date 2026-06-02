@@ -145,12 +145,25 @@ AI_PROVIDER_1_MODEL=meta-llama/Llama-3.1-70B-Instruct-Turbo
 AI_PROVIDER_1_PRIORITY=1
 ```
 
+### Development
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SKIP_EMAIL_VERIFICATION` | Bypass email verification | `false` |
+
 ### Feature Flags
 
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `NEXT_PUBLIC_ENABLE_AI_FEATURES` | Enable AI features | `true` |
 | `NEXT_PUBLIC_MAINTENANCE_MODE` | Enable maintenance mode | `false` |
+
+### Performance Budget
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PERF_BUDGET_BUNDLE_KB` | Max bundle size in KB | `500` |
+| `PERF_BUDGET_LCP_MS` | Max LCP in ms | `2500` |
 
 ### Development
 
@@ -322,12 +335,7 @@ bun run dev
 4. Select environment (Production)
 5. Save
 
-#### Netlify
-
-1. Go to **Site Settings**
-2. Navigate to **Environment Variables**
-3. Add each variable
-4. Deploy for changes to take effect
+> **Note:** Netlify is not used. Deploy via Vercel or Docker instead.
 
 #### Docker
 
@@ -450,7 +458,7 @@ AI_PROVIDER_1_PRIORITY=1
 
 ---
 
-**Last Updated**: 2026-05-22  
+**Last Updated**: 2026-06-02  
 **Version**: 3.0.0
 
 [← Back to Docs](../README.md) | [Installation Guide →](../01-getting-started/installation.md)

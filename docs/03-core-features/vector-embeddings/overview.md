@@ -76,7 +76,7 @@ User Profile → Semantic Text → Embedding (384 dimensions) → Vector Storage
 ### Embedding Model
 
 - **Model**: `all-MiniLM-L6-v2`
-- **Dimensions**: 768
+- **Dimensions**: 384
 - **Type**: Sentence Transformer
 - **Use Case**: Semantic text similarity
 
@@ -251,23 +251,6 @@ This creates all tables, indexes, functions, and RLS policies.
     "dimensions": 384
   }
 }
-```
-
-  // 2. Call Python worker
-  const response = await fetch(PYTHON_WORKER_URL, {
-    method: 'POST',
-    body: JSON.stringify({ text })
-  })
-  
-  const { embedding } = await response.json()
-  
-  // 3. Store in database
-  await supabase
-    .from('profile_embeddings')
-    .upsert({ user_id: profile.id, embedding })
-  
-  return new Response(JSON.stringify({ success: true }))
-})
 ```
 
 ---
@@ -463,7 +446,7 @@ const { data, error } = await supabase.functions.invoke('generate-embedding', {
 })
 
 expect(error).toBeNull()
-expect(data.embedding).toHaveLength(768)
+expect(data.embedding).toHaveLength(384)
 ```
 
 ---
@@ -500,7 +483,7 @@ logging.error(f"Embedding failed: {error}")
 
 ---
 
-**Last Updated**: 2026-03-14  
+**Last Updated**: 2026-06-02  
 **Version**: 2.0.0
 
 [← Back to Docs](../../README.md) | [Python Worker Setup →](../python-worker/overview.md)

@@ -204,16 +204,12 @@ docker inspect collabryx-worker | grep -A5 LogPath
 ### AI Features
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` | LLM provider key | `sk-...` |
-| `LLM_PROVIDER` | Provider name | `openai` or `anthropic` |
-
-
-### Staging-Specific
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `STAGING` | Staging flag | `true` |
-
-| `WORKER_API_KEY` | Worker auth key | `staging-key-...` |
+| `AI_PROVIDER_1_NAME` | Primary provider name | `openai` |
+| `AI_PROVIDER_1_API_KEY` | Primary provider key | `sk-...` |
+| `AI_PROVIDER_1_BASE_URL` | Provider API URL | `https://api.openai.com/v1` |
+| `AI_PROVIDER_1_MODEL` | Model name | `gpt-4o-mini` |
+| `AI_PROVIDER_2_NAME` | Failover provider | `anthropic` |
+| `AI_PROVIDER_2_API_KEY` | Failover key | `sk-ant-...` |
 
 ---
 
@@ -318,6 +314,6 @@ curl http://localhost:8000/health | jq .
 
 ---
 
-**Last Updated:** May 2026  
+**Last Updated:** 2026-06-02  
 **Version:** 1.0.0  
 **Maintained By:** DevOps Team

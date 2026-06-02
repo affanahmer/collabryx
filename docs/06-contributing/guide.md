@@ -48,12 +48,12 @@ If you experience or witness unacceptable behavior, please report it to the proj
 Before contributing, ensure you have:
 
 1. **Completed setup**
-   - Follow the [Installation Guide](./INSTALLATION.md)
+   - Follow the [Installation Guide](../01-getting-started/installation.md)
    - Verify development server runs successfully
 
 2. **Read documentation**
-   - [Development Guide](./DEVELOPMENT.md)
-   - [Architecture Guide](./ARCHITECTURE.md)
+   - [Development Guide](../01-getting-started/development.md)
+   - [Architecture Guide](../02-architecture/overview.md)
 
 3. **Familiarized yourself with the codebase**
    - Explore the project structure
@@ -587,4 +587,4 @@ By contributing to Collabryx, you agree that your contributions will be licensed
 
 **Thank you for contributing to Collabryx! 🎉**
 
-[← Back to README](../README.md) | [Development Guide →](./DEVELOPMENT.md)
+[← Back to README](../../README.md) | [Development Guide →](../01-getting-started/development.md)

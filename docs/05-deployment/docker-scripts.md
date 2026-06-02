@@ -10,18 +10,16 @@ Fully automated Docker container management for the Python Worker Embedding Serv
 |---------|-------------|
 | `bun run docker:up` | Start container (auto-builds if image missing) |
 | `bun run docker:down` | Stop container gracefully |
-| `bun run docker:down:clean` | Stop + cleanup orphaned containers/networks |
 | `bun run docker:restart` | Restart container (down + up) |
 | `bun run docker:rebuild` | Force rebuild image + restart |
+| `bun run docker:clean` | Deep cleanup (removes orphans) |
 
 ### Monitoring Commands
 
 | Command | Description |
 |---------|-------------|
 | `bun run docker:logs` | Stream real-time logs |
-| `bun run docker:logs:recent` | Show last 50 log lines |
 | `bun run docker:health` | One-time health check |
-| `bun run docker:health:monitor` | Continuous health monitoring |
 | `bun run docker:status` | Comprehensive status report |
 
 ## 🚀 Usage Examples
@@ -46,9 +44,6 @@ bun run docker:up
 # Real-time streaming
 bun run docker:logs
 
-# Show recent logs only
-bun run docker:logs:recent
-
 # With timestamps
 bun run docker:logs -- --timestamps
 
@@ -61,9 +56,6 @@ bun run docker:logs -- --tail 200
 ```bash
 # One-time check
 bun run docker:health
-
-# Continuous monitoring
-bun run docker:health:monitor
 ```
 
 **Health check returns:**
@@ -104,7 +96,7 @@ bun run docker:status
 bun run docker:down
 
 # Deep cleanup (removes orphans)
-bun run docker:down:clean
+bun run docker:clean
 ```
 
 ## 🔧 Advanced Options
@@ -128,17 +120,7 @@ bun run docker:logs -- --service embedding-service
 bun run docker:logs -- -f -t --tail 200
 ```
 
-### Health Check Options
 
-```bash
-# Continuous monitoring with interval
-bun run docker:health:monitor
-
-# Output: Shows success rate over time
-12:34:56 ✅ Health check #1 (Success: 1/1)
-12:35:00 ✅ Health check #2 (Success: 2/2)
-12:35:03 ✅ Health check #3 (Success: 3/3)
-```
 
 ### Cleanup Options
 
@@ -147,7 +129,7 @@ bun run docker:health:monitor
 bun run docker:down
 
 # Deep cleanup (removes orphans and unused networks)
-bun run docker:down:clean
+bun run docker:clean
 
 # Rebuild from scratch
 bun run docker:rebuild
@@ -227,7 +209,7 @@ docker system df
 bun run docker:status
 
 # View recent logs
-bun run docker:logs:recent
+bun run docker:logs -- --tail 50
 
 # Restart service
 bun run docker:restart
@@ -261,7 +243,7 @@ For comprehensive monitoring, use these commands together:
 bun run docker:logs
 
 # Terminal 2: Monitor health
-bun run docker:health:monitor
+bun run docker:health
 
 # Terminal 3: Check status periodically
 bun run docker:status
@@ -292,8 +274,8 @@ Edit `python-worker/docker-compose.yml` to customize:
 1. **Always use bun scripts** - Don't run docker-compose directly
 2. **Check health after startup** - Scripts do this automatically
 3. **Use clean shutdown** - `bun run docker:down` instead of `docker kill`
-4. **Monitor regularly** - Use `docker:health:monitor` during development
-5. **Clean up periodically** - `bun run docker:down:clean` weekly
+4. **Monitor regularly** - Use `bun run docker:health` during development
+5. **Clean up periodically** - `bun run docker:clean` weekly
 
 ## 🆘 Quick Reference
 
@@ -328,5 +310,5 @@ bun run docker:rebuild
 
 ---
 
-**Last Updated:** 2026-03-15  
+**Last Updated:** 2026-06-02  
 **Version:** 2.0.0 (Fully automated scripts)

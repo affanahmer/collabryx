@@ -53,18 +53,23 @@
 ### UI & Styling
 - **[Tailwind CSS 4](https://tailwindcss.com/)** - Utility-first CSS framework
 - **[Radix UI](https://www.radix-ui.com/)** - Accessible component primitives
-- **[Framer Motion 12](https://www.framer.com/motion/)** - Production-ready animations
+- **[radix-ui](https://www.radix-ui.com/)** - Unified Radix UI package
+- **[@wrksz/themes](https://www.npmjs.com/package/@wrksz/themes)** - Theme system
+- **[Framer Motion ^12.23.25](https://www.framer.com/motion/)** - Production-ready animations
 - **[shadcn/ui](https://ui.shadcn.com/)** - Beautiful, reusable components
 - **[Sonner](https://sonner.emilkowal.ski/)** - Toast notifications
 - **[Lucide React](https://lucide.dev/)** - Icon toolkit
 
 ### 3D & Visualization
 - **[Three.js](https://threejs.org/)** - 3D graphics library
-- **[@react-three/fiber](https://docs.pmnd.rs/react-three-fiber/)** - React renderer for Three.js
-- **[@react-three/drei](https://github.com/pmndrs/drei)** - R3F helpers
-- **[GSAP 3](https://gsap.com/)** - Professional-grade animations
-- **[Lenis](https://lenis.darkroom.engineering/)** - Smooth scroll
-- **[Cobe](https://github.com/shuding/cobe)** - Lightweight WebGL globe
+- **[@react-three/fiber ^9.4.2](https://docs.pmnd.rs/react-three-fiber/)** - React renderer for Three.js
+- **[@react-three/drei ^10.7.7](https://github.com/pmndrs/drei)** - R3F helpers
+- **[GSAP ^13.0.0](https://gsap.com/)** - Professional-grade animations
+- **[Lenis ^1.3.15](https://lenis.darkroom.engineering/)** - Smooth scroll
+- **[Cobe ^0.6.5](https://github.com/shuding/cobe)** - Lightweight WebGL globe
+- **[maath](https://github.com/pmndrs/maath)** - Math helpers
+- **[ogl](https://github.com/oframe/ogl)** - WebGL framework
+- **[postprocessing](https://github.com/pmndrs/postprocessing)** - Effect composer
 
 ### AI & Backend Services
 - **Python Worker** - Embedding service only (FastAPI on :8000):
@@ -80,9 +85,11 @@
   - Legacy `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` still supported for backward compatibility
 
 ### State & Forms
-- **[Zustand 5](https://zustand-demo.pmnd.rs/)** - Lightweight state management
+- **[Zustand ^5.0.8](https://zustand-demo.pmnd.rs/)** - Lightweight state management
 - **[React Hook Form](https://react-hook-form.com/)** - Form validation
 - **[Zod](https://zod.dev/)** - Schema validation
+- **[face-api.js](https://github.com/justadudewhohacks/face-api.js)** - Face detection
+- **[motion](https://motion.dev/)** - Animation library
 
 ---
 
@@ -152,92 +159,89 @@ bun run test -- -t "RLS blocks"
 
 ```
 collabryx/
+├── .github/                    # CI/CD workflows
+│   └── workflows/
+│       ├── ci.yml              # Continuous integration
+│       └── security.yml        # Security scanning
 ├── app/                        # Next.js App Router
 │   ├── (auth)/                # Protected routes (dashboard, messages, etc.)
 │   ├── (public)/              # Public routes (landing, login, register)
-│   └── api/                   # API routes
+│   └── api/                   # API routes (22+ endpoints)
 ├── components/
 │   ├── features/              # Domain-specific components
-│   │   ├── assistant/         # AI assistant feature
-│   │   ├── dashboard/         # Dashboard components
+│   │   ├── activity/          # Activity feed
+│   │   ├── ai-mentor/         # AI mentor chat
+│   │   ├── analytics/         # Analytics dashboard
+│   │   ├── assistant/         # AI assistant
+│   │   ├── auth/              # Authentication forms
+│   │   ├── connections/       # User connections
+│   │   ├── dashboard/         # Dashboard (posts, comments, feed)
+│   │   ├── landing/           # Landing page components
 │   │   ├── matches/           # Matching system
 │   │   ├── messages/          # Messaging
+│   │   ├── moderation/        # Content moderation
+│   │   ├── notifications/     # Notifications
 │   │   ├── onboarding/        # Onboarding flow
-│   │   └── profile/           # User profile
+│   │   ├── posts/             # Post attachments
+│   │   ├── profile/           # User profile
+│   │   ├── requests/          # Connection requests
+│   │   └── settings/          # User settings
 │   ├── shared/                # Cross-feature components
 │   │   ├── glass-card.tsx     # Glassmorphism card
 │   │   ├── sidebar-nav.tsx    # Navigation
 │   │   └── user-nav-dropdown.tsx
-│   └── ui/                    # shadcn/ui primitives
-├── hooks/                     # Custom React hooks
+│   ├── ui/                    # shadcn/ui primitives (52 components)
+│   └── providers/             # React context providers
+├── e2e/                       # Root-level Playwright E2E tests
+├── hooks/                     # Custom React hooks (28 hooks)
 │   ├── use-auth.ts            # Authentication
-│   ├── use-chat.ts            # Chat functionality
-│   ├── use-matches.ts         # Matching logic
+│   ├── use-messages.ts        # Messaging
+│   ├── use-matches-query.ts   # Matching logic
 │   └── use-settings.ts        # User settings
 ├── lib/
+│   ├── actions/               # Server Actions (10)
+│   ├── ai/                    # AI provider system
+│   │   └── providers/         # Provider implementations
+│   ├── config/                # Configuration modules
+│   ├── constants/             # Constants
+│   ├── data/                  # Data definitions
+│   ├── errors/                # Error types
+│   ├── prompt/                # AI prompt templates
+│   ├── rag/                   # RAG pipeline
+│   ├── services/              # Business logic (18 services)
 │   ├── supabase/              # Supabase client setup
-│   ├── services/              # Business logic
-│   │   ├── embeddings.ts      # Embedding generation
-│   │   ├── matches.ts         # Matching service
-│   │   └── profiles.ts        # Profile service
-│   └── utils/                 # Helper functions
-├── tests/                     # Test suite (118 files, 750+ tests)
-│   ├── unit/                  # Unit tests (hooks, lib, services, actions)
-│   │   ├── hooks/             # 10 hook test files
-│   │   ├── lib/               # 30+ library/utility tests
-│   │   ├── services/          # 5 service algorithm tests
-│   │   └── actions/           # Server action tests
-│   ├── components/            # Component tests (25+ files)
-│   │   ├── features/          # Domain component tests (auth, matches, messages, etc.)
-│   │   ├── ui/                # UI primitive tests (globe, theme toggler, button)
-│   │   └── shared/            # Shared component tests (sidebar, notification)
-│   ├── integration/           # Cross-layer integration tests (30+ files)
-│   │   ├── auth/              # RLS policies, session expiry
-│   │   ├── embeddings/        # Embedding pipeline, worker failure, DLQ
-│   │   ├── ai-mentor/         # Chat sessions, MVP checklist, Lean Canvas, resilience
-│   │   ├── matches/           # Match flow end-to-end
-│   │   ├── realtime/          # Chat realtime, event processing
-│   │   ├── profile/           # Onboarding flow, CRUD, optimistic updates, cascade delete
-│   │   ├── notifications/     # Notification storage flow
-│   │   ├── moderation/        # Content scanning & quarantine
-│   │   ├── analytics/         # Activity tracking, daily aggregation
-│   │   ├── ui/                # Responsive layout, keyboard nav, smooth scroll
-
-│   │   ├── environment/       # Dev server, Docker worker health
-│   │   └── seeder/            # DB seeder CLI tests
-│   ├── e2e/                   # E2E Playwright tests (6 specs)
-│   │   ├── auth-flow.spec.ts
-│   │   ├── critical-flows.spec.ts
-│   │   ├── onboarding-flow.spec.ts
-│   │   ├── ui-components.spec.ts
-│   │   └── system-health.spec.ts
+│   ├── utils/                 # Utility functions
+│   └── validations/           # Zod schemas
+├── scripts/                   # Automation scripts
+│   ├── *.mjs                  # Docker management scripts
+│   └── seed-data/             # Database seeding
+├── tests/                     # Test suite (120+ files, 750+ tests)
+│   ├── unit/                  # Unit tests
+│   ├── components/            # Component tests
+│   ├── integration/           # Integration tests (30+ files)
+│   ├── e2e/                   # E2E Playwright tests
 │   ├── scripts/               # Shell infrastructure tests
-│   │   └── env-setup.test.sh
-│   ├── setup/                 # Global mocks & fixtures
-│   │   ├── setup.ts           # afterEach cleanup, matchMedia, IntersectionObserver, next/navigation, motion mocks
-│   │   ├── mocks.ts           # Supabase client, sonner toast, React Query mocks
-│   │   └── fixtures.ts        # Mock data factories (User, Post, Comment, Connection, Notification, etc.)
-│   └── README.md              # Test suite documentation (100 TCs mapped)
-├── docs/                      # Documentation
-│   ├── 01-getting-started/    # Installation, development
-│   ├── 02-architecture/       # Architecture overview
-│   ├── 03-core-features/      # Feature docs
-│   ├── 04-infrastructure/     # Infrastructure
-│   ├── 05-deployment/         # Deployment guides
-│   ├── 06-contributing/       # Contributing guide
-│   └── 07-reference/          # Reference docs
+│   └── setup/                 # Global mocks & fixtures
+├── docs/                      # Documentation (33+ files)
 ├── python-worker/             # Python embedding service (FastAPI)
+│   ├── main.py                # FastAPI entry point
 │   ├── embedding_generator.py # Sentence Transformers logic
 │   ├── rate_limiter.py        # Database-backed rate limiting
 │   ├── embedding_validator.py # Validation & dimension normalization
-│   └── main.py                # FastAPI entry point
-│   ├── main.py                # FastAPI entry point
-│   └── tests/                 # Service tests
-
-│   └── setup/                 # Database schema (31 tables + RLS + triggers)
+│   └── tests/                 # Pytest suite
+├── supabase/                  # Database config
+│   ├── config.toml            # Supabase configuration
+│   ├── migrations/            # Migration files
+│   └── setup/                 # Schema setup (34 tables + RLS + triggers)
 ├── public/                    # Static assets
-├── types/                     # TypeScript types
-└── expected-objects/          # Backend schema specs
+│   ├── icons/                 # ~140 Lucide icons
+│   ├── images/                # SVG assets
+│   └── Models/                # 3D models (GLTF)
+├── types/                     # TypeScript type definitions (5 files)
+├── AGENTS.md                  # AI agent development guide
+├── ISSUES.md                  # Known issues tracker
+├── proxy.ts                   # Auth middleware
+└── render.yaml                # Render deployment config
 ```
 
 ---
@@ -343,16 +347,15 @@ bun run test:e2e:ui
 | Category | Documents |
 |----------|-----------|
 | **Getting Started** | [Installation](./docs/01-getting-started/installation.md) • [Development](./docs/01-getting-started/development.md) |
-| **Architecture** | [Overview](./docs/ARCHITECTURE.md) • [Diagrams](./docs/02-architecture/diagrams.md) |
-| **Core Features** | [Vector Embeddings](./docs/03-core-features/vector-embeddings/overview.md) • [AI Assistant](./docs/03-core-features/ai-assistant/overview.md) • [Matching](./docs/03-core-features/matching-system.md) • [Messaging](./docs/03-core-features/messaging.md) |
-| **Infrastructure** | [Python Worker](./docs/04-infrastructure/python-worker/overview.md) • [Database](./docs/04-infrastructure/database/schema.md) • [Security](./docs/04-infrastructure/security-status.md) • [Monitoring](./docs/04-infrastructure/monitoring.md) |
-| **Deployment** | [Complete Guide](./docs/DEPLOYMENT.md) • [Overview](./docs/05-deployment/overview.md) • [Docker Scripts](./docs/05-deployment/docker-scripts.md) • [Checklist](./docs/05-deployment/checklist.md) |
+| **Architecture** | [Overview](./docs/02-architecture/overview.md) • [Diagrams](./docs/02-architecture/diagrams.md) • [User Stories](./docs/02-architecture/user-stories-and-sequence-diagrams.md) |
+| **Core Features** | [Vector Embeddings](./docs/03-core-features/vector-embeddings/overview.md) • [AI Assistant](./docs/03-core-features/ai-assistant/overview.md) • [Matching](./docs/03-core-features/matching-system.md) • [Messaging](./docs/03-core-features/messaging.md) • [Authentication](./docs/03-core-features/authentication.md) • [API Reference](./docs/03-core-features/api-reference.md) |
+| **Infrastructure** | [Python Worker](./docs/04-infrastructure/python-worker/overview.md) • [Database Schema](./docs/04-infrastructure/database/schema.md) • [Database Setup](./docs/04-infrastructure/database/setup-guide.md) • [Performance](./docs/04-infrastructure/performance.md) • [Embedding System](./docs/04-infrastructure/database/embeddings.md) |
+| **Deployment** | [Overview](./docs/05-deployment/overview.md) • [Docker Scripts](./docs/05-deployment/docker-scripts.md) • [Checklist](./docs/05-deployment/checklist.md) • [Runbook](./docs/05-deployment/runbook.md) |
 | **Database Seeding** | [Complete Guide](./docs/08-database-seeding/README.md) • [Quick Reference](./docs/08-database-seeding/QUICK_REFERENCE.md) |
-| **API Reference** | [Complete API Docs](./docs/API-REFERENCE.md) |
 | **Contributing** | [Guide](./docs/06-contributing/guide.md) • [Git Workflow](./docs/06-contributing/git-workflow.md) |
 | **Reference** | [Environment Variables](./docs/07-reference/environment-variables.md) • [Commands](./docs/07-reference/commands.md) • [Troubleshooting](./docs/07-reference/troubleshooting.md) |
-| **Security** | [Security Features](./docs/SECURITY.md) |
-| **Monitoring** | [Observability Guide](./docs/MONITORING.md) |
+| **Design** | [Design System](./docs/DESIGN-SYSTEM.md) • [Frontend Integration](./docs/FRONTEND-INTEGRATION-GUIDE.md) |
+| **Security** | [Security Guide](./docs/SECURITY.md) |
 
 ---
 
@@ -391,32 +394,39 @@ git push origin feature/your-feature-name
 
 ## 🔐 Environment Variables
 
-Required environment variables:
+Required (4) and recommended environment variables:
 
 ```env
-# Supabase (Required)
+# === 1. SUPABASE (Required) ===
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
-# Python Worker (Optional, for embeddings)
+# === 2. APPLICATION (Required) ===
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# === 3. PYTHON WORKER (Required for embeddings) ===
 PYTHON_WORKER_URL=http://localhost:8000
 
-# AI Providers (Optional, configure one or more)
-# Legacy (backward compatible):
+# === 4. BACKEND ROUTING ===
+# Auto-detect: Docker first, then Render
+BACKEND_MODE=auto
+
+# === 5. AI PROVIDERS (Optional — services degrade gracefully) ===
+# Legacy single-provider keys (backward compatible):
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
 
-# Universal Provider System (recommended):
+# Universal Provider System (recommended — supports failover):
 AI_PROVIDER_1_NAME=openai
 AI_PROVIDER_1_API_KEY=sk-...
 AI_PROVIDER_1_BASE_URL=https://api.openai.com/v1
 AI_PROVIDER_1_MODEL=gpt-4o-mini
 AI_PROVIDER_1_PRIORITY=1
 
-# Optional
-NEXT_PUBLIC_APP_URL=http://localhost:3000
+# === 6. OPTIONAL ===
 NODE_ENV=development
+DEBUG=false
 ```
 
 ⚠️ **Never commit `.env.local` to version control!**
@@ -427,12 +437,12 @@ NODE_ENV=development
 
 ## 📊 Database
 
-Collabryx uses **26+ tables** in Supabase (PostgreSQL) with:
+Collabryx uses **34 tables** in Supabase (PostgreSQL) with:
 
 - Row Level Security (RLS) on all tables
 - Realtime subscriptions enabled
 - Automatic embedding generation triggers
-- Optimized indexes for performance
+- Optimized indexes (103 total) for performance
 - pgvector for vector similarity search
 
 ### Core Tables
@@ -440,23 +450,41 @@ Collabryx uses **26+ tables** in Supabase (PostgreSQL) with:
 | Table | Purpose |
 |-------|---------|
 | `profiles` | User profiles |
-| `user_skills` | User skills |
+| `user_skills` | User skills with proficiency |
 | `user_interests` | User interests |
 | `user_experiences` | Work experience |
 | `user_projects` | Projects portfolio |
-| `posts` | Social posts |
-| `comments` | Post comments |
+| `posts` | Social posts (with optimistic locking) |
+| `post_attachments` | Post media attachments |
+| `post_reactions` | Post reactions/emojis |
+| `comments` | Post comments (threaded) |
+| `comment_likes` | Comment likes |
 | `connections` | User connections |
+| `connection_requests` | Pending requests |
 | `match_suggestions` | AI match suggestions |
 | `match_scores` | Match compatibility scores |
+| `match_activity` | Match activity tracking |
+| `match_preferences` | Match filtering preferences |
 | `conversations` | Chat conversations |
-| `messages` | Chat messages |
+| `messages` | Chat messages (with read receipts) |
 | `notifications` | User notifications |
+| `notification_preferences` | Notification preferences |
+| `ai_mentor_sessions` | AI mentor sessions |
+| `ai_mentor_messages` | AI mentor messages |
 | `profile_embeddings` | Vector embeddings (384 dim) |
 | `embedding_dead_letter_queue` | Failed embedding retries |
 | `embedding_pending_queue` | Onboarding embedding queue |
+| `embedding_rate_limits` | Rate limiting |
+| `theme_preferences` | UI theme preferences |
+| `user_engagement_metrics` | Engagement analytics |
+| `user_activity_analytics` | Activity analytics |
+| `feature_adoption_metrics` | Feature usage tracking |
+| `analytics_aggregation_queue` | Analytics job queue |
+| `content_reports` | Content reports |
+| `content_moderation_queue` | Moderation queue |
+| `content_moderation_logs` | Moderation audit log |
 
-📖 **Complete schema:** [expected-objects/](./expected-objects/) • [Database Setup](./supabase/setup/) • [Architecture](./docs/ARCHITECTURE.md)
+📖 **Complete schema:** [Database Setup](./supabase/setup/) • [Architecture](./docs/02-architecture/overview.md)
 
 ---
 

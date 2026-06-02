@@ -1,7 +1,7 @@
 # Python Worker Production Deployment Guide
 
 **For:** Production deployment on Render and Railway  
-**Last Updated:** 2026-05-22
+**Last Updated:** 2026-06-02
 
 ---
 

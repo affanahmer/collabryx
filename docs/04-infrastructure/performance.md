@@ -2,20 +2,6 @@
 
 ## Bundle Optimization
 
-### Analyze Bundle Size
-
-```bash
-# Generate bundle analysis report
-bun run build
-ANALYZE=true bun run build
-```
-
-This generates a visual report showing:
-- Bundle sizes per page
-- Largest dependencies
-- Code splitting effectiveness
-- Tree-shaking opportunities
-
 ### Current Optimizations
 
 ✅ **React Compiler** - Automatic memoization
@@ -287,5 +273,5 @@ Set limits to prevent regressions:
 
 ---
 
-**Last Updated:** March 15, 2026
+**Last Updated:** 2026-06-02
 **Status:** ✅ Implemented

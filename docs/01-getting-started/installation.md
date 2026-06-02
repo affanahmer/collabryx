@@ -402,7 +402,7 @@ cat package.json | grep "module-name"
 
 If you encounter issues not covered here:
 
-1. Check the [Development Guide](./DEVELOPMENT.md)
+1. Check the [Development Guide](./development.md)
 2. Search existing [GitHub Issues](https://github.com/your-username/collabryx/issues)
 3. Create a new issue with:
    - Your OS and Node.js version
@@ -416,9 +416,9 @@ If you encounter issues not covered here:
 ✅ Installation complete! Here's what to do next:
 
 1. **Read the Documentation**
-   - [Development Guide](./DEVELOPMENT.md) - Learn the development workflow
-   - [Architecture Guide](./ARCHITECTURE.md) - Understand the project structure
-   - [Contributing Guide](./CONTRIBUTING.md) - Start contributing
+   - [Development Guide](./development.md) - Learn the development workflow
+   - [Architecture Guide](../02-architecture/overview.md) - Understand the project structure
+   - [Contributing Guide](../06-contributing/guide.md) - Start contributing
 
 2. **Explore the Codebase**
    - Check out `app/(public)/page.tsx` for the landing page
@@ -439,4 +439,4 @@ If you encounter issues not covered here:
 
 **Happy coding! 🚀**
 
-[← Back to README](../README.md) | [Development Guide →](./DEVELOPMENT.md)
+[← Back to README](../README.md) | [Development Guide →](./development.md)

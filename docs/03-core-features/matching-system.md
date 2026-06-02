@@ -55,6 +55,8 @@ interface MatchScore {
 
 ### Match Service
 
+> **Note**: The actual matching system uses multiple services (`lib/services/matches.ts`, `match-generation.ts`, `match-scores.ts`) with BM25 keyword extraction and feed scoring. This is a simplified illustration.
+
 ```typescript
 // lib/services/matches.ts
 export async function getMatchSuggestions(userId: string, limit = 10) {
@@ -112,49 +114,34 @@ $$ LANGUAGE plpgsql;
 
 ## API Reference
 
-### GET /api/matches/suggestions
+### POST /api/matches/generate
 
-Get match suggestions for current user.
-
-**Response:**
-```json
-{
-  "matches": [
-    {
-      "user_id": "uuid",
-      "name": "John Doe",
-      "headline": "Software Engineer",
-      "match_score": 0.85,
-      "common_skills": ["React", "TypeScript"],
-      "common_interests": ["Open Source"]
-    }
-  ]
-}
-```
-
-### POST /api/matches/score
-
-Calculate match score between two users.
-
-**Request:**
-```json
-{
-  "user_id_1": "uuid",
-  "user_id_2": "uuid"
-}
-```
+Generate match suggestions for current user.
 
 **Response:**
 ```json
 {
-  "score": 0.85,
-  "breakdown": {
-    "semantic": 0.9,
-    "skills": 0.8,
-    "interests": 0.85,
-    "activity": 0.75,
-    "reciprocity": 0.9
+  "success": true,
+  "data": {
+    "suggestions": [...]
   }
+}
+```
+
+### POST /api/matches/generate/batch
+
+Generate matches in batch for all users (admin).
+
+### GET /api/matches/health
+
+Health check for match system.
+
+**Response:**
+```json
+{
+  "status": "healthy",
+  "bm25_loaded": true,
+  "last_batch_run": "2026-06-01T00:00:00Z"
 }
 ```
 
@@ -178,15 +165,14 @@ CREATE INDEX profiles_created_idx ON profiles (created_at);
 
 ### Caching
 
+Match results are cached via React Query:
+
 ```typescript
-// Cache match results for 5 minutes
-const cacheKey = `matches:${userId}`
-const cached = await cache.get(cacheKey)
-
-if (cached) return cached
-
-const matches = await getMatchSuggestions(userId)
-await cache.set(cacheKey, matches, 300) // 5 minutes
+// Cached match suggestions (5 min stale time)
+const { data: matches } = useMatchesQuery({
+  staleTime: 5 * 60 * 1000,
+  gcTime: 15 * 60 * 1000,
+})
 ```
 
 ---

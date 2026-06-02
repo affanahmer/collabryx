@@ -57,12 +57,15 @@ pip install -r requirements.txt
 ### Requirements
 
 ```txt
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-sentence-transformers==2.2.2
-torch==2.1.0
-pydantic==2.5.0
-python-dotenv==1.0.0
+fastapi==0.115.6
+uvicorn[standard]==0.32.0
+sentence-transformers==3.3.1
+pydantic==2.9.2
+pydantic-settings==2.6.1
+python-dotenv==1.0.1
+httpx>=0.24.0
+supabase>=2.3.0
+tenacity==9.0.0
 ```
 
 ---
@@ -157,7 +160,7 @@ Health check with system metrics.
   "status": "healthy",
   "model_info": {
     "model_name": "all-MiniLM-L6-v2",
-    "dimensions": 768
+    "dimensions": 384
   }
 }
 ```
@@ -170,7 +173,7 @@ Model information.
 ```json
 {
   "model_name": "all-MiniLM-L6-v2",
-  "dimensions": 768,
+  "dimensions": 384,
   "device": "cpu"
 }
 ```
@@ -263,4 +266,4 @@ Queue embedding generation from profile data.
 **Last Updated**: 2026-05-22  
 **Version**: 3.0.0
 
-[← Back to Docs](../../README.md) | [Vector Embeddings →](../vector-embeddings/overview.md)
+[← Back to Docs](../../README.md) | [Vector Embeddings →](../../docs/03-core-features/vector-embeddings/overview.md)

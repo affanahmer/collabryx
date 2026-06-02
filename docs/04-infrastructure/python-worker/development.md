@@ -1,7 +1,7 @@
 # Python Worker Development Guide
 
 **For:** Local development and testing  
-**Last Updated:** 2026-05-22
+**Last Updated:** 2026-06-02
 
 ---
 

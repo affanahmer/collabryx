@@ -38,6 +38,21 @@ PORT=3001 bun run dev
 
 ---
 
+### `bun run dev:skip-docker`
+
+Start the Next.js development server without Docker dependency checks.
+
+```bash
+bun run dev:skip-docker
+```
+
+**Details:**
+- Skips Docker health check
+- Useful when running without Docker
+- Starts faster than `bun run dev`
+
+---
+
 ### `bun run build`
 
 Create a production build of the application.
@@ -95,6 +110,36 @@ bun run lint
 ```bash
 bun run lint -- --fix
 ```
+
+---
+
+### `bun run perf:budget`
+
+Check the performance budget for the production build.
+
+```bash
+bun run perf:budget
+```
+
+**Details:**
+- Analyzes bundle size against defined thresholds
+- Reports any budget violations
+- Requires production build first
+
+---
+
+### `bun run perf:budget:ci`
+
+Check performance budget in CI mode (strict).
+
+```bash
+bun run perf:budget:ci
+```
+
+**Details:**
+- Same as `perf:budget` but exits with error on violations
+- Used in CI pipelines
+- Fails the pipeline if budget is exceeded
 
 ---
 
@@ -188,53 +233,11 @@ bun run test -- -t "RLS blocks"
 
 ## Build Commands
 
-### `bun run build:analyze`
-
-Analyze bundle size.
-
-```bash
-bun run build:analyze
-```
-
-**Details:**
-- Generates bundle analysis report
-- Shows largest dependencies
-- Helps identify optimization opportunities
-
-**Output:** `.next/analyze/`
-
----
-
-### `bun run build:vercel`
-
-Build for Vercel deployment.
-
-```bash
-bun run build:vercel
-```
-
-**Details:**
-- Uses Vercel build configuration
-- Optimized for Vercel platform
+The only build command available is `bun run build`, documented above in Core Commands.
 
 ---
 
 ## Utility Commands
-
-### `bun run clean`
-
-Clean build artifacts and caches.
-
-```bash
-bun run clean
-```
-
-**Removes:**
-- `.next/` directory
-- `node_modules/.cache/`
-- `*.tsbuildinfo` files
-
----
 
 ### `bun run typecheck`
 
@@ -248,40 +251,6 @@ bun run typecheck
 - Checks all TypeScript files
 - No emit (doesn't generate JS)
 - Faster than full build
-
----
-
-### `bun run format`
-
-Format code with Prettier.
-
-```bash
-bun run format
-```
-
-**Details:**
-- Formats all supported files
-- Uses project Prettier config
-
-**Check Only:**
-```bash
-bun run format:check
-```
-
----
-
-### `bun run prepare`
-
-Run Husky setup for git hooks.
-
-```bash
-bun run prepare
-```
-
-**Details:**
-- Installs git hooks
-- Enables pre-commit linting
-- Auto-run on `bun install`
 
 ---
 
@@ -396,15 +365,37 @@ docker run -p 3000:3000 \
 
 ### Docker Compose
 
-```bash
-# Start all services
-docker-compose up -d
+Local development with the Python worker:
 
-# Stop all services
-docker-compose down
+```bash
+cd python-worker
+docker-compose up -d
 
 # View logs
 docker-compose logs -f
+
+# Stop services
+docker-compose down
+```
+
+---
+
+### `bun run docker:restart`
+
+Restart all Docker services.
+
+```bash
+bun run docker:restart
+```
+
+---
+
+### `bun run docker:clean`
+
+Stop and remove all Docker containers, networks, and volumes created by the project.
+
+```bash
+bun run docker:clean
 ```
 
 ---
@@ -439,17 +430,21 @@ Set-Alias test "bun run test"
 | Task | Command |
 |------|---------|
 | Start development | `bun run dev` |
+| Skip Docker check | `bun run dev:skip-docker` |
 | Build for production | `bun run build` |
 | Run tests | `bun run test` |
-| Run tests (watch) | `bun run test:watch` |
-| Check code quality | `bun run lint` |
-| Format code | `bun run format` |
+| Run tests (CI) | `bun run test:ci` |
 | Type check | `bun run typecheck` |
-| Clean build | `bun run clean` |
+| Check code quality | `bun run lint` |
+| Docker up | `bun run docker:up` |
+| Docker down | `bun run docker:down` |
+| Docker logs | `bun run docker:logs` |
+| Docker health | `bun run docker:health` |
+| Performance budget | `bun run perf:budget` |
 
 ---
 
-**Last Updated**: 2026-03-14  
+**Last Updated**: 2026-06-02  
 **Version**: 2.0.0
 
 [← Back to Docs](../README.md) | [Environment Variables →](./environment-variables.md)

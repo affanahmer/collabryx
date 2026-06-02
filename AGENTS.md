@@ -26,7 +26,7 @@ Violating any of these will result in immediate rejection:
 
 1. **NO NEW PACKAGES:** You are strictly forbidden from adding dependencies to `package.json`.
 2. **NO VERSION BUMPS:** Never modify package versions under any circumstances.
-3. **CONFIG IMMUTABILITY:** Configuration files (`tailwind.config.ts`, `tsconfig.json`, `next.config.js`) are strictly read-only. Adapt your code to the config, never the reverse.
+3. **CONFIG IMMUTABILITY:** Configuration files (`tsconfig.json`, `next.config.ts`, `vitest.config.ts`) are strictly read-only. Adapt your code to the config, never the reverse.
 4. **NO CSS MODULES:** Tailwind CSS v4 is the only permitted styling solution.
 5. **NO `any` TYPES:** Strict TypeScript only. Use `unknown` and type narrowing.
 6. **NO FILE REWRITES:** Apply minimal, surgical, line-by-line modifications to solve the immediate problem. Never rewrite entire files.
@@ -69,97 +69,85 @@ Violating any of these will result in immediate rejection:
 
 ```text
 collabryx/
+├── .github/                    # CI/CD workflows
+│   └── workflows/
+│       ├── ci.yml              # Continuous integration
+│       └── security.yml        # Security scanning
 ├── app/                        # Next.js App Router
 │   ├── (auth)/                # Protected routes (dashboard, messages, etc.)
 │   ├── (public)/              # Public routes (landing, login, register)
-│   └── api/                   # API routes
+│   └── api/                   # API routes (22+ endpoints)
 ├── components/
-│   ├── features/              # Domain-specific components
-│   │   ├── assistant/         # AI assistant feature
-│   │   ├── dashboard/         # Dashboard components
+│   ├── features/              # Domain-specific components (16 domains)
+│   │   ├── activity/          # Activity feed
+│   │   ├── ai-mentor/         # AI mentor chat
+│   │   ├── analytics/         # Analytics dashboard
+│   │   ├── assistant/         # AI assistant
+│   │   ├── auth/              # Authentication forms
+│   │   ├── connections/       # User connections
+│   │   ├── dashboard/         # Dashboard (posts, comments, feed)
+│   │   ├── landing/           # Landing page components
 │   │   ├── matches/           # Matching system
 │   │   ├── messages/          # Messaging
+│   │   ├── moderation/        # Content moderation
+│   │   ├── notifications/     # Notifications
 │   │   ├── onboarding/        # Onboarding flow
-│   │   └── profile/           # User profile
-│   ├── shared/                # Cross-feature components
+│   │   ├── posts/             # Post attachments
+│   │   ├── profile/           # User profile
+│   │   ├── requests/          # Connection requests
+│   │   └── settings/          # User settings
+│   ├── shared/                # Cross-feature components (18)
 │   │   ├── glass-card.tsx     # Glassmorphism card
 │   │   ├── sidebar-nav.tsx    # Navigation
 │   │   └── user-nav-dropdown.tsx
-│   └── ui/                    # shadcn/ui primitives
-├── hooks/                     # Custom React hooks
+│   ├── ui/                    # shadcn/ui primitives (52 components)
+│   └── providers/             # React context providers
+├── e2e/                       # Root-level Playwright E2E tests
+├── hooks/                     # Custom React hooks (28)
 │   ├── use-auth.ts            # Authentication
-│   ├── use-chat.ts            # Chat functionality
-│   ├── use-matches.ts         # Matching logic
+│   ├── use-messages.ts        # Messaging
+│   ├── use-matches-query.ts   # Matching logic
 │   └── use-settings.ts        # User settings
 ├── lib/
+│   ├── actions/               # Server Actions (10)
+│   ├── ai/                    # AI provider system
+│   │   └── providers/         # Provider implementations
+│   ├── config/                # Configuration modules
+│   ├── constants/             # Constants
+│   ├── data/                  # Data definitions
+│   ├── errors/                # Error types
+│   ├── prompt/                # AI prompt templates
+│   ├── rag/                   # RAG pipeline
+│   ├── services/              # Business logic (18 services)
 │   ├── supabase/              # Supabase client setup
-│   ├── services/              # Business logic
-│   │   ├── embeddings.ts      # Embedding generation
-│   │   ├── matches.ts         # Matching service
-│   │   └── profiles.ts        # Profile service
-│   └── utils/                 # Helper functions
-├── tests/                     # Test suite (118 files, 750+ tests)
-│   ├── unit/                  # Unit tests (hooks, lib, services, actions)
-│   │   ├── hooks/             # 10 hook test files
-│   │   ├── lib/               # 30+ library/utility tests
-│   │   ├── services/          # 5 service algorithm tests
-│   │   └── actions/           # Server action tests
-│   ├── components/            # Component tests (25+ files)
-│   │   ├── features/          # Domain component tests (auth, matches, messages, etc.)
-│   │   ├── ui/                # UI primitive tests (globe, theme toggler, button)
-│   │   └── shared/            # Shared component tests (sidebar, notification)
-│   ├── integration/           # Cross-layer integration tests (30+ files)
-│   │   ├── auth/              # RLS policies, session expiry
-│   │   ├── embeddings/        # Embedding pipeline, worker failure, DLQ
-│   │   ├── ai-mentor/         # Chat sessions, MVP checklist, Lean Canvas, resilience
-│   │   ├── matches/           # Match flow end-to-end
-│   │   ├── realtime/          # Chat realtime, event processing
-│   │   ├── profile/           # Onboarding flow, CRUD, optimistic updates, cascade delete
-│   │   ├── notifications/     # Notification storage flow
-│   │   ├── moderation/        # Content scanning & quarantine
-│   │   ├── analytics/         # Activity tracking, daily aggregation
-│   │   ├── ui/                # Responsive layout, keyboard nav, smooth scroll
-
-│   │   ├── environment/       # Dev server, Docker worker health
-│   │   └── seeder/            # DB seeder CLI tests
+│   ├── utils/                 # Utility functions
+│   └── validations/           # Zod schemas
+├── scripts/                   # Automation scripts
+│   ├── *.mjs                  # Docker management scripts
+│   └── seed-data/             # Database seeding
+├── tests/                     # Test suite (120+ files, 750+ tests)
+│   ├── unit/                  # Unit tests (45+ files)
+│   ├── components/            # Component tests (25 files)
+│   ├── integration/           # Integration tests (30+ files)
 │   ├── e2e/                   # E2E Playwright tests (6 specs)
-│   │   ├── auth-flow.spec.ts
-│   │   ├── critical-flows.spec.ts
-│   │   ├── onboarding-flow.spec.ts
-│   │   ├── ui-components.spec.ts
-│   │   └── system-health.spec.ts
 │   ├── scripts/               # Shell infrastructure tests
-│   │   └── env-setup.test.sh
-│   ├── setup/                 # Global mocks & fixtures
-│   │   ├── setup.ts           # afterEach cleanup, matchMedia, IntersectionObserver, next/navigation, motion mocks
-│   │   ├── mocks.ts           # Supabase client, sonner toast, React Query mocks
-│   │   └── fixtures.ts        # Mock data factories (User, Post, Comment, Connection, Notification, etc.)
-│   └── README.md              # Test suite documentation (100 TCs mapped)
-├── docs/                      # Documentation
+│   └── setup/                 # Global mocks & fixtures
+├── docs/                      # Documentation (33+ files)
 │   ├── 01-getting-started/
-│   │   ├── development.md
-│   │   └── installation.md
 │   ├── 02-architecture/
 │   │   ├── diagrams.md
-│   │   └── overview.md
+│   │   ├── overview.md
+│   │   └── user-stories-and-sequence-diagrams.md
 │   ├── 03-core-features/
 │   │   ├── ai-assistant/
-│   │   │   └── overview.md
 │   │   ├── vector-embeddings/
-│   │   │   └── overview.md
 │   │   ├── api-reference.md
 │   │   ├── authentication.md
 │   │   ├── matching-system.md
 │   │   └── messaging.md
 │   ├── 04-infrastructure/
 │   │   ├── database/
-│   │   │   ├── embeddings.md
-│   │   │   ├── schema.md
-│   │   │   └── setup-guide.md
 │   │   ├── python-worker/
-│   │   │   ├── deployment.md
-│   │   │   ├── development.md
-│   │   │   └── overview.md
 │   │   ├── monitoring.md
 │   │   └── performance.md
 │   ├── 05-deployment/
@@ -168,29 +156,30 @@ collabryx/
 │   │   ├── overview.md
 │   │   └── runbook.md
 │   ├── 06-contributing/
-│   │   ├── git-workflow.md
-│   │   └── guide.md
 │   ├── 07-reference/
-│   │   ├── commands.md
-│   │   ├── environment-variables.md
-│   │   └── troubleshooting.md
 │   ├── 08-database-seeding/
-│   │   ├── QUICK_REFERENCE.md
-│   │   └── README.md
 │   ├── DESIGN-SYSTEM.md
 │   ├── FRONTEND-INTEGRATION-GUIDE.md
 │   ├── IMPLEMENTATION_PLAN.md
 │   └── SECURITY.md
 ├── python-worker/             # Python embedding service (FastAPI)
+│   ├── main.py                # FastAPI entry point
 │   ├── embedding_generator.py # Sentence Transformers logic
 │   ├── rate_limiter.py        # Database-backed rate limiting
 │   ├── embedding_validator.py # Validation & dimension normalization
-│   └── main.py                # FastAPI entry point
-│   ├── main.py                # FastAPI entry point
-│   └── tests/                 # Service tests
-
-│   └── setup/                 # Database schema (31 tables + RLS + triggers)
+│   └── tests/                 # Pytest suite
+├── supabase/                  # Database config
+│   ├── config.toml            # Supabase configuration
+│   ├── migrations/            # Migration files
+│   └── setup/                 # Schema setup (34 tables + RLS + triggers)
 ├── public/                    # Static assets
-├── types/                     # TypeScript types
+│   ├── icons/                 # ~140 Lucide icons
+│   ├── images/                # SVG assets
+│   └── Models/                # 3D models (GLTF)
+├── types/                     # TypeScript type definitions (5 files)
+├── AGENTS.md                  # AI agent development guide (this file)
+├── ISSUES.md                  # Known issues tracker
+├── proxy.ts                   # Auth middleware
+├── render.yaml                # Render deployment config
 └── expected-objects/          # Backend schema specs
 ```

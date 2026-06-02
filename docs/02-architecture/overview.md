@@ -38,115 +38,135 @@ Collabryx is built using **Next.js 16+ App Router** with a feature-based archite
 ```
 collabryx/
 │
-├── .agent/                     # AI agent workflows and configurations
-│   └── workflows/             # Deployment and automation workflows
-│
 ├── app/                       # Next.js App Router (entry point)
 │   ├── (auth)/               # Protected routes (requires authentication)
-│   │   ├── dashboard/        # Main dashboard
-│   │   ├── chat/            # AI chat interface
-│   │   ├── projects/        # Project management
-│   │   └── settings/        # User settings
+│   │   ├── activity/         # Activity feed page
+│   │   ├── admin/moderation/ # Admin moderation dashboard
+│   │   ├── ai-mentor/        # AI mentor chat
+│   │   ├── analytics/        # Platform analytics
+│   │   ├── assistant/        # AI assistant
+│   │   ├── bookmarks/        # User bookmarks
+│   │   ├── dashboard/        # Main dashboard + feed
+│   │   ├── help/             # Help center
+│   │   ├── matches/          # Match suggestions
+│   │   ├── messages/[id]/    # Chat messages
+│   │   ├── my-profile/       # Current user profile
+│   │   ├── notifications/    # Notifications center
+│   │   ├── onboarding/       # Multi-step onboarding
+│   │   ├── post/[id]/        # Post detail
+│   │   ├── privacy/          # Privacy policy
+│   │   ├── profile/[id]/     # Other user profile
+│   │   ├── requests/         # Connection requests
+│   │   ├── settings/         # User settings
+│   │   └── terms/            # Terms of service
 │   │
 │   ├── (public)/            # Public routes (no auth required)
-│   │   ├── page.tsx        # Landing page
-│   │   ├── about/          # About page
-│   │   └── pricing/        # Pricing page
+│   │   ├── page.tsx         # Landing page
+│   │   ├── landing-content.tsx
+│   │   ├── login/           # Login page
+│   │   ├── register/        # Registration page
+│   │   ├── forgot-password/ # Password reset
+│   │   ├── reset-password/  # Reset password
+│   │   ├── verify-email/    # Email verification
+│   │   └── auth-sync/       # Auth callback sync
 │   │
-│   ├── api/                 # API routes
-│   │   ├── auth/           # Authentication endpoints
-│   │   └── webhooks/       # External webhooks
+│   ├── api/                 # API routes (22+ endpoints)
+│   │   ├── activity/        # Activity feed + tracking
+│   │   ├── ai/chat/         # AI chat + streaming
+│   │   ├── ai-mentor/       # AI mentor messaging
+│   │   ├── analytics/       # Daily analytics
+│   │   ├── auth/            # Auth callback + login
+│   │   ├── chat/            # Chat API
+│   │   ├── embeddings/      # Generate + retry DLQ + status
+│   │   ├── feed/            # Feed scoring
+│   │   ├── health/          # Health check
+│   │   ├── matches/         # Generate + batch + health
+│   │   ├── moderate/        # Content moderation
+│   │   ├── notifications/   # Cleanup + digest + send
+│   │   └── upload/          # File upload
 │   │
-│   ├── globals.css         # Global styles and Tailwind directives
-│   ├── layout.tsx          # Root layout component
-│   ├── error.tsx           # Global error boundary
-│   └── not-found.tsx       # 404 page
+│   ├── globals.css          # Global styles and Tailwind v4
+│   ├── layout.tsx           # Root layout component
+│   ├── loading.tsx          # Root loading state
+│   ├── error.tsx            # Global error boundary
+│   └── not-found.tsx        # 404 page
 │
 ├── components/               # React components
-│   ├── features/           # Feature-specific components
-│   │   ├── assistant/      # AI assistant feature
-│   │   │   ├── chat-input.tsx
-│   │   │   ├── message-list.tsx
-│   │   │   └── index.ts
-│   │   │
-│   │   ├── dashboard/      # Dashboard feature
-│   │   │   ├── stats-card.tsx
-│   │   │   ├── recent-activity.tsx
-│   │   │   └── index.ts
-│   │   │
-│   │   └── projects/       # Project management feature
-│   │       ├── project-card.tsx
-│   │       ├── project-list.tsx
-│   │       └── index.ts
+│   ├── features/            # Feature-specific (16 domains)
+│   │   ├── activity/        # Activity feed components
+│   │   ├── ai-mentor/       # AI mentor streaming
+│   │   ├── analytics/       # Analytics charts
+│   │   ├── assistant/       # AI assistant (chat-input, chat-list, message-bubble)
+│   │   ├── auth/            # Auth forms (login, register, forgot-password, etc.)
+│   │   ├── connections/     # Connection button, list, request items
+│   │   ├── dashboard/       # Dashboard + posts (feed, post-card, comments)
+│   │   ├── landing/         # Landing page components
+│   │   ├── matches/         # Match cards, filters, dialogs
+│   │   ├── messages/        # Chat window, sidebar, message input
+│   │   ├── moderation/      # Report content dialog
+│   │   ├── notifications/   # Notifications client
+│   │   ├── onboarding/      # Multi-step wizard (5 steps)
+│   │   ├── posts/           # Post attachment upload
+│   │   ├── profile/         # Avatar upload, header, tabs
+│   │   ├── requests/        # Requests client
+│   │   └── settings/        # Settings tabs (profile, skills, privacy, etc.)
 │   │
-│   ├── shared/             # Shared components across features
-│   │   ├── main-nav.tsx   # Navigation bar
-│   │   ├── user-avatar.tsx
-│   │   ├── theme-toggle.tsx
-│   │   └── footer.tsx
+│   ├── shared/              # Cross-feature components (18)
+│   │   ├── glass-card.tsx
+│   │   ├── sidebar-nav.tsx
+│   │   ├── mobile-nav.tsx
+│   │   ├── user-nav-dropdown.tsx
+│   │   ├── notification-bell.tsx
+│   │   ├── error-boundary.tsx
+│   │   └── ... (18 shared components)
 │   │
-│   └── ui/                 # shadcn/ui primitive components
-│       ├── button.tsx
-│       ├── card.tsx
-│       ├── dialog.tsx
-│       └── ...            # Other UI primitives
-│
-├── hooks/                   # Custom React hooks
-│   ├── use-debounce.ts    # Debounce hook
-│   ├── use-toast.ts       # Toast notification hook
-│   ├── use-user.ts        # User data hook
-│   └── use-theme.ts       # Theme management hook
-│
-├── lib/                     # Library code and utilities
-│   ├── supabase/          # Supabase configuration
-│   │   ├── client.ts      # Browser client
-│   │   ├── server.ts      # Server client
-│   │   └── proxy.ts       # Auth middleware
+│   ├── ui/                  # shadcn/ui primitives (52 components)
+│   │   ├── button.tsx
+│   │   ├── card.tsx
+│   │   ├── dialog.tsx
+│   │   └── ...
 │   │
-│   └── utils/             # Utility functions
-│       ├── cn.ts          # Class name merger (clsx + tailwind-merge)
-│       ├── date.ts        # Date formatting utilities
-│       └── api.ts         # API helper functions
+│   └── providers/           # React context providers
+│       ├── query-provider.tsx
+│       └── smooth-scroll-provider.tsx
 │
-├── docs/                    # Documentation
-│   ├── INSTALLATION.md    # Setup instructions
-│   ├── DEVELOPMENT.md     # Development guide
-│   ├── ARCHITECTURE.md    # This file
-│   ├── DEPLOYMENT.md      # Deployment guide
-│   ├── CONTRIBUTING.md    # Contribution guidelines
-│   └── API.md            # API documentation
+├── hooks/                   # Custom React hooks (28)
+│   ├── use-auth.ts
+│   ├── use-messages.ts
+│   ├── use-matches-query.ts
+│   ├── use-activity-feed.ts
+│   ├── use-feed.ts
+│   ├── use-connections.ts
+│   └── ... (28 total)
 │
+├── lib/                     # Library code
+│   ├── actions/             # Server Actions (10)
+│   ├── ai/                  # AI Provider System
+│   │   └── providers/       # Provider implementations
+│   ├── config/              # Configuration
+│   ├── constants/           # Constants
+│   ├── data/                # Data definitions
+│   ├── errors/              # Error types
+│   ├── prompt/              # AI prompts
+│   ├── rag/                 # RAG pipeline
+│   ├── services/            # Business logic (18 services)
+│   ├── supabase/            # Supabase clients (browser + server)
+│   ├── utils/               # Utilities (15)
+│   └── validations/         # Zod schemas (5)
+│
+├── scripts/                 # Automation scripts
+│   ├── docker-*.mjs         # Docker management scripts
+│   └── seed-data/           # Database seeders
+│
+├── e2e/                     # Root-level E2E tests
+├── tests/                   # Test suite (120+ files, 750+ tests)
+├── docs/                    # Documentation (33+ files)
+├── python-worker/           # FastAPI embedding service
+├── supabase/                # Database setup
 ├── public/                  # Static assets
-│   ├── images/           # Image files
-│   ├── icons/            # Icon files
-│   └── models/           # 3D models
-│
-├── supabase/                # Supabase backend
-│   ├── migrations/        # Database migrations
-│   │   └── *.sql         # Migration files
-│   │
-│   └── config.toml        # Supabase configuration
-│
-├── python-worker/          # Self-hosted embedding service
-│   ├── Dockerfile         # Container configuration
-│   ├── main.py            # FastAPI server
-│   ├── embedding_generator.py  # Sentence Transformers logic
-│   ├── requirements.txt   # Python dependencies
-│   └── test_embeddings.py # Test suite
-│
-├── types/                   # TypeScript type definitions
-│   ├── database.types.ts  # Generated Supabase types
-│   ├── globals.d.ts       # Global type declarations
-│   └── index.ts           # Exported types
-│
-├── .gitignore              # Git ignore rules
-├── components.json         # shadcn/ui configuration
-├── eslint.config.mjs       # ESLint configuration
-├── next.config.ts          # Next.js configuration
-├── package.json            # Dependencies and scripts
-├── postcss.config.mjs      # PostCSS configuration
-├── tailwind.config.ts      # Tailwind CSS configuration
-└── tsconfig.json           # TypeScript configuration
+├── types/                   # TypeScript types
+├── proxy.ts                 # Auth middleware
+├── render.yaml              # Render deployment config
 ```
 
 ---
@@ -647,16 +667,26 @@ const { register, handleSubmit, formState: { errors } } = useForm({
 ### Authentication Implementation
 
 ```typescript
-// proxy.ts
+// proxy.ts (root level - Next.js middleware)
+import { createServerClient } from '@supabase/ssr'
+import { NextResponse } from 'next/server'
+
 export async function updateSession(request: NextRequest) {
-  const supabase = createServerClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    { cookies: getCookieUtils(request) }
+  )
   
-  if (!session && request.nextUrl.pathname.startsWith("/dashboard")) {
-    return NextResponse.redirect(new URL("/login", request.url));
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  if (!session && isProtectedRoute(request.nextUrl.pathname)) {
+    const url = new URL('/login', request.url)
+    url.searchParams.set('redirectTo', request.nextUrl.pathname)
+    return NextResponse.redirect(url)
   }
   
-  return NextResponse.next();
+  return NextResponse.next()
 }
 ```
 
@@ -791,6 +821,4 @@ export async function createProject(formData: FormData) {
 
 ---
 
-**Questions?** See [Development Guide](./DEVELOPMENT.md) or [Contributing Guide](./CONTRIBUTING.md).
-
-[← Back to README](../README.md) | [Deployment Guide →](./DEPLOYMENT.md)
+[← Back to README](../README.md) | [Diagrams →](./diagrams.md)
