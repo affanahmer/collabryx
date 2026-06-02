@@ -38,10 +38,11 @@ export const onboardingDataSchema = z.object({
     .max(100, "Location must be less than 100 characters")
     .optional(),
   
-  skills: z
-    .array(z.string().min(1).max(50))
-    .min(1, "At least one skill is required")
-    .max(20, "Maximum 20 skills allowed"),
+  skills: z.array(z.object({
+    id: z.string(),
+    label: z.string(),
+    proficiency: z.enum(["beginner", "intermediate", "advanced", "expert"])
+  })).min(1, "At least one skill is required").max(20, "Maximum 20 skills allowed"),
   
   interests: z
     .array(z.string().min(1).max(50))

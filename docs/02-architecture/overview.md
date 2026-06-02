@@ -122,11 +122,6 @@ collabryx/
 │   └── models/           # 3D models
 │
 ├── supabase/                # Supabase backend
-│   ├── functions/         # Edge Functions (Deno)
-│   │   ├── generate-embedding/  # Embedding generation endpoint
-│   │   ├── get-matches/         # Semantic matching endpoint
-│   │   └── ai-assistant/        # AI chat endpoint
-│   │
 │   ├── migrations/        # Database migrations
 │   │   └── *.sql         # Migration files
 │   │
@@ -283,7 +278,7 @@ components/ui/
 - **Realtime** - WebSocket subscriptions for live data
 - **Auth** - Built-in authentication with multiple providers
 - **Storage** - File upload and management
-- **Edge Functions** - Serverless functions (Deno runtime)
+
 - **pgvector** - Vector similarity search for semantic matching
 
 ### Vector Embeddings System
@@ -298,19 +293,55 @@ Collabryx uses **vector embeddings** to enable semantic matching between users b
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  User Profile → Semantic Text → Embedding → Vector Storage  │
-│       (768 dimensions)             (pgvector)               │
+│       (384 dimensions)             (pgvector)               │
 │                                                             │
 │  Matching: Cosine Similarity Search on Vector Embeddings    │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
+#### AI Provider Architecture
+
+Collabryx uses a **multi-provider registry** for AI mentor functionality, replacing single-provider hardcoding.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    AI Provider Registry                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Client Request → ProviderRegistry → Priority Sort          │
+│                        │                                    │
+│                        ├─ Provider 1 (priority: 1) ──┐     │
+│                        ├─ Provider 2 (priority: 2) ──┤     │
+│                        └─ Provider 3 (priority: 3) ──┘     │
+│                                                             │
+│  Auto-failover: If Provider 1 fails → try Provider 2 → 3   │
+│  All providers implement AIProvider interface               │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Provider Types:**
+- **OpenAICompatibleProvider** — Works with ANY OpenAI-compatible API (OpenAI, Groq, Together, Ollama, local models)
+- **AnthropicNativeProvider** — Direct Anthropic API integration
+
+**Auto-Registration:** Providers are automatically registered from `AI_PROVIDER_N_*` environment variables at startup.
+
 #### Embedding Generation
 
 1. **Trigger**: On user onboarding completion
 2. **Input**: Profile data (role, headline, bio, skills, interests, goals)
-3. **Model**: `all-MiniLM-L6-v2` (768 dimensions, self-hosted)
+3. **Model**: `all-MiniLM-L6-v2` (384 dimensions, self-hosted)
 4. **Storage**: `profile_embeddings` table with pgvector
+
+#### Enhanced RAG Pipeline
+
+The RAG pipeline now supports **multi-user context** and **startup planning**:
+
+- **ExtendedRAGContext** — Combines profile, startup, and multi-user data
+- **StartupContext** — Captures startup idea, stage, industry, and needs
+- **MultiUserContext** — Enables collaboration advice across multiple users
+- **Context Assembler** — Accepts `AssemblerOptions` with `otherUserIds` and `startupContext`
 
 #### Matching Algorithm
 
@@ -329,7 +360,7 @@ LIMIT 10;
 #### Components
 
 - **Python Worker**: FastAPI service running Sentence Transformers
-- **Edge Function**: `generate-embedding` orchestrates the process
+
 - **Frontend**: Progress UI + automatic generation on onboarding
 - **Database**: `profile_embeddings` table with HNSW index
 

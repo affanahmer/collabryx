@@ -39,7 +39,7 @@
 - **[React 19](https://react.dev/)** - Library for web and native user interfaces
 
 ### Backend & Database
-- **[Supabase](https://supabase.com/)** - PostgreSQL database, Authentication, Real-time, Edge Functions
+- **[Supabase](https://supabase.com/)** - PostgreSQL database, Authentication, Real-time
 - **[pgvector](https://github.com/pgvector/pgvector)** - Vector similarity search
 - **[React Query 5](https://tanstack.com/query/latest)** - Server state management
 
@@ -67,18 +67,17 @@
 - **[Cobe](https://github.com/shuding/cobe)** - Lightweight WebGL globe
 
 ### AI & Backend Services
-- **Python Worker** - Multi-service backend (FastAPI on :8000):
+- **Python Worker** - Embedding service only (FastAPI on :8000):
   - `embedding_generator` - Vector embeddings (Sentence Transformers, all-MiniLM-L6-v2, 384 dimensions)
-  - `match_generator` - AI-powered match scoring with pgvector similarity search
-  - `notification_engine` - Smart notifications with priority batching
-  - `activity_tracker` - User activity and engagement tracking
-  - `feed_scorer` - Personalized feed ranking (Thompson Sampling + hybrid scoring)
-  - `content_moderator` - AI content moderation (Google Perspective API + Hugging Face)
-  - `ai_mentor_processor` - Gemini-powered AI mentor with session summarization
-  - `event_processor` - Real-time event processing via Supabase Realtime
-  - `analytics_aggregator` - Daily analytics and weekly digest generation
-- **Edge Functions** - 5 Deno functions (generate-embedding, send-notification, calculate-matches, sync-profile-data, cleanup-expired-data)
-- **OpenAI/Anthropic/Gemini** - Multi-provider AI mentor chat integration
+  - `rate_limiter` - Database-backed rate limiting for embedding requests
+  - `embedding_validator` - Embedding validation and dimension normalization
+
+- **Universal AI Provider System** - Multi-provider registry with automatic failover:
+  - Supports ALL OpenAI-compatible APIs (OpenAI, Groq, Together, Ollama, etc.) via `OpenAICompatibleProvider`
+  - Native Anthropic support via `AnthropicNativeProvider`
+  - Priority-based automatic failover (lower number = higher priority)
+  - Configurable via `AI_PROVIDER_N_*` environment variables
+  - Legacy `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` still supported for backward compatibility
 
 ### State & Forms
 - **[Zustand 5](https://zustand-demo.pmnd.rs/)** - Lightweight state management
@@ -203,7 +202,7 @@ collabryx/
 │   │   ├── moderation/        # Content scanning & quarantine
 │   │   ├── analytics/         # Activity tracking, daily aggregation
 │   │   ├── ui/                # Responsive layout, keyboard nav, smooth scroll
-│   │   ├── edge-functions/    # Deno Edge function tests
+
 │   │   ├── environment/       # Dev server, Docker worker health
 │   │   └── seeder/            # DB seeder CLI tests
 │   ├── e2e/                   # E2E Playwright tests (6 specs)
@@ -227,21 +226,14 @@ collabryx/
 │   ├── 05-deployment/         # Deployment guides
 │   ├── 06-contributing/       # Contributing guide
 │   └── 07-reference/          # Reference docs
-├── python-worker/             # Python multi-service backend (FastAPI)
-│   ├── services/              # Core services (9 services)
-│   │   ├── embedding_generator.py
-│   │   ├── match_generator.py
-│   │   ├── notification_engine.py
-│   │   ├── activity_tracker.py
-│   │   ├── feed_scorer.py
-│   │   ├── content_moderator.py
-│   │   ├── ai_mentor_processor.py
-│   │   ├── event_processor.py
-│   │   └── analytics_aggregator.py
+├── python-worker/             # Python embedding service (FastAPI)
+│   ├── embedding_generator.py # Sentence Transformers logic
+│   ├── rate_limiter.py        # Database-backed rate limiting
+│   ├── embedding_validator.py # Validation & dimension normalization
+│   └── main.py                # FastAPI entry point
 │   ├── main.py                # FastAPI entry point
 │   └── tests/                 # Service tests
-├── supabase/
-│   ├── functions/             # Edge Functions (Deno)
+
 │   └── setup/                 # Database schema (31 tables + RLS + triggers)
 ├── public/                    # Static assets
 ├── types/                     # TypeScript types
@@ -312,15 +304,6 @@ python main.py --posts --limit-posts 1000
 
 📖 **Complete guide:** [Database Seeding Documentation](./docs/08-database-seeding/README.md)
 
-### Edge Functions
-
-| Command | Description |
-|---------|-------------|
-| `npx supabase functions serve` | Run Edge Functions locally |
-| `npx supabase functions deploy <name>` | Deploy Edge Function |
-| `npx supabase functions list` | List all Edge Functions |
-
-📖 **Edge Functions:** [supabase/functions/](./supabase/functions/)
 
 ---
 
@@ -418,6 +401,18 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 
 # Python Worker (Optional, for embeddings)
 PYTHON_WORKER_URL=http://localhost:8000
+
+# AI Providers (Optional, configure one or more)
+# Legacy (backward compatible):
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+
+# Universal Provider System (recommended):
+AI_PROVIDER_1_NAME=openai
+AI_PROVIDER_1_API_KEY=sk-...
+AI_PROVIDER_1_BASE_URL=https://api.openai.com/v1
+AI_PROVIDER_1_MODEL=gpt-4o-mini
+AI_PROVIDER_1_PRIORITY=1
 
 # Optional
 NEXT_PUBLIC_APP_URL=http://localhost:3000

@@ -33,6 +33,7 @@ function _createTimedMockProvider(name: string, delayMs: number, shouldFail: boo
         }, delayMs)
       })
     ),
+    supportsStreaming: () => false,
   }
 }
 
@@ -40,6 +41,7 @@ function createMockProvider(name: string): AIProvider {
   return {
     config: { name, model: 'test', maxTokens: 1000, temperature: 0.7, timeout: 30000 },
     chat: vi.fn(),
+    supportsStreaming: () => false,
   }
 }
 

@@ -33,14 +33,6 @@ async function checkHealth() {
 }
 
 async function main() {
-  const mode = process.env.BACKEND_MODE || 'auto'
-  
-  // Skip check if edge-only mode
-  if (mode === 'edge-only') {
-    stdout.write('✅ Edge-only mode: Skipping Docker check\n')
-    return
-  }
-  
   // Skip check if running on Vercel
   if (process.env.VERCEL) {
     stdout.write('✅ Vercel deployment: Using Render backend\n')
@@ -69,14 +61,8 @@ async function main() {
     stderr.write('   2. Or skip Docker check:\n')
     stderr.write('      npm run dev:skip-docker\n')
     stderr.write('\n')
-    stderr.write('   3. Or set edge-only mode:\n')
-    stderr.write('      BACKEND_MODE=edge-only npm run dev\n')
-    stderr.write('\n')
-    stderr.write('💡 The app will still work using Edge Function fallback.\n')
-    stderr.write('\n')
-    
     // Don't block dev server startup, just warn
-    stdout.write('⚠️  Continuing with Edge Function fallback...\n')
+    stdout.write('⚠️  Continuing anyway...\n')
   }
 }
 

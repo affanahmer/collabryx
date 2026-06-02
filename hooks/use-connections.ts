@@ -5,7 +5,9 @@
  * @module hooks/use-connections
  */
 
+import { useState, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
 import {
   fetchConnectionRequests,
   fetchConnections,
@@ -16,7 +18,9 @@ import {
   removeConnection,
   checkConnectionStatus,
   type FetchConnectionsOptions,
+  type ConnectionWithUser,
 } from '@/lib/services/connections'
+import { logger } from '@/lib/logger'
 
 // ===========================================
 // QUERY KEYS
@@ -34,14 +38,11 @@ export const CONNECTION_QUERY_KEYS = {
 // ===========================================
 
 /**
- * Fetch pending incoming connection requests
+ * Fetch pending incoming connection requests (React Query)
  * 
- * @example
- * ```tsx
- * const { data: requests, isLoading } = useConnectionRequests()
- * ```
+ * @deprecated Internal — prefer useConnectionRequests (raw state)
  */
-export function useConnectionRequests() {
+export function useConnectionRequestsQuery() {
   return useQuery({
     queryKey: CONNECTION_QUERY_KEYS.requests(),
     queryFn: async () => {
@@ -226,4 +227,132 @@ export function useCheckConnectionStatus(userId: string) {
     retry: 1,
     enabled: !!userId,
   })
+}
+
+// ===========================================
+// RAW-STATE CONNECTION REQUESTS (merged from use-connection-requests.ts)
+// ===========================================
+
+interface UseConnectionRequestsReturn {
+  receivedRequests: ConnectionWithUser[]
+  sentRequests: ConnectionWithUser[]
+  isLoading: boolean
+  error: string | null
+  acceptRequest: (connectionId: string) => Promise<boolean>
+  declineRequest: (connectionId: string) => Promise<boolean>
+  cancelRequest: (connectionId: string) => Promise<boolean>
+  refreshRequests: () => Promise<void>
+}
+
+export function useConnectionRequests(): UseConnectionRequestsReturn {
+  const [receivedRequests, setReceivedRequests] = useState<ConnectionWithUser[]>([])
+  const [sentRequests, setSentRequests] = useState<ConnectionWithUser[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchAllRequests = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      const { data: received, error: receivedError } = await fetchConnectionRequests()
+      
+      if (receivedError) {
+        throw receivedError
+      }
+      
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (user) {
+        const { data: sent, error: sentError } = await supabase
+          .from('connections')
+          .select('*')
+          .eq('requester_id', user.id)
+          .eq('status', 'pending')
+        
+        if (sentError) {
+          throw sentError
+        }
+        
+        setSentRequests(sent || [])
+      }
+      
+      setReceivedRequests(received || [])
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to fetch connection requests"
+      logger.app.error("Error fetching connection requests", err)
+      setError(errorMessage)
+      setReceivedRequests([])
+      setSentRequests([])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchAllRequests()
+  }, [fetchAllRequests])
+
+  const acceptRequest = async (connectionId: string): Promise<boolean> => {
+    try {
+      const { error } = await acceptConnectionRequest(connectionId)
+      
+      if (error) {
+        logger.app.error("Failed to accept connection request", error)
+        return false
+      }
+      
+      await fetchAllRequests()
+      return true
+    } catch (err) {
+      logger.app.error("Failed to accept connection request", err)
+      return false
+    }
+  }
+
+  const declineRequest = async (connectionId: string): Promise<boolean> => {
+    try {
+      const { error } = await declineConnectionRequest(connectionId)
+      
+      if (error) {
+        logger.app.error("Failed to decline connection request", error)
+        return false
+      }
+      
+      await fetchAllRequests()
+      return true
+    } catch (err) {
+      logger.app.error("Failed to decline connection request", err)
+      return false
+    }
+  }
+
+  const cancelRequest = async (connectionId: string): Promise<boolean> => {
+    try {
+      const { error } = await cancelConnectionRequest(connectionId)
+      
+      if (error) {
+        logger.app.error("Failed to cancel connection request", error)
+        return false
+      }
+      
+      await fetchAllRequests()
+      return true
+    } catch (err) {
+      logger.app.error("Failed to cancel connection request", err)
+      return false
+    }
+  }
+
+  return {
+    receivedRequests,
+    sentRequests,
+    isLoading,
+    error,
+    acceptRequest,
+    declineRequest,
+    cancelRequest,
+    refreshRequests: fetchAllRequests
+  }
 }

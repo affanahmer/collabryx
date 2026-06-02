@@ -26,7 +26,7 @@ import {
   useDeleteNotification,
   useRealtimeNotifications,
 } from "@/hooks/use-notifications"
-import { useConnectionRequests } from "@/hooks/use-connection-requests"
+import { useConnectionRequests } from "@/hooks/use-connections"
 import { toast } from "sonner"
 import type { Notification } from "@/types/database.types"
 
@@ -180,7 +180,7 @@ export default function NotificationsPage() {
       read: notif.is_read,
       resourceType: notif.resource_type,
       resourceId: notif.resource_id,
-      connectionId: notif.type === 'connect' ? notif.id : undefined,
+      connectionId: notif.type === 'connect' ? notif.resource_id : undefined,
     }))
   }, [notifications])
 
@@ -426,8 +426,8 @@ export default function NotificationsPage() {
             <NotificationListItem
               key={notification.id}
               notification={notification}
-              onAccept={() => handleAccept(notification.id)}
-              onIgnore={() => handleIgnore(notification.id)}
+              onAccept={() => handleAccept(notification.connectionId || '')}
+              onIgnore={() => handleIgnore(notification.connectionId || '')}
               onDismiss={() => handleDismiss(notification.id)}
             />
           ))

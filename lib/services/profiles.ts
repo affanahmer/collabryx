@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/server"
 import { logger } from "@/lib/logger"
 import type { Profile, UserSkill, UserInterest, UserExperience, UserProject } from "@/types/database.types"
 
@@ -21,7 +21,7 @@ export async function fetchCurrentProfile(): Promise<{
   error: Error | null
 }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
@@ -31,11 +31,11 @@ export async function fetchCurrentProfile(): Promise<{
     const { data, error } = await supabase
       .from("profiles")
       .select(`
-        *,
-        skills:user_skills(*),
-        interests:user_interests(*),
-        experiences:user_experiences(*),
-        projects:user_projects(*)
+        id, full_name, display_name, headline, bio, location, avatar_url, banner_url, website_url, collaboration_readiness, is_verified, verification_type, university, profile_completion, looking_for, onboarding_completed, created_at, updated_at,
+        skills:user_skills(id, user_id, skill_name, proficiency, is_primary, created_at),
+        interests:user_interests(id, user_id, interest, created_at),
+        experiences:user_experiences(id, user_id, title, company, description, start_date, end_date, is_current, order_index, created_at),
+        projects:user_projects(id, user_id, title, description, url, image_url, tech_stack, is_public, order_index, created_at)
       `)
       .eq("id", user.id)
       .single()
@@ -65,16 +65,16 @@ export async function fetchProfileById(userId: string): Promise<{
   error: Error | null
 }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { data, error } = await supabase
       .from("profiles")
       .select(`
-        *,
-        skills:user_skills(*),
-        interests:user_interests(*),
-        experiences:user_experiences(*),
-        projects:user_projects(*)
+        id, full_name, display_name, headline, bio, location, avatar_url, banner_url, website_url, collaboration_readiness, is_verified, verification_type, university, profile_completion, looking_for, onboarding_completed, created_at, updated_at,
+        skills:user_skills(id, user_id, skill_name, proficiency, is_primary, created_at),
+        interests:user_interests(id, user_id, interest, created_at),
+        experiences:user_experiences(id, user_id, title, company, description, start_date, end_date, is_current, order_index, created_at),
+        projects:user_projects(id, user_id, title, description, url, image_url, tech_stack, is_public, order_index, created_at)
       `)
       .eq("id", userId)
       .single()
@@ -103,7 +103,7 @@ export async function updateProfile(
   updates: Partial<Profile>
 ): Promise<{ data: Profile | null; error: Error | null }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
@@ -114,7 +114,7 @@ export async function updateProfile(
       .from("profiles")
       .update(updates)
       .eq("id", user.id)
-      .select()
+      .select("id, full_name, display_name, headline, bio, avatar_url, banner_url, location, website_url, collaboration_readiness, is_verified, verification_type, university, profile_completion, looking_for, onboarding_completed, created_at, updated_at")
       .single()
 
     if (error) throw error
@@ -135,11 +135,11 @@ export async function fetchUserSkills(userId: string): Promise<{
   error: Error | null
 }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { data, error } = await supabase
       .from("user_skills")
-      .select("*")
+      .select("id, user_id, skill_name, proficiency, is_primary, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
 
@@ -156,7 +156,7 @@ export async function addSkill(
   skill: Pick<UserSkill, "skill_name" | "proficiency" | "is_primary">
 ): Promise<{ data: UserSkill | null; error: Error | null }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
@@ -171,7 +171,7 @@ export async function addSkill(
         proficiency: skill.proficiency,
         is_primary: skill.is_primary || false,
       })
-      .select()
+      .select("id, user_id, skill_name, proficiency, is_primary, created_at")
       .single()
 
     if (error) throw error
@@ -185,7 +185,7 @@ export async function addSkill(
 
 export async function removeSkill(skillId: string): Promise<{ error: Error | null }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
@@ -216,11 +216,11 @@ export async function fetchUserInterests(userId: string): Promise<{
   error: Error | null
 }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { data, error } = await supabase
       .from("user_interests")
-      .select("*")
+      .select("id, user_id, interest, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
 
@@ -237,7 +237,7 @@ export async function addInterest(
   interest: string
 ): Promise<{ data: UserInterest | null; error: Error | null }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
@@ -250,7 +250,7 @@ export async function addInterest(
         user_id: user.id,
         interest,
       }, { onConflict: "user_id,interest" })
-      .select()
+      .select("id, user_id, interest, created_at")
       .single()
 
     if (error) throw error
@@ -266,7 +266,7 @@ export async function removeInterest(
   interest: string
 ): Promise<{ error: Error | null }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
@@ -297,11 +297,11 @@ export async function fetchUserExperiences(userId: string): Promise<{
   error: Error | null
 }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { data, error } = await supabase
       .from("user_experiences")
-      .select("*")
+      .select("id, user_id, title, company, description, start_date, end_date, is_current, order_index, created_at")
       .eq("user_id", userId)
       .order("order_index", { ascending: true })
 
@@ -318,7 +318,7 @@ export async function addExperience(
   experience: Omit<UserExperience, "id" | "user_id" | "created_at">
 ): Promise<{ data: UserExperience | null; error: Error | null }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
@@ -337,7 +337,7 @@ export async function addExperience(
         is_current: experience.is_current,
         order_index: experience.order_index,
       })
-      .select()
+      .select("id, user_id, title, company, description, start_date, end_date, is_current, order_index, created_at")
       .single()
 
     if (error) throw error
@@ -351,7 +351,7 @@ export async function addExperience(
 
 export async function removeExperience(experienceId: string): Promise<{ error: Error | null }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
@@ -382,11 +382,11 @@ export async function fetchUserProjects(userId: string): Promise<{
   error: Error | null
 }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
 
     const { data, error } = await supabase
       .from("user_projects")
-      .select("*")
+      .select("id, user_id, title, description, url, image_url, tech_stack, is_public, order_index, created_at")
       .eq("user_id", userId)
       .eq("is_public", true)
       .order("order_index", { ascending: true })
@@ -404,7 +404,7 @@ export async function addProject(
   project: Omit<UserProject, "id" | "user_id" | "created_at">
 ): Promise<{ data: UserProject | null; error: Error | null }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {
@@ -423,7 +423,7 @@ export async function addProject(
         is_public: project.is_public,
         order_index: project.order_index,
       })
-      .select()
+      .select("id, user_id, title, description, url, image_url, tech_stack, is_public, order_index, created_at")
       .single()
 
     if (error) throw error
@@ -437,7 +437,7 @@ export async function addProject(
 
 export async function removeProject(projectId: string): Promise<{ error: Error | null }> {
   try {
-    const supabase = createClient()
+    const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) {

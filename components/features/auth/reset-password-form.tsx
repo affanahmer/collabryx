@@ -11,7 +11,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { createClient } from "@/lib/supabase/client"
-// import { toast } from "sonner"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { glass } from "@/lib/utils/glass-variants"
@@ -181,14 +180,17 @@ export function ResetPasswordForm() {
                                         setPasswordValue(e.target.value)
                                     }}
                                     disabled={isLoading}
+                                    aria-describedby={
+                                        form.formState.errors.password ? "password-error" : "password-requirements"
+                                    }
                                 />
                             </div>
                             {form.formState.errors.password && (
-                                <p className="text-sm text-destructive px-1">{form.formState.errors.password.message}</p>
+                                <p id="password-error" className="text-sm text-destructive px-1">{form.formState.errors.password.message}</p>
                             )}
 
                             {passwordValue && (
-                                <div className="space-y-2 pt-2">
+                                <div id="password-requirements" className="space-y-2 pt-2">
                                     <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
                                         <div
                                             className={cn(

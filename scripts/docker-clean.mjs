@@ -56,8 +56,8 @@ function exec(command, options = {}) {
       stdio: 'pipe',
       ...options
     });
-  } catch (_error) {
-    // Return empty string if command fails (e.g., no containers to remove)
+  } catch (error) {
+    console.warn(`[docker-clean] Command failed (returning empty): ${command}\n  ${error.message}`);
     return '';
   }
 }
@@ -88,16 +88,14 @@ function askQuestion(query) {
 
 function checkDocker() {
   log('🐳 Checking Docker availability...', 'cyan');
-  try {
-    exec('docker --version');
-    exec('docker ps');
-    log('✅ Docker is running', 'green');
-    return true;
-  } catch (_error) {
+  const version = exec('docker --version');
+  if (!version) {
     log('❌ Docker is not installed or not running', 'red');
     log('Please install Docker Desktop: https://www.docker.com/products/docker-desktop', 'yellow');
     process.exit(1);
   }
+  log('✅ Docker is running', 'green');
+  return true;
 }
 
 function getContainers() {

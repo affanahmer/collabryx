@@ -6,6 +6,7 @@ Generates complete profile data for all 20 industries
 import random
 import json
 import os
+import urllib.parse
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 
@@ -141,8 +142,7 @@ def generate_skills(industry: str, count: int = None) -> List[Dict[str, Any]]:
         "E-commerce": [
             "React",
             "Node.js",
-            "Shopify",
-            "Stripe API",
+            "REST APIs",
             "PostgreSQL",
             "Redis",
             "Elasticsearch",
@@ -194,7 +194,6 @@ def generate_skills(industry: str, count: int = None) -> List[Dict[str, Any]]:
             "Node.js",
             "PostgreSQL",
             "Redis",
-            "Stripe",
             "AWS",
             "GraphQL",
         ],
@@ -222,8 +221,7 @@ def generate_skills(industry: str, count: int = None) -> List[Dict[str, Any]]:
             "React",
             "Node.js",
             "PostgreSQL",
-            "GIS",
-            "Google Maps API",
+            "REST APIs",
             "IoT",
             "Mobile Development",
             "AWS",
@@ -607,6 +605,8 @@ def generate_complete_profile(
         "full_name": full_name,
         "display_name": full_name,
         "headline": headline,
+        "avatar_url": f"https://api.dicebear.com/7.x/avataaars/svg?seed={urllib.parse.quote(full_name)}",
+        "banner_url": f"https://placehold.co/1200x400/1a1a2e/ffffff?text={urllib.parse.quote(headline[:30] if headline else 'Collabryx')}",
         "bio": generate_bio(
             industry, years_experience, is_founder=random.random() < 0.2
         ),

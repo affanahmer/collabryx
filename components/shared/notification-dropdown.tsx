@@ -28,11 +28,11 @@ const NOTIFICATION_ICONS = {
 }
 
 const NOTIFICATION_COLORS = {
-  connect: 'text-blue-500 dark:text-blue-400',
+  connect: 'text-primary',
   message: 'text-emerald-500 dark:text-emerald-400',
   like: 'text-red-500 dark:text-red-400',
-  comment: 'text-purple-500 dark:text-purple-400',
-  match: 'text-amber-500 dark:text-amber-400',
+  comment: 'text-muted-foreground',
+  match: 'text-muted-foreground',
 }
 
 export function NotificationDropdown({ onOpenChange }: NotificationDropdownProps) {
@@ -158,7 +158,7 @@ export function NotificationDropdown({ onOpenChange }: NotificationDropdownProps
         <Button
           variant="outline"
           size="sm"
-          onClick={() => window.location.reload()}
+          onClick={() => router.refresh()}
         >
           Retry
         </Button>
@@ -224,7 +224,7 @@ export function NotificationDropdown({ onOpenChange }: NotificationDropdownProps
                   "p-3 rounded-lg cursor-pointer transition-all duration-200",
                   "hover:bg-muted/80 focus:bg-muted/80",
                   "focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
-                  !notification.is_read && "bg-muted/50 border-l-4 border-l-primary"
+                  !notification.is_read && "bg-muted/50"
                 )}
               >
                 <div className="flex items-start gap-3">

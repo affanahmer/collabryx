@@ -45,3 +45,41 @@ export interface AIMessage {
   content: string
   created_at: string
 }
+
+/**
+ * Startup planning context for AI mentor guidance.
+ * Captures the user's startup idea, stage, and needs.
+ */
+export interface StartupContext {
+  idea: string | null
+  stage: 'idea' | 'validation' | 'mvp' | 'growth' | 'scaling' | null
+  industry: string | null
+  target_users: string | null
+  technical_needs: string[]
+  non_technical_needs: string[]
+  current_team_size: number
+  looking_for: string[] // e.g., ['cofounder', 'developer', 'designer']
+}
+
+/**
+ * Multi-user context for collaboration scenarios.
+ * Used when the AI mentor advises on partnerships or team dynamics.
+ */
+export interface MultiUserContext {
+  currentUser: UserProfileContext
+  otherUsers: UserProfileContext[]
+  relationship?: 'potential_match' | 'existing_connection' | 'team_member'
+}
+
+/**
+ * Extended RAG context that includes startup and multi-user data.
+ */
+export interface ExtendedRAGContext {
+  profile: UserProfileContext | null
+  startup: StartupContext | null
+  multiUser: MultiUserContext | null
+  retrieved_contexts: RetrievedContext[]
+  session_summary: SessionSummary | null
+  conversation_history: AIMessage[]
+  assembled_at: string
+}

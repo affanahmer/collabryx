@@ -43,6 +43,11 @@ const RATE_LIMITS = {
     maxRequests: 20,
     blockDuration: 2 * 60 * 60 * 1000,
   },
+  matches: {
+    interval: 60 * 1000,
+    maxRequests: 10,
+    blockDuration: 5 * 60 * 1000,
+  },
   fileUpload: {
     interval: 24 * 60 * 60 * 1000,
     maxRequests: 50,
@@ -51,16 +56,20 @@ const RATE_LIMITS = {
 } as const
 
 // In-memory store for single-instance deployments (development/local)
-// Limitations:
-// - Resets on server restart
-// - Does not work across multiple serverless instances (Vercel, etc.)
-// - Each serverless function instance has its own isolated store
 //
-// For production with multiple instances, use:
-// - Redis (recommended): Use ioredis or @upstash/redis
-// - Supabase RPC: Create a rate_limit_check RPC function
+// ⚠️ PRODUCTION LIMITATIONS:
+// - Resets on server restart (loses all rate limit state)
+// - Does NOT work across multiple serverless instances (Vercel, Lambda, etc.)
+// - Each serverless function instance has its own isolated Map
+// - Users can bypass limits by hitting different function instances
 //
-// TODO: Implement distributed rate limiting with Redis or Supabase for production
+// ✅ PRODUCTION FIX: Implement DB-backed rate limiting
+//    Option A: Supabase RPC function `rate_limit_check(key TEXT, max_requests INT, window_sec INT)`
+//    Option B: Use Upstash Redis (serverless-compatible, TTL-based counters)
+//    Option C: Use Vercel KV (if on Vercel Pro)
+//
+// TODO: Implement distributed rate limiting with a DB/Redis backend before production deployment
+//       Tracked at: lib/rate-limit.ts — migration to distributed storage required
 const store = new Map<string, RateLimitEntry>()
 
 function cleanup() {
@@ -74,6 +83,23 @@ function cleanup() {
 
 setInterval(cleanup, 5 * 60 * 1000)
 
+/**
+ * SECURITY NOTE: IP-based Rate Limiting Limitations
+ *
+ * This rate limiter uses x-forwarded-for and x-real-ip headers for client identification.
+ * These headers CAN be spoofed by the client (e.g., setting X-Forwarded-For: 1.2.3.4).
+ *
+ * Limitations:
+ * - x-forwarded-for is trivially spoofable unless stripped by a trusted reverse proxy
+ * - x-real-ip is set by some proxies (nginx) but can be forged if client hits the app directly
+ * - User-Agent rotation can bypass the ip:userAgent fingerprint
+ *
+ * Recommended mitigations for production:
+ * - Combine IP with authenticated userId and session token for auth-related rate limits
+ * - Trust x-forwarded-for only when behind a reverse proxy that strips incoming values
+ * - For auth endpoints, use email-based rate limiting (see login/route.ts)
+ * - Use database-backed rate limiting for multi-instance deployments
+ */
 function getFingerprint(request: NextRequest, ipOnly = false): string {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0] ||
              request.headers.get('x-real-ip') ||

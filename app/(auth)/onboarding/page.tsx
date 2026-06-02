@@ -1,9 +1,8 @@
 "use client"
 
-import React, { useState, useEffect, useCallback } from "react"
+import React, { useState, useEffect, useCallback, useRef } from "react"
 import { useForm, FormProvider } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -26,73 +25,19 @@ import { StepExperience } from "@/components/features/onboarding/step-experience
 import { GlassCard } from "@/components/shared/glass-card"
 import { createClient } from "@/lib/supabase/client"
 import { completeOnboarding } from "./actions"
+import { useDebounce } from "@/hooks/use-debounce"
+import { isEmailVerificationSkipped } from "@/lib/services/development"
+import { onboardingDataSchema, OnboardingData } from "@/lib/validations/onboarding"
 
-// Schemas for each step - aligned with component validation
-const basicInfoSchema = z.object({
-    fullName: z.string()
-        .min(2, "Full name must be at least 2 characters.")
-        .max(100, "Full name must be less than 100 characters.")
-        .regex(/^[A-Za-z\s]+$/, "Name can only contain letters and spaces"),
-    displayName: z.string()
-        .max(30, "Display name must be less than 30 characters.")
-        .regex(/^[a-z0-9_]*$/, "Display name can only contain lowercase letters, numbers, and underscores.")
-        .optional()
-        .or(z.literal("")),
-    headline: z.string()
-        .min(5, "Headline must be at least 5 characters.")
-        .max(100, "Headline must be less than 100 characters.")
-        .regex(/^[a-zA-Z0-9\s@.,&'()-]+$/, "Headline can only contain letters, numbers, and basic punctuation."),
-    location: z.string()
-        .max(100, "Location must be less than 100 characters.")
-        .optional()
-        .or(z.literal("")),
-})
+const combinedSchema = onboardingDataSchema
 
-const skillsSchema = z.object({
-    skills: z.array(z.object({
-        id: z.string(),
-        label: z.string(),
-        proficiency: z.enum(["beginner", "intermediate", "advanced", "expert"], {
-            required_error: "Please select proficiency level"
-        })
-    })).min(5, "Please add at least 5 skills to continue"),
-})
-
-const interestsGoalsSchema = z.object({
-    interests: z.array(z.string()).min(1, "Please add at least one interest."),
-    goals: z.array(z.string()).optional(),
-})
-
-const experienceSchema = z.object({
-    experiences: z.array(z.object({
-        title: z.string().optional().or(z.literal("")),
-        company: z.string().optional().or(z.literal("")),
-        description: z.string().optional().or(z.literal("")),
-    }).refine(
-        (data) => data.title || data.company,
-        { message: "At least title or company is required" }
-    )).optional(),
-    links: z.array(z.object({
-        platform: z.string(),
-        url: z.string().optional().or(z.literal("")),
-    })).optional(),
-})
-
-const combinedSchema = z.object({
-    ...basicInfoSchema.shape,
-    ...skillsSchema.shape,
-    ...interestsGoalsSchema.shape,
-    ...experienceSchema.shape,
-});
-
-export type OnboardingFormValues = z.infer<typeof combinedSchema>
 
 const STEPS = [
     { id: "welcome", title: "Welcome", component: StepWelcome, icon: Sparkles },
-    { id: "basic-info", title: "Basic Info", component: StepBasicInfo, schema: basicInfoSchema, icon: User },
-    { id: "skills", title: "Skills", component: StepSkills, schema: skillsSchema, icon: Code2 },
-    { id: "interests-goals", title: "Interests & Goals", component: StepInterestsAndGoals, schema: interestsGoalsSchema, icon: Target },
-    { id: "experience", title: "Experience", component: StepExperience, schema: experienceSchema, icon: Briefcase },
+    { id: "basic-info", title: "Basic Info", component: StepBasicInfo, icon: User },
+    { id: "skills", title: "Skills", component: StepSkills, icon: Code2 },
+    { id: "interests-goals", title: "Interests & Goals", component: StepInterestsAndGoals, icon: Target },
+    { id: "experience", title: "Experience", component: StepExperience, icon: Briefcase },
 ]
 
 const transition = {
@@ -108,10 +53,12 @@ export default function OnboardingPage() {
     const [isEmailVerified, setIsEmailVerified] = useState<boolean | null>(null)
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
     const [hasAcknowledgedWarning, setHasAcknowledgedWarning] = useState(false)
+    const [isTransitioning, setIsTransitioning] = useState(false)
     const router = useRouter()
     const shouldReduceMotion = useReducedMotion()
+    const recoveryShownRef = useRef(false)
 
-    const methods = useForm<OnboardingFormValues>({
+    const methods = useForm<OnboardingData>({
         resolver: zodResolver(combinedSchema),
         mode: "onBlur",
         reValidateMode: "onChange",
@@ -133,6 +80,8 @@ export default function OnboardingPage() {
     
     // Track form changes for unsaved warning
     const formValues = watch()
+    const debouncedValues = useDebounce(formValues, 800)
+
     
     // Detect form changes
     useEffect(() => {
@@ -145,7 +94,7 @@ export default function OnboardingPage() {
     useEffect(() => {
         async function fetchUser() {
             try {
-                const supabase = await createClient()
+                const supabase = createClient()
                 const { data: { user }, error } = await supabase.auth.getUser()
                 
                 if (error) {
@@ -166,7 +115,8 @@ export default function OnboardingPage() {
                 setUserName(name)
                 
                 // Check email verification status
-                const emailIsVerified = user?.email_confirmed_at !== null && user?.email_confirmed_at !== undefined
+                // Respect SKIP_EMAIL_VERIFICATION env var — if set, treat as verified
+                const emailIsVerified = isEmailVerificationSkipped() ? true : !!user?.email_confirmed_at
                 setIsEmailVerified(emailIsVerified)
                 
                 if (!emailIsVerified) {
@@ -199,7 +149,7 @@ export default function OnboardingPage() {
         if (currentStep > 0 && hasUnsavedChanges) {
             try {
                 sessionStorage.setItem("onboarding_draft", JSON.stringify({
-                    values: formValues,
+                    values: debouncedValues,
                     step: currentStep,
                     timestamp: Date.now()
                 }))
@@ -207,20 +157,31 @@ export default function OnboardingPage() {
                 console.warn("Failed to persist form data:", error)
             }
         }
-    }, [formValues, currentStep, hasUnsavedChanges])
+    }, [debouncedValues, currentStep, hasUnsavedChanges])
     
     // Restore form data from sessionStorage on mount
     useEffect(() => {
         try {
             const saved = sessionStorage.getItem("onboarding_draft")
             if (saved) {
-                const { values, step, timestamp } = JSON.parse(saved)
+                const parsed = JSON.parse(saved)
+                const { values: rawValues, step, timestamp } = parsed
+                const validated = onboardingDataSchema.partial().safeParse(rawValues)
+                if (!validated.success) {
+                    sessionStorage.removeItem('onboarding_draft')
+                    return
+                }
+                const values = validated.data
                 // Only restore if saved within last 24 hours
                 const isRecent = Date.now() - timestamp < 24 * 60 * 60 * 1000
                 if (isRecent && step > 0) {
                     methods.reset(values)
+                    setHasUnsavedChanges(true)
                     setCurrentStep(step)
-                    toast.info("Draft recovered from previous session")
+                    if (!recoveryShownRef.current) {
+                        recoveryShownRef.current = true
+                        toast.info("Draft recovered from previous session")
+                    }
                 } else {
                     sessionStorage.removeItem("onboarding_draft")
                 }
@@ -232,13 +193,14 @@ export default function OnboardingPage() {
     }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleNext = async () => {
-        if (currentStep === 0) {
+        if (isTransitioning || isSubmitting) return
+        setIsTransitioning(true)
+        try {
+            if (currentStep === 0) {
             setCurrentStep(1)
             return
         }
 
-        // Prevent navigation during submission
-        if (isSubmitting) return
 
         // Only validate and move to next step for steps 1-3
         let isStepValid = false
@@ -266,15 +228,22 @@ export default function OnboardingPage() {
         if (isStepValid) {
             setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1))
         }
+    } finally {
+            setIsTransitioning(false)
+        }
     }
 
     useEffect(() => {
         if (userName) {
-            methods.setValue("fullName", userName, { shouldValidate: true })
+            const currentValue = methods.getValues("fullName")
+            if (!currentValue || currentValue === "") {
+                methods.setValue("fullName", userName, { shouldValidate: true, shouldDirty: false })
+            }
         }
     }, [userName, methods])
 
     const handleBack = () => {
+        if (isTransitioning || isSubmitting) return
         setCurrentStep(prev => Math.max(prev - 1, 0))
     }
 
@@ -350,7 +319,20 @@ export default function OnboardingPage() {
                 if (result.alreadyCompleted) {
                     router.push("/dashboard")
                 } else {
-                    toast.success("Profile setup complete! Your vector embedding is queued.")
+                    // Show distinct messages for embedding queued vs failed
+                    if (result.embeddingQueued) {
+                        toast.success("Profile setup complete! Your vector embedding is queued.");
+                    } else if (result.embeddingError) {
+                        toast.success("Profile setup complete!");
+                        toast.warning(
+                            "Embedding will be generated in background.",
+                            {
+                                description: "The AI analysis is queued and will complete shortly."
+                            }
+                        );
+                    } else {
+                        toast.success("Profile setup complete!");
+                    }
                     router.push("/dashboard")
                 }
             } else {
@@ -393,7 +375,7 @@ export default function OnboardingPage() {
         }
     }
 
-    const onSubmit = useCallback(async (data: OnboardingFormValues) => {
+    const onSubmit = useCallback(async (data: OnboardingData) => {
         // Prevent double submission
         if (isSubmitting) return
         
@@ -425,11 +407,14 @@ export default function OnboardingPage() {
                 return
             }
 
-            // Use backend calculation for consistency (matches database function)
-            // Backend calculates: basic (25) + skills (25) + interests (15) + looking_for (10) + experience (25) = 100
-            const calculatedPercentage = 25 // Base for basic info - backend will recalculate via trigger
+            let calculatedPercentage = 25
+            if (data.skills?.length) calculatedPercentage += 25
+            if (data.interests?.length) calculatedPercentage += 15
+            if (data.goals?.length) calculatedPercentage += 10
+            if (data.experiences?.length) calculatedPercentage += 15
+            if (data.links?.length) calculatedPercentage += 10
 
-            setCompletionPercentage(Math.min(calculatedPercentage + 75, 100)) // Estimate for UI
+            setCompletionPercentage(Math.min(calculatedPercentage, 100))
 
             const result = await completeOnboarding(data, calculatedPercentage)
 
@@ -442,6 +427,7 @@ export default function OnboardingPage() {
                 
                 if (result.alreadyCompleted) {
                     // Profile was already completed, just redirect
+                    setIsSubmitting(false)
                     router.push("/dashboard");
                 } else {
                     // Show success toast with embedding status
@@ -458,6 +444,7 @@ export default function OnboardingPage() {
                     } else {
                         toast.success("Profile setup complete!");
                     }
+                    setIsSubmitting(false)
                     router.push("/dashboard");
                 }
             } else {
@@ -475,6 +462,7 @@ export default function OnboardingPage() {
                 // Authentication/session errors
                 if (errorMessage.includes("authentication") || errorMessage.includes("session") || errorMessage.includes("unauthorized")) {
                     toast.error("Your session has expired. Please log in again.")
+                    setIsSubmitting(false)
                     router.push("/login")
                     return
                 }
@@ -622,7 +610,18 @@ export default function OnboardingPage() {
                                             exit={{ opacity: 0, x: shouldReduceMotion ? 0 : -20 }}
                                             transition={shouldReduceMotion ? { duration: 0 } : transition}
                                         >
-                                            <StepBasicInfo userName={userName} />
+                                            <StepBasicInfo
+                                                userName={userName}
+                                                onNameExtracted={(displayName) => {
+                                                    const current = methods.getValues("displayName")
+                                                    if (!current) {
+                                                        methods.setValue("displayName", displayName, {
+                                                            shouldValidate: false,
+                                                            shouldDirty: false
+                                                        })
+                                                    }
+                                                }}
+                                            />
                                         </motion.div>
                                     ) : currentStep === 2 ? (
                                         <motion.div
@@ -673,14 +672,15 @@ export default function OnboardingPage() {
                                         </Button>
 
                                         <div className="flex gap-3">
-                                            {/* Skip & Complete - Available on all steps */}
+                                            {/* Skip & Complete - Only on steps where meaningful data exists */}
+                                            {currentStep >= 3 && (
                                             <Button
                                                 type="button"
                                                 variant="outline"
                                                 onClick={handleSkipExperience}
                                                 disabled={isSubmitting}
                                                 className="min-w-[120px] border-primary/20 text-primary hover:bg-primary/10"
-                                                aria-label="Skip experience step and complete profile"
+                                                aria-label="Complete profile without experience details"
                                             >
                                                 {isSubmitting ? (
                                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" aria-hidden="true" />
@@ -688,6 +688,7 @@ export default function OnboardingPage() {
                                                     "Skip & Complete"
                                                 )}
                                             </Button>
+                                            )}
                                             
                                             {isLastStep ? (
                                                 <Button

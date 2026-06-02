@@ -175,7 +175,7 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
         if (count && count > 0) {
             return { 
                 success: false, 
-                error: "Display name is already taken. Please choose another one or add numbers to make it unique." 
+                error: "display_name: This display name is already taken. Please choose another one." 
             }
         }
     }
@@ -196,7 +196,6 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
                 location: data.location || null,
                 website_url: validLinks.length > 0 ? JSON.stringify(validLinks) : null,
                 looking_for: data.goals || [],
-                onboarding_completed: true,
                 profile_completion: completionPercentage,
                 updated_at: new Date().toISOString()
             }, { onConflict: "id" })
@@ -225,30 +224,28 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
             is_primary: index < 5,
         }))
 
-        for (const skill of skillsToInsert) {
-            const { error: skillError } = await supabase
-                .from("user_skills")
-                .upsert(skill, { onConflict: "user_id,skill_name" })
-            if (skillError) {
-                console.error("Skills insert error:", skillError)
-                // Continue despite skill errors - not critical
-            }
+        const { error: skillError } = await supabase
+            .from("user_skills")
+            .upsert(skillsToInsert, { onConflict: "user_id,skill_name" })
+        if (skillError) {
+            console.error("Skills insert error:", skillError)
+            // Continue despite skill errors - not critical
         }
     }
 
     // 3. Insert/Update Interests
     if (data.interests && data.interests.length > 0) {
-        for (const interest of data.interests) {
-            const { error: interestError } = await supabase
-                .from("user_interests")
-                .upsert({
-                    user_id: userId,
-                    interest: interest
-                }, { onConflict: "user_id,interest" })
-            if (interestError) {
-                console.error("Interests insert error:", interestError)
-                // Continue despite interest errors - not critical
-            }
+        const interestsToInsert = data.interests.map((interest) => ({
+            user_id: userId,
+            interest: interest
+        }))
+
+        const { error: interestError } = await supabase
+            .from("user_interests")
+            .upsert(interestsToInsert, { onConflict: "user_id,interest" })
+        if (interestError) {
+            console.error("Interests insert error:", interestError)
+            // Continue despite interest errors - not critical
         }
     }
 
@@ -261,20 +258,29 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
                 title: exp.title || exp.company || "Untitled",
                 company: exp.company || null,
                 description: exp.description || null,
-                start_date: exp.title || exp.company ? new Date().toISOString().split('T')[0] : null,
+                start_date: null,
                 is_current: true,
                 order_index: 0
             }))
         if (expsToInsert.length > 0) {
-            for (const exp of expsToInsert) {
-                const { error: expError } = await supabase
-                    .from("user_experiences")
-                    .upsert(exp, { onConflict: "user_id,title" })
-                if (expError) {
-                    console.error("Experience insert error:", expError)
-                }
+            const { error: expError } = await supabase
+                .from("user_experiences")
+                .upsert(expsToInsert, { onConflict: "user_id,title" })
+            if (expError) {
+                console.error("Experience insert error:", expError)
             }
         }
+    }
+
+    // 5. Mark onboarding as completed (deferred after all inserts succeed)
+    const { error: flagError } = await supabase
+        .from("profiles")
+        .update({ onboarding_completed: true, updated_at: new Date().toISOString() })
+        .eq("id", userId)
+
+    if (flagError) {
+        console.error("Onboarding flag update error:", flagError)
+        // Non-critical: profile was created, but flag wasn't set
     }
 
     // RELIABLE: Queue embedding request in database FIRST (source of truth)

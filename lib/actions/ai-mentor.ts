@@ -1,10 +1,33 @@
-'use server'
+﻿'use server'
 
+import { z } from 'zod'
 import { createClient } from '@/lib/supabase/server'
 import OpenAI from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
 import { revalidatePath } from 'next/cache'
 import { assembleAndBuildPrompt } from '@/lib/rag/context-assembler'
+
+// ===========================================
+// ZOD VALIDATION SCHEMAS
+// ===========================================
+
+const CreateSessionSchema = z.object({
+  title: z.string().max(200).optional(),
+})
+
+const SendMessageSchema = z.object({
+  sessionId: z.string().uuid('Invalid session ID'),
+  content: z.string().min(1, 'Message cannot be empty').max(2000, 'Message too long'),
+})
+
+const SessionIdSchema = z.object({
+  sessionId: z.string().uuid('Invalid session ID'),
+})
+
+const SaveMessageToProfileSchema = z.object({
+  messageId: z.string().uuid('Invalid message ID'),
+  insight: z.string().min(1, 'Insight cannot be empty').max(500, 'Insight too long'),
+})
 
 // Lazy-initialize AI clients to avoid build-time errors
 let openai: OpenAI | null = null
@@ -127,7 +150,7 @@ async function callAI(messages: Array<{ role: string; content: string }>, system
 
   return breaker.execute(async () => {
     if (provider === 'anthropic') {
-      const anthropicMessages = messages.slice(1).map(m => ({
+      const anthropicMessages = messages.map(m => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
       }))
@@ -154,7 +177,10 @@ async function callAI(messages: Array<{ role: string; content: string }>, system
         },
         body: JSON.stringify({
           model: 'qwen-plus',
-          messages,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...messages,
+          ],
           max_tokens: 500,
           temperature: 0.7,
         }),
@@ -169,10 +195,13 @@ async function callAI(messages: Array<{ role: string; content: string }>, system
     }
 
     // Default: OpenAI
-    const openaiMessages = messages.map(m => ({
-      role: m.role as 'system' | 'user' | 'assistant',
-      content: m.content,
-    }))
+    const openaiMessages = [
+      { role: 'system' as const, content: systemPrompt },
+      ...messages.map(m => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })),
+    ]
     const openaiClient = getOpenAIClient()
     const response = await openaiClient.chat.completions.create({
       model: 'gpt-4-turbo-preview',
@@ -189,6 +218,11 @@ async function callAI(messages: Array<{ role: string; content: string }>, system
  * Create new AI mentor session
  */
 export async function createSession(title?: string) {
+  const validation = CreateSessionSchema.safeParse({ title })
+  if (!validation.success) {
+    return { error: new Error('Invalid title') }
+  }
+
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -207,7 +241,7 @@ export async function createSession(title?: string) {
       title: generatedTitle,
       status: 'active',
     })
-    .select()
+    .select('id, user_id, title, status, created_at, updated_at')
     .single()
 
   if (sessionError) {
@@ -250,6 +284,11 @@ export async function getOrCreateActiveSession() {
  * Send message to AI mentor and get response
  */
 export async function sendMessage(sessionId: string, content: string) {
+  const validation = SendMessageSchema.safeParse({ sessionId, content })
+  if (!validation.success) {
+    return { error: new Error(validation.error.errors[0]?.message || 'Invalid input') }
+  }
+
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -298,21 +337,13 @@ export async function sendMessage(sessionId: string, content: string) {
   }))
 
   // Assemble RAG context and build enhanced prompt
-  const { context, systemPrompt, warnings } = await assembleAndBuildPrompt(
-    user.id,
-    content,
-    sessionId,
-    ragMessages
-  )
+  const { context, systemPrompt, warnings } = await assembleAndBuildPrompt({ userId: user.id, query: content, sessionId, messages: ragMessages })
 
   // Prepare messages for LLM with RAG-enhanced system prompt
-  const llmMessages = [
-    { role: 'system' as const, content: systemPrompt },
-    ...ragMessages.map(m => ({
-      role: m.role,
-      content: m.content,
-    })),
-  ]
+  const llmMessages = ragMessages.map(m => ({
+    role: m.role,
+    content: m.content,
+  }))
 
   // Call LLM API with circuit breaker
   let aiResponse: string
@@ -332,14 +363,14 @@ export async function sendMessage(sessionId: string, content: string) {
       role: 'assistant',
       content: aiResponse,
     })
-    .select()
+    .select('id, session_id, role, content, is_saved_to_profile, created_at')
     .single()
 
   if (aiMsgError) {
     return { error: aiMsgError }
   }
 
-  revalidatePath('/assistant')
+  revalidatePath('/(auth)/ai-mentor')
 
   return {
     data: aiMessage,
@@ -356,6 +387,11 @@ export async function sendMessage(sessionId: string, content: string) {
  * Get session history
  */
 export async function getSessionHistory(sessionId: string) {
+  const validation = SessionIdSchema.safeParse({ sessionId })
+  if (!validation.success) {
+    return { error: new Error('Invalid session ID') }
+  }
+
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -418,6 +454,11 @@ export async function getUserSessions() {
  * Archive session
  */
 export async function archiveSession(sessionId: string) {
+  const validation = SessionIdSchema.safeParse({ sessionId })
+  if (!validation.success) {
+    return { error: new Error('Invalid session ID') }
+  }
+
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -435,7 +476,7 @@ export async function archiveSession(sessionId: string) {
     return { error }
   }
 
-  revalidatePath('/assistant')
+  revalidatePath('/(auth)/ai-mentor')
 
   return { success: true }
 }
@@ -444,6 +485,11 @@ export async function archiveSession(sessionId: string) {
  * Save message to profile (user insights)
  */
 export async function saveMessageToProfile(messageId: string, insight: string) {
+  const validation = SaveMessageToProfileSchema.safeParse({ messageId, insight })
+  if (!validation.success) {
+    return { error: new Error(validation.error.errors[0]?.message || 'Invalid input') }
+  }
+
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
@@ -451,11 +497,23 @@ export async function saveMessageToProfile(messageId: string, insight: string) {
     return { error: new Error('Unauthorized') }
   }
 
+  // Read current bio to append insight
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('bio')
+    .eq('id', user.id)
+    .single()
+
+  const currentBio = profile?.bio || ''
+  const updatedBio = currentBio
+    ? `${currentBio}\n\n---\n${insight}`
+    : insight
+
   // Update user's profile with insight
   const { error } = await supabase
     .from('profiles')
     .update({
-      bio: insight,
+      bio: updatedBio,
     })
     .eq('id', user.id)
 
@@ -479,3 +537,4 @@ export async function getAICircuitBreakerStatus() {
     activeProvider: getProvider(),
   }
 }
+

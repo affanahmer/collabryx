@@ -14,6 +14,12 @@ export class BM25 {
   private N = 0
 
   index(documents: BM25Document[]): void {
+    // Clear state before rebuilding to prevent state corruption from concurrent calls
+    this.documents = []
+    this.N = 0
+    this.docLengths = []
+    this.docFreqs.clear()
+
     this.documents = documents
     this.N = documents.length
     this.docLengths = documents.map(d => d.text.split(/\s+/).length)

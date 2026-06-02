@@ -65,14 +65,16 @@ export class MiniMaxProvider implements AIProvider {
 
         if (!res.ok) {
           const errorBody = await res.json().catch(() => ({}))
-          const _retryAfter = res.headers.get('Retry-After')
+          const retryAfterHeader = res.headers.get('Retry-After')
+          const retryAfterMs = retryAfterHeader ? parseInt(retryAfterHeader, 10) * 1000 : undefined
           const errorCode = (errorBody as { code?: number }).code
 
           if (res.status === 429) {
             throw new MiniMaxAPIError(
               errorBody.message || 'Rate limit exceeded',
               res.status,
-              errorCode
+              errorCode,
+              retryAfterMs
             )
           }
 
@@ -119,6 +121,10 @@ export class MiniMaxProvider implements AIProvider {
       model: data.model || this.config.model,
       finishReason: choice.finish_reason,
     }
+  }
+
+  supportsStreaming(): boolean {
+    return true
   }
 
   async *stream(messages: Message[], systemPrompt?: string): AsyncGenerator<string> {
@@ -239,14 +245,15 @@ export class MiniMaxProvider implements AIProvider {
         lastError = error as Error
 
         if (error instanceof MiniMaxAPIError) {
+          // Use Retry-After header value if provided, otherwise fall back to exponential backoff
+          const baseDelay = Math.min(1000 * Math.pow(2, attempt), 10000)
+
           if (error.statusCode === 429) {
-            const baseDelay = Math.min(1000 * Math.pow(2, attempt), 10000)
-            retryAfterMs = baseDelay
+            retryAfterMs = error.retryAfterMs ?? baseDelay
             continue
           }
 
           if (error.statusCode && error.statusCode >= 500) {
-            const baseDelay = Math.min(1000 * Math.pow(2, attempt), 10000)
             retryAfterMs = baseDelay
             continue
           }

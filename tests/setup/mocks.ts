@@ -1,6 +1,9 @@
 import { vi } from 'vitest'
 
-// Mock Supabase client with proper chainable methods
+// Mock Supabase client with proper chainable methods.
+// Pattern: chainable methods return `this` (the client) for further chaining.
+// Terminal operations (single, maybeSingle) return Promises.
+// The `then` property makes the client thenable for direct-await chains.
 export const createMockSupabaseClient = () => {
   const client = {
     from: vi.fn().mockReturnThis(),
@@ -10,12 +13,24 @@ export const createMockSupabaseClient = () => {
     upsert: vi.fn().mockReturnThis(),
     delete: vi.fn().mockReturnThis(),
     eq: vi.fn().mockReturnThis(),
+    neq: vi.fn().mockReturnThis(),
+    gt: vi.fn().mockReturnThis(),
+    gte: vi.fn().mockReturnThis(),
+    lt: vi.fn().mockReturnThis(),
+    lte: vi.fn().mockReturnThis(),
+    in: vi.fn().mockReturnThis(),
+    not: vi.fn().mockReturnThis(),
+    or: vi.fn().mockReturnThis(),
+    like: vi.fn().mockReturnThis(),
+    ilike: vi.fn().mockReturnThis(),
+    is: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue({ data: null, error: null }),
     maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
     order: vi.fn().mockReturnThis(),
     limit: vi.fn().mockReturnThis(),
     range: vi.fn().mockReturnThis(),
     execute: vi.fn().mockResolvedValue({ data: [], error: null }),
+    // Make the client thenable — resolves when a chain is directly awaited
     then: vi.fn().mockImplementation((resolve) => resolve({ data: [], error: null })),
     channel: vi.fn().mockReturnThis(),
     removeChannel: vi.fn().mockResolvedValue(null),
@@ -28,13 +43,20 @@ export const createMockSupabaseClient = () => {
       onAuthStateChange: vi.fn().mockReturnValue({ subscription: { unsubscribe: vi.fn() } }),
     },
   }
-  // Make chainable methods return the client itself for proper chaining
+  // Re-bind chainable methods to ensure they return the client (not vitest's default `this`)
   client.from.mockReturnThis()
   client.select.mockReturnThis()
   client.insert.mockReturnThis()
   client.update.mockReturnThis()
+  client.upsert.mockReturnThis()
   client.delete.mockReturnThis()
   client.eq.mockReturnThis()
+  client.in.mockReturnThis()
+  client.not.mockReturnThis()
+  client.or.mockReturnThis()
+  client.order.mockReturnThis()
+  client.limit.mockReturnThis()
+  client.range.mockReturnThis()
   return client
 }
 

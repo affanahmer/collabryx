@@ -28,18 +28,7 @@ export function useNotificationPreferences(userId: string | null) {
             }
 
             if (process.env.NODE_ENV === "development") {
-                await new Promise((resolve) => setTimeout(resolve, 300))
-                return {
-                    id: "dev-pref-id",
-                    user_id: userId,
-                    email_new_connections: true,
-                    email_messages: true,
-                    email_post_likes: true,
-                    email_comments: true,
-                    push_enabled: false,
-                    ai_smart_match_alerts: true,
-                    updated_at: new Date().toISOString(),
-                }
+                console.warn("Using real API in development mode — ensure backend is running")
             }
 
             const { data, error: fetchError } = await supabase
@@ -67,37 +56,18 @@ export function useNotificationPreferences(userId: string | null) {
             }
 
             if (process.env.NODE_ENV === "development") {
-                await new Promise((resolve) => setTimeout(resolve, 500))
-                return { success: true }
+                console.warn("Using real API in development mode — ensure backend is running")
             }
 
-            const { data: existingPref } = await supabase
+            const { error: upsertError } = await supabase
                 .from("notification_preferences")
-                .select("id")
-                .eq("user_id", userId)
-                .single()
+                .upsert({
+                    user_id: userId,
+                    ...updates,
+                    updated_at: new Date().toISOString(),
+                })
 
-            if (existingPref) {
-                const { error: updateError } = await supabase
-                    .from("notification_preferences")
-                    .update({
-                        ...updates,
-                        updated_at: new Date().toISOString(),
-                    })
-                    .eq("user_id", userId)
-
-                if (updateError) throw updateError
-            } else {
-                const { error: insertError } = await supabase
-                    .from("notification_preferences")
-                    .insert({
-                        user_id: userId,
-                        ...updates,
-                        updated_at: new Date().toISOString(),
-                    })
-
-                if (insertError) throw insertError
-            }
+            if (upsertError) throw upsertError
 
             return { success: true }
         },

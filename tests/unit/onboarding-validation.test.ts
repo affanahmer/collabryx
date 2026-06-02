@@ -1,48 +1,29 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
 
-// Import the schemas from the onboarding page
-// These are the exact schemas used in production
+// Import the actual production schemas to prevent schema drift
+import { onboardingDataSchema } from '@/lib/validations/onboarding'
+
+// Derive sub-schemas from the actual production schema
 const basicInfoSchema = z.object({
-  fullName: z.string()
-    .min(2, "Full name must be at least 2 characters.")
-    .max(100, "Full name must be less than 100 characters.")
-    .regex(/^[A-Za-z\s]+$/, "Name can only contain letters and spaces"),
-  displayName: z.string()
-    .max(30, "Display name must be less than 30 characters.")
-    .regex(/^[a-z0-9_]*$/, "Display name can only contain lowercase letters, numbers, and underscores.")
-    .optional()
-    .or(z.literal("")),
-  headline: z.string()
-    .min(5, "Headline must be at least 5 characters.")
-    .max(100, "Headline must be less than 100 characters.")
-    .regex(/^[a-zA-Z0-9\s@.,&'()-]+$/, "Headline can only contain letters, numbers, and basic punctuation."),
-  location: z.string()
-    .max(100, "Location must be less than 100 characters.")
-    .optional()
-    .or(z.literal("")),
+  fullName: onboardingDataSchema.shape.fullName,
+  displayName: onboardingDataSchema.shape.displayName,
+  headline: onboardingDataSchema.shape.headline,
+  location: onboardingDataSchema.shape.location,
 })
 
 const skillsSchema = z.object({
-  skills: z.array(z.string()).min(1, "Please add at least one skill."),
+  skills: onboardingDataSchema.shape.skills,
 })
 
 const interestsGoalsSchema = z.object({
-  interests: z.array(z.string()).min(1, "Please add at least one interest."),
-  goals: z.array(z.string()).optional(),
+  interests: onboardingDataSchema.shape.interests,
+  goals: onboardingDataSchema.shape.goals,
 })
 
 const experienceSchema = z.object({
-  experiences: z.array(z.object({
-    title: z.string().optional().or(z.literal("")),
-    company: z.string().optional().or(z.literal("")),
-    description: z.string().optional().or(z.literal("")),
-  })).optional(),
-  links: z.array(z.object({
-    platform: z.string(),
-    url: z.string().optional().or(z.literal("")),
-  })).optional(),
+  experiences: onboardingDataSchema.shape.experiences,
+  links: onboardingDataSchema.shape.links,
 })
 
 describe('Onboarding Validation', () => {
@@ -68,7 +49,7 @@ describe('Onboarding Validation', () => {
         
         expect(result.success).toBe(false)
         if (!result.success) {
-          expect(result.error.errors[0].message).toBe('Full name must be at least 2 characters.')
+          expect(result.error.errors[0].message).toBe('Full name must be at least 2 characters')
         }
       })
 
@@ -81,7 +62,7 @@ describe('Onboarding Validation', () => {
         
         expect(result.success).toBe(false)
         if (!result.success) {
-          expect(result.error.errors[0].message).toBe('Full name must be less than 100 characters.')
+          expect(result.error.errors[0].message).toBe('Full name must be less than 100 characters')
         }
       })
 
@@ -93,7 +74,7 @@ describe('Onboarding Validation', () => {
         
         expect(result.success).toBe(false)
         if (!result.success) {
-          expect(result.error.errors[0].message).toBe('Name can only contain letters and spaces')
+          expect(result.error.errors[0].message).toBe('Full name can only contain letters, spaces, hyphens, and apostrophes')
         }
       })
 
@@ -105,7 +86,7 @@ describe('Onboarding Validation', () => {
         
         expect(result.success).toBe(false)
         if (!result.success) {
-          expect(result.error.errors[0].message).toBe('Name can only contain letters and spaces')
+          expect(result.error.errors[0].message).toBe('Full name can only contain letters, spaces, hyphens, and apostrophes')
         }
       })
 
@@ -134,14 +115,14 @@ describe('Onboarding Validation', () => {
         }).success).toBe(true)
       })
 
-      it('should accept empty display name', () => {
+      it('should reject empty display name (fails min length)', () => {
         const result = basicInfoSchema.safeParse({ 
           fullName: 'John Doe', 
           displayName: '',
           headline: 'Software Developer' 
         })
         
-        expect(result.success).toBe(true)
+        expect(result.success).toBe(false)
       })
 
       it('should accept undefined display name', () => {
@@ -153,8 +134,8 @@ describe('Onboarding Validation', () => {
         expect(result.success).toBe(true)
       })
 
-      it('should reject display names longer than 30 characters', () => {
-        const longDisplayName = 'a'.repeat(31)
+      it('should reject display names longer than 50 characters', () => {
+        const longDisplayName = 'a'.repeat(51)
         const result = basicInfoSchema.safeParse({ 
           fullName: 'John Doe', 
           displayName: longDisplayName,
@@ -163,34 +144,28 @@ describe('Onboarding Validation', () => {
         
         expect(result.success).toBe(false)
         if (!result.success) {
-          expect(result.error.errors[0].message).toBe('Display name must be less than 30 characters.')
+          expect(result.error.errors[0].message).toBe('Display name must be less than 50 characters')
         }
       })
 
-      it('should reject display names with uppercase letters', () => {
+      it('should accept display names with uppercase letters', () => {
         const result = basicInfoSchema.safeParse({ 
           fullName: 'John Doe', 
           displayName: 'JohnDoe',
           headline: 'Software Developer' 
         })
         
-        expect(result.success).toBe(false)
-        if (!result.success) {
-          expect(result.error.errors[0].message).toBe('Display name can only contain lowercase letters, numbers, and underscores.')
-        }
+        expect(result.success).toBe(true)
       })
 
-      it('should reject display names with special characters', () => {
+      it('should accept display names with special characters', () => {
         const result = basicInfoSchema.safeParse({ 
           fullName: 'John Doe', 
           displayName: 'john@doe',
           headline: 'Software Developer' 
         })
         
-        expect(result.success).toBe(false)
-        if (!result.success) {
-          expect(result.error.errors[0].message).toBe('Display name can only contain lowercase letters, numbers, and underscores.')
-        }
+        expect(result.success).toBe(true)
       })
     })
 
@@ -215,12 +190,12 @@ describe('Onboarding Validation', () => {
         
         expect(result.success).toBe(false)
         if (!result.success) {
-          expect(result.error.errors[0].message).toBe('Headline must be at least 5 characters.')
+          expect(result.error.errors[0].message).toBe('Headline must be at least 5 characters')
         }
       })
 
-      it('should reject headlines longer than 100 characters', () => {
-        const longHeadline = 'A'.repeat(101)
+      it('should reject headlines longer than 200 characters', () => {
+        const longHeadline = 'A'.repeat(201)
         const result = basicInfoSchema.safeParse({ 
           fullName: 'John Doe', 
           headline: longHeadline 
@@ -228,7 +203,7 @@ describe('Onboarding Validation', () => {
         
         expect(result.success).toBe(false)
         if (!result.success) {
-          expect(result.error.errors[0].message).toBe('Headline must be less than 100 characters.')
+          expect(result.error.errors[0].message).toBe('Headline must be less than 200 characters')
         }
       })
 
@@ -250,20 +225,20 @@ describe('Onboarding Validation', () => {
         })
       })
 
-      it('should reject headlines with disallowed special characters', () => {
-        const invalidHeadlines = [
+      it('should accept headlines with special characters (no disallowed chars)', () => {
+        const validHeadlines = [
           'Developer <script>alert("xss")</script>',
           'Manager [Team Lead]',
           'Engineer {Backend}',
           'Designer *Creative*'
         ]
         
-        invalidHeadlines.forEach(headline => {
+        validHeadlines.forEach(headline => {
           const result = basicInfoSchema.safeParse({ 
             fullName: 'John Doe', 
             headline 
           })
-          expect(result.success).toBe(false)
+          expect(result.success).toBe(true)
         })
       })
     })
@@ -312,7 +287,7 @@ describe('Onboarding Validation', () => {
         
         expect(result.success).toBe(false)
         if (!result.success) {
-          expect(result.error.errors[0].message).toBe('Location must be less than 100 characters.')
+          expect(result.error.errors[0].message).toBe('Location must be less than 100 characters')
         }
       })
     })
@@ -321,7 +296,11 @@ describe('Onboarding Validation', () => {
   describe('Skills Schema', () => {
     it('should accept valid skills array', () => {
       const result = skillsSchema.safeParse({ 
-        skills: ['React', 'TypeScript', 'Node.js'] 
+        skills: [
+          { id: 'react', label: 'React', proficiency: 'advanced' },
+          { id: 'typescript', label: 'TypeScript', proficiency: 'intermediate' },
+          { id: 'nodejs', label: 'Node.js', proficiency: 'advanced' },
+        ] 
       })
       
       expect(result.success).toBe(true)
@@ -334,7 +313,7 @@ describe('Onboarding Validation', () => {
       
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error.errors[0].message).toBe('Please add at least one skill.')
+        expect(result.error.errors[0].message).toBe('At least one skill is required')
       }
     })
 
@@ -346,7 +325,7 @@ describe('Onboarding Validation', () => {
 
     it('should accept single skill', () => {
       const result = skillsSchema.safeParse({ 
-        skills: ['JavaScript'] 
+        skills: [{ id: 'js', label: 'JavaScript', proficiency: 'intermediate' }] 
       })
       
       expect(result.success).toBe(true)
@@ -386,7 +365,7 @@ describe('Onboarding Validation', () => {
       
       expect(result.success).toBe(false)
       if (!result.success) {
-        expect(result.error.errors[0].message).toBe('Please add at least one interest.')
+        expect(result.error.errors[0].message).toBe('At least one interest is required')
       }
     })
 
@@ -458,25 +437,34 @@ describe('Onboarding Validation', () => {
   describe('Edge Cases', () => {
     it('should handle special characters in skills', () => {
       const result = skillsSchema.safeParse({
-        skills: ['C++', '.NET', 'Node.js', 'React/Redux']
+        skills: [
+          { id: 'cpp', label: 'C++', proficiency: 'advanced' },
+          { id: 'dotnet', label: '.NET', proficiency: 'intermediate' },
+          { id: 'nodejs', label: 'Node.js', proficiency: 'advanced' },
+          { id: 'react-redux', label: 'React/Redux', proficiency: 'expert' },
+        ]
       })
       
       expect(result.success).toBe(true)
     })
 
     it('should handle very long skill names', () => {
-      const longSkill = 'A'.repeat(200)
+      const longLabel = 'A'.repeat(200)
       const result = skillsSchema.safeParse({
-        skills: [longSkill]
+        skills: [{ id: 'long', label: longLabel, proficiency: 'beginner' }]
       })
-      
-      // Skills don't have maxLength validation, so this should pass
+
+      // Skill labels don't have maxLength validation, so this should pass
       expect(result.success).toBe(true)
     })
 
     it('should handle duplicate skills', () => {
       const result = skillsSchema.safeParse({
-        skills: ['React', 'React', 'React']
+        skills: [
+          { id: 'react', label: 'React', proficiency: 'advanced' },
+          { id: 'react', label: 'React', proficiency: 'advanced' },
+          { id: 'react', label: 'React', proficiency: 'advanced' },
+        ]
       })
       
       expect(result.success).toBe(true)
@@ -522,7 +510,11 @@ describe('Onboarding Validation', () => {
         displayName: 'johndoe',
         headline: 'Software Developer @ TechCorp',
         location: 'San Francisco, CA',
-        skills: ['React', 'TypeScript', 'Node.js'],
+        skills: [
+          { id: 'react', label: 'React', proficiency: 'advanced' },
+          { id: 'typescript', label: 'TypeScript', proficiency: 'intermediate' },
+          { id: 'nodejs', label: 'Node.js', proficiency: 'advanced' },
+        ],
         interests: ['AI', 'Web Development'],
         goals: ['Learn ML'],
         experiences: [
@@ -544,7 +536,7 @@ describe('Onboarding Validation', () => {
       const result = combinedSchema.safeParse({
         fullName: 'John Doe',
         headline: 'Developer',
-        skills: ['Coding'],
+        skills: [{ id: 'coding', label: 'Coding', proficiency: 'beginner' }],
         interests: ['Tech'],
         experiences: [],
         links: []
@@ -557,7 +549,7 @@ describe('Onboarding Validation', () => {
       const result = combinedSchema.safeParse({
         fullName: 'John Doe',
         // Missing headline
-        skills: ['Coding'],
+        skills: [{ id: 'coding', label: 'Coding', proficiency: 'beginner' }],
         interests: ['Tech']
       })
       

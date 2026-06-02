@@ -216,8 +216,66 @@ Archive session.
 
 ### Chat API
 
+#### `POST /api/ai/stream`
+Stream AI mentor responses with multi-provider failover and enhanced RAG context.
+
+**Request:**
+```json
+{
+  "userId": "user-uuid",
+  "query": "Help me find a co-founder",
+  "messages": [
+    { "role": "user", "content": "Hello" },
+    { "role": "assistant", "content": "Hi! How can I help?" }
+  ],
+  "sessionId": "session-uuid-optional",
+  "preferredProvider": "openai",
+  "otherUserIds": ["user-b-uuid"],
+  "startupContext": {
+    "idea": "AI-powered matching platform",
+    "stage": "mvp",
+    "industry": "technology",
+    "target_users": "students and founders",
+    "technical_needs": ["backend developer", "devops"],
+    "non_technical_needs": ["marketing", "sales"],
+    "current_team_size": 1,
+    "looking_for": ["cofounder", "developer"]
+  }
+}
+```
+
+**Request Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `userId` | string | ✅ Yes | Authenticated user ID |
+| `query` | string | No | Current user query |
+| `messages` | array | No | Conversation history |
+| `sessionId` | string | No | AI mentor session ID |
+| `preferredProvider` | string | No | Specific provider to use (bypasses failover) |
+| `otherUserIds` | string[] | No | Additional user IDs for collaboration advice |
+| `startupContext` | object | No | Startup planning context for tailored mentoring |
+
+**Response:**
+```
+Content-Type: text/event-stream
+X-RAG-Warnings: ["profile incomplete", "no vector context"]
+```
+
+Streaming response with Server-Sent Events. Warnings about context assembly are included in the `X-RAG-Warnings` header for debugging.
+
+**Error Responses:**
+
+| Status | Error Type | Description |
+|--------|-----------|-------------|
+| 400 | `ValidationError` | Missing `userId` or invalid input |
+| 500 | `AllProvidersFailedError` | All registered providers failed |
+| 500 | `ProviderTimeoutError` | Provider request timed out |
+| 500 | `RateLimitError` | Provider rate limited |
+| 500 | `StreamingError` | Streaming-specific failure |
+
 #### `POST /api/chat`
-Send message to AI chat.
+Send message to AI chat (legacy endpoint).
 
 **Request:**
 ```json
@@ -249,13 +307,16 @@ Get API status.
 ```json
 {
   "status": "operational",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "authenticated": true,
-  "provider": "anthropic",
+  "providers": ["openai", "anthropic"],
   "features": {
-    "streaming": false,
+    "streaming": true,
     "sessions": true,
-    "context": true
+    "context": true,
+    "multiProvider": true,
+    "startupPlanning": true,
+    "collaborationAdvice": true
   }
 }
 ```
@@ -295,6 +356,17 @@ All server actions follow consistent error format:
 | `Invalid input` | 400 | Validation failed |
 | `Not found` | 404 | Resource not found |
 | `Failed to create` | 500 | Database error |
+
+### AI Provider Errors
+
+| Error | Description |
+|-------|-------------|
+| `AllProvidersFailedError` | All registered AI providers failed |
+| `ProviderConfigError` | Invalid provider configuration |
+| `StreamingError` | Streaming-specific failure |
+| `RateLimitError` | Provider rate limited (includes retry delay) |
+| `ProviderTimeoutError` | Provider request timed out |
+| `AIProviderError` | Generic provider error with provider name |
 
 ---
 
@@ -359,20 +431,38 @@ await acceptConnectionRequest(requestId)
 // Creates notification automatically
 ```
 
-### AI Chat Flow
+### AI Chat Flow (Streaming)
 
 ```typescript
-// Send message
-const response = await fetch('/api/chat', {
+// Send message with streaming
+const response = await fetch('/api/ai/stream', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
-    message: 'Help me find a co-founder',
-    session_id: currentSessionId
+    userId: currentUserId,
+    query: 'Help me find a co-founder',
+    messages: conversationHistory,
+    session_id: currentSessionId,
+    // Optional: collaboration advice
+    otherUserIds: ['potential-partner-id'],
+    // Optional: startup planning
+    startupContext: {
+      idea: 'AI matching platform',
+      stage: 'mvp',
+      looking_for: ['cofounder']
+    }
   })
 })
 
-const { data, error } = await response.json()
+// Check for context assembly warnings
+const warnings = response.headers.get('X-RAG-Warnings')
+if (warnings) {
+  console.log('Context warnings:', JSON.parse(warnings))
+}
+
+// Read streaming response
+const reader = response.body.getReader()
+// ... process SSE stream
 ```
 
 ---
@@ -398,5 +488,5 @@ For complete database schema, see:
 
 ---
 
-**Last Updated:** March 15, 2026
-**Version:** 1.0.0
+**Last Updated:** May 22, 2026
+**Version:** 3.0.0

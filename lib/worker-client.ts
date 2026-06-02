@@ -46,7 +46,7 @@ export class WorkerClient {
   async generateEmbedding(text: string, userId: string): Promise<EmbeddingResponse> {
     const response = await fetch(`${this.baseUrl}/generate-embedding`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'X-Worker-API-Key': process.env.WORKER_API_KEY || '' },
       body: JSON.stringify({ text, user_id: userId } satisfies EmbeddingRequest),
       signal: AbortSignal.timeout(30000),
     })

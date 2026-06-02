@@ -91,6 +91,10 @@ export async function POST(request: NextRequest) {
       ? 'profile-media' 
       : 'post-media'
     
+    // Validate user ID is a UUID to prevent path traversal
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(user.id)) throw new Error('Invalid user ID');
+
     // Generate unique filename
     const sanitized = sanitizeFileName(file.name)
     const secureName = generateSecureFileName(sanitized)
@@ -98,6 +102,8 @@ export async function POST(request: NextRequest) {
     const path = `${userId}/${secureName}`
 
     // Upload to Supabase Storage
+    // Note: file.type has already passed magic-byte validation above, so it is
+    // the verified MIME type (not a spoofed browser header).
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(bucket)
       .upload(path, buffer, {

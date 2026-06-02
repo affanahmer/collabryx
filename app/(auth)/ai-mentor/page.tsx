@@ -17,9 +17,7 @@ export default function AIMentorPage() {
     sendMessage, 
     error 
   } = useAIStream({
-    userId: user?.id || '',
-    onChunk: (chunk) => console.log('Token:', chunk),
-    onComplete: (content) => console.log('Complete:', content.length, 'chars')
+    userId: user?.id || ''
   })
 
   const handleSubmit = async (e: React.FormEvent) => {

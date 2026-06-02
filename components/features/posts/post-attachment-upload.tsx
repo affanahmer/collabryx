@@ -210,7 +210,7 @@ export function PostAttachmentUpload({
             
             return (
               <div
-                key={index}
+                key={file.name + '-' + file.size || index}
                 className={cn(
                   "relative group aspect-square rounded-xl overflow-hidden border",
                   "transition-all duration-200",
@@ -303,7 +303,7 @@ export function PostAttachmentUpload({
             </p>
             <ul className="text-xs text-destructive/80 space-y-0.5">
               {prePostUpload.errors.slice(0, 3).map((error, i) => (
-                <li key={i}>• {error}</li>
+                <li key={error + '-' + i}>• {error}</li>
               ))}
               {prePostUpload.errors.length > 3 && (
                 <li>• And {prePostUpload.errors.length - 3} more...</li>
@@ -373,8 +373,8 @@ export function AttachmentGallery({ attachments, className }: AttachmentGalleryP
       ) : validAttachments.length === 2 ? (
         // Two attachments - side by side
         <div className="grid grid-cols-2 gap-3">
-          {validAttachments.map((attachment, index) => (
-            <div key={index} className="relative rounded-xl overflow-hidden border aspect-square">
+          {validAttachments.map((attachment) => (
+            <div key={attachment.file_url} className="relative rounded-xl overflow-hidden border aspect-square">
               {attachment.file_type === "video" ? (
                 <video
                   src={attachment.file_url}
@@ -417,7 +417,7 @@ export function AttachmentGallery({ attachments, className }: AttachmentGalleryP
           
           {/* Remaining items */}
           {validAttachments.slice(1, 5).map((attachment, index) => (
-            <div key={index} className="relative rounded-xl overflow-hidden border aspect-square">
+            <div key={attachment.file_url} className="relative rounded-xl overflow-hidden border aspect-square">
               {attachment.file_type === "video" ? (
                 <video
                   src={attachment.file_url}

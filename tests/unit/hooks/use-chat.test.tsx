@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { useChat } from '@/hooks/use-chat'
+import { useChat } from '@/hooks/use-conversations'
 
 // Mock next/navigation
 const mockPush = vi.fn()

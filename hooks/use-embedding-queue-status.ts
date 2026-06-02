@@ -24,9 +24,8 @@ export function useEmbeddingQueueStatus(userId: string) {
   const initialized = useRef(false);
 
   useEffect(() => {
-    // Skip if already initialized
-    if (initialized.current) return;
-    initialized.current = true;
+    // Reset initialized flag when userId changes so the effect re-runs
+    initialized.current = false;
 
     // Initialize status when userId changes
     const initializeStatus = () => {

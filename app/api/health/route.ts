@@ -1,7 +1,17 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const dynamic = 'force-dynamic'
+
+// Reuse supabase client across health check invocations (#44)
+let supabaseClient: SupabaseClient | null = null
+async function getSupabaseClient() {
+  if (!supabaseClient) {
+    supabaseClient = await createClient()
+  }
+  return supabaseClient
+}
 
 /**
  * Health check endpoint for monitoring and uptime checks
@@ -14,7 +24,10 @@ export const dynamic = 'force-dynamic'
  * @returns Health status JSON
  */
 export async function GET() {
-  const supabase = await createClient()
+  const supabase = await getSupabaseClient()
+  if (!supabase) {
+    return NextResponse.json({ status: 'error', database: false }, { status: 503 })
+  }
   
   // Check database connection
   const { error: dbError } = await supabase
@@ -43,11 +56,16 @@ export async function GET() {
     pythonWorkerError = error instanceof Error ? error.message : 'Unknown error'
   }
   
+  // Log internal error details server-side, never leak to client
+  if (dbError) {
+    console.error('Health check — database connection failed:', dbError.message)
+  }
+
   // Determine overall health status
   const isHealthy = !dbError && pythonWorkerHealthy
   const status = isHealthy ? 'healthy' : dbError ? 'degraded' : 'unhealthy'
   const statusCode = isHealthy ? 200 : dbError ? 200 : 503
-  
+
   return NextResponse.json({
     status,
     timestamp: new Date().toISOString(),
@@ -56,7 +74,7 @@ export async function GET() {
     checks: {
       database: {
         status: dbError ? 'failed' : 'ok',
-        error: dbError ? dbError.message : null,
+        error: dbError ? 'database connection failed' : null,
       },
       pythonWorker: {
         status: pythonWorkerHealthy ? 'ok' : 'failed',

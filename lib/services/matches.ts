@@ -232,16 +232,46 @@ export async function connectWithMatch(matchedUserId: string): Promise<{ error: 
       .eq("matched_user_id", matchedUserId)
 
     if (updateError) {
-      // Rollback: delete the connection if status update fails
-      logger.app.error("Failed to update match status, rolling back connection", updateError)
-      await supabase.from("connections").delete().eq("id", connectionData.id)
+      // TODO(#147): Replace manual rollback with database transactions. The current approach
+      // has a race condition where the connection insert succeeds but the match_suggestions
+      // update fails, and the manual rollback delete may also fail, leaving orphaned rows.
+      //
+      // Proposed fix: supabase.rpc('connect_with_match', { p_user_id, p_matched_user_id })
+      //
+      // CREATE OR REPLACE FUNCTION public.connect_with_match(p_user_id UUID, p_matched_user_id UUID)
+      // RETURNS void AS $$
+      // BEGIN
+      //   INSERT INTO connections (requester_id, receiver_id, status)
+      //     VALUES (p_user_id, p_matched_user_id, 'pending');
+      //   UPDATE match_suggestions SET status = 'connected'
+      //     WHERE user_id = p_user_id AND matched_user_id = p_matched_user_id;
+      // END;
+      // $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
+      //
+      // Rollback: delete the connection if status update fails (best-effort)
+      logger.app.error("Failed to update match status, rolling back connection", {
+        error: updateError.message,
+        connectionId: connectionData.id,
+        matchedUserId,
+      })
+      const { error: rollbackError } = await supabase.from("connections").delete().eq("id", connectionData.id)
+      if (rollbackError) {
+        logger.app.error("Rollback also failed — orphaned connection row", {
+          connectionId: connectionData.id,
+          rollbackError: rollbackError.message,
+        })
+      }
       throw updateError
     }
 
     return { error: null }
   } catch (error) {
-    logger.app.error("Failed to connect with match", error)
-    return { error: error instanceof Error ? error : new Error("Failed to connect with match") }
+    const message = error instanceof Error ? error.message : "Failed to connect with match"
+    logger.app.error("Failed to connect with match", {
+      error: message,
+      matchedUserId,
+    })
+    return { error: new Error(message) }
   }
 }
 
@@ -277,7 +307,14 @@ export async function fetchMatchActivity(
     let query = supabase
       .from("match_activity")
       .select(`
-        *,
+        id,
+        actor_user_id,
+        target_user_id,
+        type,
+        activity,
+        match_percentage,
+        is_read,
+        created_at,
         actor_profile:profiles!match_activity_actor_user_id_fkey (
           id,
           full_name,
@@ -343,10 +380,10 @@ export async function fetchMatchActivity(
 export async function markActivityRead(activityId: string): Promise<{ error: Error | null }> {
   try {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    if (!user) {
-      return { error: new Error("Not authenticated") }
+    if (authError || !user) {
+      return { error: new Error(authError?.message || "Not authenticated") }
     }
 
     const { error } = await supabase
@@ -382,7 +419,7 @@ export async function fetchMatchPreferences(): Promise<{
 
     const { data, error } = await supabase
       .from("match_preferences")
-      .select("*")
+      .select("id, user_id, min_match_percentage, interested_in_types, availability_match, created_at, updated_at")
       .eq("user_id", user.id)
       .single()
 
@@ -414,7 +451,7 @@ export async function updateMatchPreferences(
         interested_in_types: preferences.interested_in_types,
         availability_match: preferences.availability_match,
       }, { onConflict: "user_id" })
-      .select()
+      .select('id, user_id, min_match_percentage, interested_in_types, availability_match, created_at, updated_at')
       .single()
 
     if (error) throw error

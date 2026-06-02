@@ -65,8 +65,8 @@ export class MatchError extends Error {
       return new MatchError('No matches found', MatchErrorType.NO_MATCHES, err.code, false)
     }
     
-    // Rate limited
-    if (err?.code === '429' || err?.status === 429) {
+    // Rate limited (detected by HTTP status code, string codes like 'PGRST116' are used for other errors)
+    if (err?.status === 429) {
       return new MatchError(
         'Rate limited',
         MatchErrorType.RATE_LIMITED,

@@ -44,6 +44,8 @@ describe('vector-retriever', () => {
     beforeEach(async () => {
       vi.resetModules()
       vi.clearAllMocks()
+      // Required for getOpenAIClient() to not throw before mock intercepts
+      vi.stubEnv('OPENAI_API_KEY', 'test-key')
       // Reset mock implementations after clearAllMocks
       mockEmbeddings.create.mockReset()
     })

@@ -1,4 +1,4 @@
-# Frontend Integration Guide - New Python Worker Endpoints
+﻿# Frontend Integration Guide - New Native TS Endpoints
 
 **Date:** 2026-03-19  
 **Branch:** `feature/missing-api-endpoints`
@@ -59,7 +59,7 @@ function PostForm() {
 **Usage Example:**
 ```tsx
 import { useAIMentor } from '@/hooks/use-new-endpoints';
-import { useUser } from '@/hooks/use-user';
+import { useUser } from '@/hooks/use-profile';
 
 function AIMentorChat() {
   const { user } = useUser();
@@ -136,7 +136,7 @@ function AdminDashboard() {
 
 **Access Control:**
 - Requires admin role (checked in API route)
-- Falls back to basic metrics if Python worker unavailable
+- Falls back to basic metrics if service unavailable
 
 ---
 
@@ -348,8 +348,8 @@ Add to `.env.production` on Vercel:
 PYTHON_WORKER_URL=https://your-worker.railway.app
 
 # External APIs (optional)
-PERSPECTIVE_API_KEY=your-key
-GEMINI_API_KEY=your-key
+
+# AI providers are configured via AI_PROVIDER_N_* env vars
 ```
 
 ### Feature Flags

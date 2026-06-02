@@ -11,7 +11,7 @@ import { MatchReasonBadge } from "@/components/ui/match-reason-badge"
 import { formatInitials } from "@/lib/utils/format-initials"
 import { cn } from "@/lib/utils"
 import { glass } from "@/lib/utils/glass-variants"
-import { useConnectionRequests } from "@/hooks/use-connection-requests"
+import { useConnectionRequests } from "@/hooks/use-connections"
 import type { ConnectionWithUser } from "@/lib/services/connections"
 
 interface RequestCardProps {

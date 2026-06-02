@@ -4,13 +4,18 @@
  */
 
 import { logger } from "@/lib/logger"
-import { TOAST_MESSAGES } from "@/lib/constants/toast-messages"
-import { toast } from "sonner"
 
+// TODO(#142): Remove NEXT_PUBLIC prefix in production — it exposes the internal
+// Python worker URL to the client bundle. Use a server-only env var (e.g.
+// PYTHON_WORKER_URL) and proxy through an API route instead.
 const PYTHON_WORKER_URL = process.env.NEXT_PUBLIC_PYTHON_WORKER_URL || "http://localhost:8000"
 
 export interface MatchGenerationResult {
   suggestions_created: number
+  // TODO(#143): Add error handling for partial upsert failures. If the Python
+  // worker creates some matches but fails on others (e.g. DB constraint error),
+  // suggestions_created may be less than matches.length. Downstream code should
+  // check for a mismatch and retry/alert as appropriate.
   matches: Array<{
     id: string
     user_id: string
@@ -72,10 +77,6 @@ export async function generateMatches(
       throw new Error(data.error)
     }
 
-    toast.success(TOAST_MESSAGES.SUCCESS("Match generation"), {
-      description: `Generated ${data.suggestions_created} match suggestions`,
-    })
-
     logger.app.info(`Match generation successful for user ${userId}`, {
       suggestions_created: data.suggestions_created,
     })
@@ -85,10 +86,6 @@ export async function generateMatches(
     const errorMessage = error instanceof Error ? error.message : "Failed to generate matches"
     
     logger.app.error("Match generation failed", error as Error)
-    
-    toast.error(TOAST_MESSAGES.ERROR("generate matches"), {
-      description: errorMessage,
-    })
 
     return { data: null, error: error instanceof Error ? error : new Error(errorMessage) }
   }
@@ -121,10 +118,6 @@ export async function generateBatchMatches(
 
     const data = await response.json()
 
-    toast.success(TOAST_MESSAGES.SUCCESS("Batch match generation"), {
-      description: data.message || "Batch processing started",
-    })
-
     logger.app.info("Batch match generation started", {
       users_count: data.users_count || data.processed_count,
       limit_per_user: limitPerUser,
@@ -135,10 +128,6 @@ export async function generateBatchMatches(
     const errorMessage = error instanceof Error ? error.message : "Failed to start batch generation"
     
     logger.app.error("Batch match generation failed", error as Error)
-    
-    toast.error(TOAST_MESSAGES.ERROR("start batch generation"), {
-      description: errorMessage,
-    })
 
     return { data: null, error: error instanceof Error ? error : new Error(errorMessage) }
   }

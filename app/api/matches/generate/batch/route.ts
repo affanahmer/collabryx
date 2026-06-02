@@ -1,14 +1,15 @@
 /**
  * Batch Match Generation API Route
  * Admin-only endpoint for generating matches in bulk
- * Proxies requests to Python worker for batch processing
+ * Uses native match-generator service
  */
 
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getBackendConfig, getCircuitBreakerStatus } from "@/lib/config/backend";
+import { generateBatchMatches } from "@/lib/services/match-generator";
 import { validateCSRFRequest, requiresCSRF } from "@/lib/csrf";
+import { errorResponse } from '@/lib/utils/api-response';
 
 export const runtime = "edge";
 export const dynamic = "force-dynamic";
@@ -39,7 +40,6 @@ export interface BatchMatchGenerationResponse {
     backend_mode: string;
   };
   error?: string;
-  circuit_breaker_state?: string;
 }
 
 export async function POST(request: NextRequest) {
@@ -55,10 +55,7 @@ export async function POST(request: NextRequest) {
         hasCookieToken: !!cookieToken,
         path: request.url,
       });
-      return NextResponse.json(
-        { success: false, error: "Invalid CSRF token" },
-        { status: 403 }
-      );
+      return errorResponse('INVALID_CSRF', 'Invalid CSRF token', 403)
     }
   }
   
@@ -67,10 +64,7 @@ export async function POST(request: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   
   if (authError || !user) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized" },
-      { status: 401 }
-    );
+    return errorResponse('UNAUTHORIZED', 'Unauthorized', 401)
   }
 
   // Admin check
@@ -83,10 +77,7 @@ export async function POST(request: NextRequest) {
   const isAdmin = userProfile?.role === "admin" || process.env.DEVELOPMENT_MODE === "true";
   
   if (!isAdmin) {
-    return NextResponse.json(
-      { success: false, error: "Admin access required" },
-      { status: 403 }
-    );
+    return errorResponse('FORBIDDEN', 'Admin access required', 403)
   }
 
   try {
@@ -94,105 +85,36 @@ export async function POST(request: NextRequest) {
     
     const validationResult = BatchMatchGenerationRequestSchema.safeParse(body);
     if (!validationResult.success) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: "Invalid request body",
-          details: String(validationResult.error) 
-        },
-        { status: 400 }
-      );
+      return errorResponse('INVALID_REQUEST', 'Invalid request body', 400)
     }
     
-    const { user_ids, limit, min_score, force_regenerate } = validationResult.data;
+    const { user_ids, limit, min_score } = validationResult.data;
 
-    // Get backend configuration with circuit breaker
-    const backendConfig = await getBackendConfig();
-    const circuitBreakerState = getCircuitBreakerStatus();
-    
-    // If backend is unavailable, return error
-    if (!backendConfig.endpoint) {
-      return NextResponse.json({
-        success: false,
-        error: "Match generation service unavailable",
-        message: "Python worker backend is not running",
-        circuit_breaker_state: circuitBreakerState,
-      }, {
-        status: 503,
-        headers: {
-          'X-Circuit-Breaker-State': circuitBreakerState,
-        }
-      });
-    }
+    const results = await generateBatchMatches(user_ids, { limit, minScore: min_score });
 
-    // Call Python worker batch match generation endpoint
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 120000); // 120s timeout for batch
-    
-    try {
-      const workerResponse = await fetch(`${backendConfig.endpoint}/api/matches/generate/batch`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_ids,
-          limit,
-          min_score,
-          force_regenerate,
-          request_id: crypto.randomUUID(),
-          admin_user_id: user.id,
-        }),
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!workerResponse.ok) {
-        const errorText = await workerResponse.text();
-        throw new Error(`Backend error: ${workerResponse.status} - ${errorText}`);
-      }
-      
-      const data: BatchMatchGenerationResponse = await workerResponse.json();
-      
-      // Return response with backend mode info
-      return NextResponse.json({
-        ...data,
-        circuit_breaker_state: circuitBreakerState,
-      }, {
-        headers: {
-          'X-Circuit-Breaker-State': circuitBreakerState,
-          'X-Backend-Mode': backendConfig.mode,
-        }
-      });
-      
-    } catch (workerError) {
-      console.error("Python worker batch match generation error:", workerError);
-      
-      return NextResponse.json({
-        success: false,
-        error: "Batch match generation failed",
-        message: "Unable to connect to match generation service",
-        circuit_breaker_state: getCircuitBreakerStatus(),
-      }, {
-        status: 503,
-        headers: {
-          'X-Circuit-Breaker-State': getCircuitBreakerStatus(),
-        }
-      });
-    }
+    return NextResponse.json({
+      success: true,
+      data: {
+        batch_id: crypto.randomUUID(),
+        total_users: user_ids.length,
+        processed: results.length,
+        succeeded: results.filter((r) => r.status === "success").length,
+        failed: results.filter((r) => r.status === "failed").length,
+        status: "completed" as const,
+        results: results.map((r) => ({
+          user_id: r.userId,
+          status: r.status,
+          matches_generated: r.matchesGenerated,
+          error: r.error,
+        })),
+        backend_mode: "native",
+      },
+    });
 
   } catch (error) {
     console.error("Error in batch match generation:", error);
 
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: "Internal server error",
-        circuit_breaker_state: getCircuitBreakerStatus(),
-      },
-      { status: 500 }
-    );
+    return errorResponse('INTERNAL_ERROR', 'Internal server error', 500)
   }
 }
 

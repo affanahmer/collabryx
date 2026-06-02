@@ -45,20 +45,25 @@ export interface EmbeddingGenerationResult {
 
 /**
  * Generate embedding for a user profile
- * Triggers the API route to generate embedding using Python worker or Edge Function fallback
+ * Triggers the API route to generate embedding using Python worker or backend
  */
 export async function generateUserEmbedding(userId: string): Promise<EmbeddingGenerationResult> {
   const supabase = createClient();
   
-  const { data: { session } } = await supabase.auth.getSession();
+  // Use getUser() instead of getSession() — it verifies the token with the
+  // Supabase Auth server rather than trusting the locally-cached session.
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
   
-  if (!session?.access_token) {
+  if (userError || !user) {
     return {
       success: false,
-      message: "Not authenticated",
-      error: "User session not found"
+      message: userError?.message || "Not authenticated",
+      error: "User session not found or token invalid"
     };
   }
+
+  // Read the access token from local session for the Authorization header
+  const { data: { session } } = await supabase.auth.getSession();
 
   try {
     const response = await fetch(
@@ -66,7 +71,7 @@ export async function generateUserEmbedding(userId: string): Promise<EmbeddingGe
       {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${session.access_token}`,
+          "Authorization": `Bearer ${session?.access_token || ''}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ user_id: userId }),
@@ -245,9 +250,10 @@ export async function checkEmbeddingRateLimit(_userId?: string): Promise<{
 }> {
   const supabase = createClient();
   
-  const { data: { session } } = await supabase.auth.getSession();
+  // Use getUser() to verify the session server-side
+  const { data: { user } } = await supabase.auth.getUser();
   
-  if (!session?.access_token) {
+  if (!user) {
     return {
       allowed: false,
       remaining: 0,
@@ -256,47 +262,33 @@ export async function checkEmbeddingRateLimit(_userId?: string): Promise<{
   }
 
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/embeddings/rate-limit`,
-      {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${session.access_token}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    const userId = _userId || user.id;
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        const data = await response.json();
-        return {
-          allowed: false,
-          remaining: data.detail?.remaining || 0,
-          resetAt: data.detail?.reset_at || new Date().toISOString(),
-          retryAfter: data.detail?.retry_after || 3600,
-        };
-      }
-      
+    const { data: rpcData, error: rpcError } = await supabase
+      .rpc('check_embedding_rate_limit', { p_user_id: userId });
+
+    if (rpcError) {
       return {
-        allowed: true,
-        remaining: 10,
+        allowed: false,
+        remaining: 0,
         resetAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
       };
     }
 
-    const data = await response.json();
+    type RateLimitResult = { allowed: boolean; remaining: number; reset_at: string };
+    const result = rpcData as RateLimitResult | null;
+
     return {
-      allowed: data.allowed,
-      remaining: data.remaining,
-      resetAt: data.reset_at,
-      retryAfter: data.retry_after,
+      allowed: result?.allowed ?? false,
+      remaining: result?.remaining ?? 0,
+      resetAt: result?.reset_at ?? new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      retryAfter: result?.allowed ? undefined : 3600,
     };
   } catch (error) {
     console.error("Error checking embedding rate limit:", error);
     return {
-      allowed: true,
-      remaining: 10,
+      allowed: false,
+      remaining: 0,
       resetAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
     };
   }

@@ -1,4 +1,4 @@
-# Vector Embeddings System
+﻿# Vector Embeddings System
 
 Complete guide to Collabryx's vector embeddings system for semantic matching.
 
@@ -51,7 +51,7 @@ User Profile → Semantic Text → Embedding (384 dimensions) → Vector Storage
 │         ↓                                                   │
 │  3. Text concatenation & normalization                      │
 │         ↓                                                   │
-│  4. Python Worker generates embedding (768 dim)             │
+│  4. Python Worker generates embedding (384 dim)             │
 │         ↓                                                   │
 │  5. Store in profile_embeddings table (pgvector)            │
 │         ↓                                                   │
@@ -65,7 +65,7 @@ User Profile → Semantic Text → Embedding (384 dimensions) → Vector Storage
 | Component | Purpose | Technology |
 |-----------|---------|------------|
 | **Python Worker** | Embedding generation | FastAPI + Sentence Transformers |
-| **Edge Function** | Orchestration layer | Supabase Edge Functions (Deno) |
+
 | **Database** | Vector storage | PostgreSQL + pgvector |
 | **Frontend** | Progress UI | React + React Query |
 
@@ -235,7 +235,7 @@ This creates all tables, indexes, functions, and RLS policies.
 ```json
 {
   "embedding": [0.0234, -0.0156, 0.0891, ...],
-  "dimensions": 768,
+  "dimensions": 384,
   "model": "all-MiniLM-L6-v2"
 }
 ```
@@ -248,23 +248,11 @@ This creates all tables, indexes, functions, and RLS policies.
   "status": "healthy",
   "model_info": {
     "model_name": "all-MiniLM-L6-v2",
-    "dimensions": 768
+    "dimensions": 384
   }
 }
 ```
 
-### Edge Function Flow
-
-```typescript
-// supabase/functions/generate-embedding/index.ts
-import { serve } from 'https://deno.land/std@http/server.ts'
-
-serve(async (req) => {
-  const { profile } = await req.json()
-  
-  // 1. Construct profile text
-  const text = constructProfileText(profile)
-  
   // 2. Call Python worker
   const response = await fetch(PYTHON_WORKER_URL, {
     method: 'POST',
@@ -400,7 +388,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-key
 #### Issue 3: Dimension Mismatch
 
 **Symptoms:**
-- Error: "expected 768 dimensions, got 384"
+- Error: "expected 384 dimensions, got 384"
 - Migration from old embeddings
 
 **Solutions:**
@@ -462,7 +450,7 @@ python test_embeddings.py
 
 # Expected output:
 # ✓ Model loaded successfully
-# ✓ Generated embedding: 768 dimensions
+# ✓ Generated embedding: 384 dimensions
 # ✓ Similarity test passed
 ```
 

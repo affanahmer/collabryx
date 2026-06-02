@@ -963,6 +963,11 @@ CREATE TRIGGER update_theme_preferences_updated_at
     BEFORE UPDATE ON public.theme_preferences
     FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_platform_analytics_updated_at ON public.platform_analytics;
+CREATE TRIGGER update_platform_analytics_updated_at
+    BEFORE UPDATE ON public.platform_analytics
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
 -- --------------------------------------------
 -- FUNCTION: update_embedding_timestamp
 -- --------------------------------------------
@@ -1114,6 +1119,9 @@ DROP TRIGGER IF EXISTS retry_failed_embedding_trigger ON public.profiles;
 CREATE TRIGGER retry_failed_embedding_trigger
     AFTER UPDATE ON public.profiles
     FOR EACH ROW
+    WHEN (OLD.full_name IS DISTINCT FROM NEW.full_name OR 
+          OLD.headline IS DISTINCT FROM NEW.headline OR 
+          OLD.bio IS DISTINCT FROM NEW.bio)
     EXECUTE FUNCTION public.retry_failed_embedding();
 
 -- --------------------------------------------
@@ -1796,7 +1804,7 @@ BEGIN
     FROM profiles p
     INNER JOIN profile_embeddings pe ON p.id = pe.user_id
     LEFT JOIN user_analytics ua ON p.id = ua.user_id
-    WHERE p.id != COALESCE(exclude_user_id, p.id)
+    WHERE (exclude_user_id IS NULL OR p.id != exclude_user_id)
         AND p.onboarding_completed = true
         AND (filter_location IS NULL OR p.location = filter_location)
         AND (filter_availability IS NULL OR p.collaboration_readiness = filter_availability)
@@ -2062,7 +2070,7 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Grant permissions for new functions
-GRANT EXECUTE ON FUNCTION public.find_similar_users(VECTOR, INTEGER, UUID) TO service_role;
+GRANT EXECUTE ON FUNCTION public.find_similar_users(VECTOR, INTEGER, UUID, TEXT, TEXT, TEXT[]) TO service_role;
 GRANT EXECUTE ON FUNCTION public.get_user_skills(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_user_interests(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.calculate_skills_overlap(UUID, UUID) TO service_role;
@@ -2430,6 +2438,8 @@ CREATE POLICY "Service role can manage platform analytics" ON public.platform_an
 -- CONTENT MODERATION LOGS RLS
 -- --------------------------------------------
 CREATE POLICY "Service role can manage moderation logs" ON public.content_moderation_logs FOR ALL USING ((SELECT auth.jwt() ->> 'role') = 'service_role');
+
+CREATE POLICY "Admin users can view moderation logs" ON public.content_moderation_logs FOR SELECT USING ((SELECT auth.jwt() ->> 'role') IN ('service_role', 'admin'));
 
 -- ============================================================================
 -- SECTION 7: REALTIME
@@ -2903,6 +2913,7 @@ DECLARE
   target_id_val uuid;
   target_type_val text;
   metadata_val jsonb;
+  actor_id_val uuid;
 BEGIN
   -- Get event type from trigger argument (TG_ARGV[0])
   event_type_param := TG_ARGV[0];
@@ -2912,31 +2923,41 @@ BEGIN
       target_id_val := NEW.post_id;
       target_type_val := 'post';
       metadata_val := jsonb_build_object('post_id', NEW.post_id);
+      actor_id_val := NEW.user_id;
     WHEN 'comments' THEN
       target_id_val := NEW.post_id;
       target_type_val := 'post';
       metadata_val := jsonb_build_object('post_id', NEW.post_id);
+      actor_id_val := NEW.author_id;
     WHEN 'connections' THEN
-      target_id_val := CASE WHEN NEW.requester_id = auth.uid() THEN NEW.receiver_id ELSE NEW.requester_id END;
+      target_id_val := NEW.receiver_id;
       target_type_val := 'profile';
       metadata_val := jsonb_build_object('status', NEW.status);
+      actor_id_val := NEW.requester_id;
     WHEN 'messages' THEN
       target_id_val := NEW.conversation_id;
       target_type_val := 'conversation';
       metadata_val := jsonb_build_object('conversation_id', NEW.conversation_id);
+      actor_id_val := NEW.sender_id;
     WHEN 'match_activity' THEN
       target_id_val := NEW.target_user_id;
       target_type_val := 'profile';
       metadata_val := jsonb_build_object('type', NEW.type);
+      actor_id_val := NEW.actor_user_id;
+    WHEN 'profiles' THEN
+      target_id_val := NEW.id;
+      target_type_val := 'profile';
+      metadata_val := '{}'::jsonb;
+      actor_id_val := NEW.id;
     ELSE
       target_id_val := NULL;
       target_type_val := 'unknown';
       metadata_val := '{}'::jsonb;
+      actor_id_val := NULL;
   END CASE;
   
   INSERT INTO events (event_type, actor_id, target_id, target_type, metadata)
-  VALUES (event_type_param, COALESCE(NEW.user_id, NEW.author_id, NEW.actor_user_id, NEW.requester_id, NEW.sender_id), 
-    target_id_val, target_type_val, metadata_val);
+  VALUES (event_type_param, actor_id_val, target_id_val, target_type_val, metadata_val);
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;

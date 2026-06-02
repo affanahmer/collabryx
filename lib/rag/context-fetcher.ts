@@ -35,6 +35,8 @@ export async function fetchUserProfileContext(
     }
   }
 
+  // TODO: Include non-primary skills in AI context with lower weight. Currently only
+  // fetches is_primary:true skills, which misses relevant secondary skills. (#159)
   let skills: { skill_name: string; proficiency?: string }[] = []
   const { data: skillsData, error: skillsError } = await supabase
     .from('user_skills')
@@ -131,4 +133,84 @@ const seniorKeywords = ['senior', 'lead', 'manager', 'director', 'principal', 's
   }
 
   return 'student'
+}
+
+/**
+ * Fetch profile contexts for multiple users (for collaboration advice).
+ * Returns a map of userId -> UserProfileContext.
+ * Failed fetches are silently skipped (no warnings for partial failures).
+ */
+export async function fetchMultipleUserContexts(
+  userIds: string[]
+): Promise<Map<string, UserProfileContext>> {
+  const results = new Map<string, UserProfileContext>()
+
+  // Fetch all profiles in a single query
+  const supabase = await createClient()
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, display_name, headline, bio, looking_for, location')
+    .in('id', userIds)
+
+  if (!profiles || profiles.length === 0) {
+    return results
+  }
+
+  // Fetch skills for all users
+  // TODO: Include non-primary skills in AI context with lower weight. (#159)
+  const { data: allSkills } = await supabase
+    .from('user_skills')
+    .select('user_id, skill_name, proficiency')
+    .in('user_id', userIds)
+    .eq('is_primary', true)
+    .limit(100)
+
+  // Fetch interests for all users
+  const { data: allInterests } = await supabase
+    .from('user_interests')
+    .select('user_id, interest')
+    .in('user_id', userIds)
+    .limit(100)
+
+  // Group skills and interests by user
+  const skillsByUser = new Map<string, typeof allSkills>()
+  const interestsByUser = new Map<string, typeof allInterests>()
+
+  for (const skill of allSkills || []) {
+    const existing = skillsByUser.get(skill.user_id) || []
+    existing.push(skill)
+    skillsByUser.set(skill.user_id, existing)
+  }
+
+  for (const interest of allInterests || []) {
+    const existing = interestsByUser.get(interest.user_id) || []
+    existing.push(interest)
+    interestsByUser.set(interest.user_id, existing)
+  }
+
+  // Build context for each user
+  for (const profile of profiles) {
+    const skills = skillsByUser.get(profile.id) || []
+    const interests = interestsByUser.get(profile.id) || []
+
+    const lookingForArray = profile.looking_for
+      ? Array.isArray(profile.looking_for)
+        ? profile.looking_for
+        : [profile.looking_for]
+      : []
+
+    results.set(profile.id, {
+      user_id: profile.id,
+      display_name: profile.display_name || 'Anonymous User',
+      headline: profile.headline,
+      bio: profile.bio,
+      looking_for: lookingForArray,
+      skills,
+      interests,
+      career_level: inferCareerLevel(profile, skills.length),
+      location: profile.location || undefined,
+    })
+  }
+
+  return results
 }

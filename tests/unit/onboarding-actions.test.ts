@@ -47,6 +47,13 @@ describe('Onboarding Server Actions', () => {
     single: vi.fn(),
     upsert: vi.fn().mockReturnThis(),
     insert: vi.fn().mockReturnThis(),
+    update: vi.fn().mockReturnThis(),
+    count: vi.fn(),
+    head: vi.fn(),
+    // Thenable support for directly-awaited chains (e.g. update().eq())
+    then: vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+      resolve({ data: null, error: null })
+    ),
   }
 
   const mockUpsertQuery = {
@@ -55,6 +62,11 @@ describe('Onboarding Server Actions', () => {
     neq: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue({ data: { onboarding_completed: false }, error: null }),
     upsert: vi.fn().mockReturnThis(),
+    update: vi.fn().mockReturnThis(),
+    // Thenable support for directly-awaited chains
+    then: vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+      resolve({ data: null, error: null })
+    ),
   }
 
   const mockInsertQuery = {
@@ -63,6 +75,11 @@ describe('Onboarding Server Actions', () => {
     neq: vi.fn().mockReturnThis(),
     single: vi.fn().mockResolvedValue({ data: { onboarding_completed: false }, error: null }),
     upsert: vi.fn().mockReturnThis(),
+    update: vi.fn().mockReturnThis(),
+    // Thenable support for directly-awaited chains
+    then: vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+      resolve({ data: null, error: null })
+    ),
   }
 
   beforeEach(async () => {
@@ -92,21 +109,33 @@ describe('Onboarding Server Actions', () => {
     mockProfileQuery.select.mockReturnThis()
     mockProfileQuery.eq.mockReturnThis()
     mockProfileQuery.neq.mockReturnThis()
+    mockProfileQuery.update.mockReturnThis()
     mockProfileQuery.single.mockResolvedValue({
       data: { onboarding_completed: false },
       error: null,
     })
     mockProfileQuery.upsert.mockReturnThis()
+    mockProfileQuery.then?.mockImplementation?.((resolve: (v: unknown) => void) =>
+      resolve({ data: null, error: null })
+    )
     mockUpsertQuery.select.mockReturnThis()
     mockUpsertQuery.eq.mockReturnThis()
     mockUpsertQuery.neq.mockReturnThis()
+    mockUpsertQuery.update.mockReturnThis()
     mockUpsertQuery.single.mockResolvedValue({ data: { onboarding_completed: false }, error: null })
     mockUpsertQuery.upsert.mockReturnThis()
+    mockUpsertQuery.then?.mockImplementation?.((resolve: (v: unknown) => void) =>
+      resolve({ data: null, error: null })
+    )
     mockInsertQuery.select.mockReturnThis()
     mockInsertQuery.eq.mockReturnThis()
     mockInsertQuery.neq.mockReturnThis()
+    mockInsertQuery.update.mockReturnThis()
     mockInsertQuery.single.mockResolvedValue({ data: { onboarding_completed: false }, error: null })
     mockInsertQuery.upsert.mockReturnThis()
+    mockInsertQuery.then?.mockImplementation?.((resolve: (v: unknown) => void) =>
+      resolve({ data: null, error: null })
+    )
     mockSupabase.rpc.mockResolvedValue({
       data: { queued: true },
       error: null,
@@ -289,12 +318,12 @@ describe('Onboarding Server Actions', () => {
         const result = await completeOnboarding(validOnboardingData, 90)
 
         expect(result.success).toBe(true)
+        // Profile upsert includes basic fields but onboarding_completed is set via separate update()
         expect(mockProfileQuery.upsert).toHaveBeenCalledWith(
           expect.objectContaining({
             id: 'test-user-123',
             full_name: 'John Doe',
             headline: 'Software Developer',
-            onboarding_completed: true,
             profile_completion: 90,
           }),
           expect.any(Object)
@@ -367,27 +396,24 @@ describe('Onboarding Server Actions', () => {
           90
         )
 
-        // Filter to only skill upserts
-        const skillUpserts = vi.mocked(mockInsertQuery.upsert).mock.calls.filter(
-          call => call[0] && call[0].skill_name !== undefined
+        // Verify batch upsert with array of skills
+        const upsertCalls = vi.mocked(mockInsertQuery.upsert).mock.calls
+        const skillsCall = upsertCalls.find(
+          call => Array.isArray(call[0]) && call[0][0]?.skill_name !== undefined
         )
-        expect(skillUpserts).toHaveLength(6)
-        expect(mockInsertQuery.upsert).toHaveBeenCalledWith(
-          expect.objectContaining({
-            user_id: 'test-user-123',
-            skill_name: 'Skill1',
-            is_primary: true,
-          }),
-          expect.any(Object)
-        )
-        expect(mockInsertQuery.upsert).toHaveBeenCalledWith(
-          expect.objectContaining({
-            user_id: 'test-user-123',
-            skill_name: 'Skill6',
-            is_primary: false,
-          }),
-          expect.any(Object)
-        )
+        expect(skillsCall).toBeDefined()
+        const skillsArg = skillsCall![0]
+        expect(skillsArg).toHaveLength(6)
+        expect(skillsArg[0]).toMatchObject({
+          user_id: 'test-user-123',
+          skill_name: 'Skill1',
+          is_primary: true,
+        })
+        expect(skillsArg[5]).toMatchObject({
+          user_id: 'test-user-123',
+          skill_name: 'Skill6',
+          is_primary: false,
+        })
       })
 
       it('should continue despite skill insertion errors', async () => {
@@ -420,11 +446,13 @@ describe('Onboarding Server Actions', () => {
           90
         )
 
-        // Count only interest upserts (those with 'interest' field)
-        const interestUpserts = vi.mocked(mockInsertQuery.upsert).mock.calls.filter(
-          call => call[0] && call[0].interest !== undefined
+        // Verify batch upsert with array of interests
+        const upsertCalls = vi.mocked(mockInsertQuery.upsert).mock.calls
+        const interestsCall = upsertCalls.find(
+          call => Array.isArray(call[0]) && call[0][0]?.interest !== undefined
         )
-        expect(interestUpserts).toHaveLength(3)
+        expect(interestsCall).toBeDefined()
+        expect(interestsCall![0]).toHaveLength(3)
       })
 
       it('should continue despite interest insertion errors', async () => {
@@ -461,15 +489,18 @@ describe('Onboarding Server Actions', () => {
           90
         )
 
-        expect(mockInsertQuery.upsert).toHaveBeenCalledWith(
-          expect.objectContaining({
-            user_id: 'test-user-123',
-            title: 'Engineer',
-            company: 'TechCorp',
-            is_current: true,
-          }),
-          expect.any(Object)
+        // Verify batch upsert with array of experiences
+        const upsertCalls = vi.mocked(mockInsertQuery.upsert).mock.calls
+        const expCall = upsertCalls.find(
+          call => Array.isArray(call[0]) && call[0][0]?.title !== undefined
         )
+        expect(expCall).toBeDefined()
+        expect(expCall![0][0]).toMatchObject({
+          user_id: 'test-user-123',
+          title: 'Engineer',
+          company: 'TechCorp',
+          is_current: true,
+        })
       })
 
       it('should filter out experiences with no title or company', async () => {

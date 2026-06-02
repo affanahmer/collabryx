@@ -166,31 +166,36 @@ export function useRealtimeNotifications() {
   const queryClient = useQueryClient()
 
   useEffect(() => {
+    let isMounted = true
     const supabase = createClient()
     let channel: ReturnType<typeof supabase.channel> | null = null
 
-    // Get user and set up channel
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return
+    const setup = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!isMounted || !user) return
 
-      // Use user-specific channel instead of postgres_changes for efficiency
       channel = supabase
-        .channel(`notifications:user:${user.id}`)
+        .channel('notifications_realtime')
         .on(
-          'broadcast',
+          'postgres_changes',
           {
-            event: 'new_notification',
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`,
           },
           () => {
-            // Invalidate queries to refetch
             queryClient.invalidateQueries({ queryKey: NOTIFICATION_QUERY_KEYS.all })
             queryClient.invalidateQueries({ queryKey: NOTIFICATION_QUERY_KEYS.unread() })
           }
         )
         .subscribe()
-    })
+    }
+
+    setup().catch((err) => console.error("Failed to set up notifications channel:", err))
 
     return () => {
+      isMounted = false
       if (channel) {
         supabase.removeChannel(channel)
       }

@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client"
 import { logger } from "@/lib/logger"
 import { z } from "zod"
 import type { Notification } from "@/types/database.types"
+import { formatTimeAgo } from "@/lib/utils/time-ago"
 
 // Module-specific logger
 const log = logger.app
@@ -68,17 +69,27 @@ export async function fetchNotifications(
 }> {
   try {
     const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    if (!user) {
+    if (authError || !user) {
       return { data: [], error: new Error("Not authenticated") }
     }
 
     let query = supabase
       .from("notifications")
       .select(`
-        *,
+        id,
+        user_id,
+        type,
+        actor_id,
+        content,
+        resource_type,
+        resource_id,
+        is_read,
+        is_actioned,
+        created_at,
         actor:profiles (
+          full_name,
           display_name,
           avatar_url
         )
@@ -155,7 +166,7 @@ export async function markNotificationAsRead(
       })
       .eq("id", notificationId)
       .eq("user_id", user.id)
-      .select()
+      .select('id, user_id, type, actor_id, content, resource_type, resource_id, is_read, is_actioned, created_at')
       .single()
 
     if (error) throw error
@@ -296,7 +307,7 @@ export async function getUnreadCount(): Promise<{
 
     const { count, error } = await supabase
       .from("notifications")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .eq("user_id", user.id)
       .eq("is_read", false)
 
@@ -343,7 +354,7 @@ export async function createNotification(
         resource_type: input.resource_type,
         resource_id: input.resource_id,
       })
-      .select()
+      .select('id, user_id, type, actor_id, content, resource_type, resource_id, is_read, is_actioned, created_at')
       .single()
 
     if (error) throw error
@@ -480,24 +491,4 @@ export async function sendMatchNotification(
 }
 
 // ===========================================
-// HELPER FUNCTIONS
-// ===========================================
-
-/**
- * Format timestamp to relative time string
- * 
- * @param dateString - ISO date string
- * @returns Formatted time ago string (e.g., "2h ago", "Just now")
- */
-function formatTimeAgo(dateString: string): string {
-  const date = new Date(dateString)
-  const now = new Date()
-  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
-
-  if (seconds < 60) return "Just now"
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`
-  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`
-
-  return date.toLocaleDateString()
-}
+// formatTimeAgo now imported from @/lib/utils/time-ago (deduplicated)

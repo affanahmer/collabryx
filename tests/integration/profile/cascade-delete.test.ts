@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// NOTE: This test verifies database-level CASCADE behavior. Application-level cascade delete is not yet implemented — profile deletion should explicitly clean up related tables before deleting the profile row.
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mockSupabaseClient } from '@/tests/setup/mocks'
 

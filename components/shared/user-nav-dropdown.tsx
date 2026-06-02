@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { useSettings } from "@/hooks/use-settings"
-import { useUser } from "@/hooks/use-user"
+import { useUser } from "@/hooks/use-profile"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import {

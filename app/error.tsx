@@ -20,7 +20,7 @@ export default function Error({
 			<AlertCircle className="mb-4 h-16 w-16 text-destructive" />
 			<h2 className="mb-2 text-2xl font-bold">Something went wrong!</h2>
 			<p className="mb-8 max-w-md text-muted-foreground">
-				{error.message || "An unexpected error occurred"}
+				Something went wrong. Please try again.
 			</p>
 			<div className="flex gap-2">
 				<Button onClick={() => reset()}>Try Again</Button>

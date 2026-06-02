@@ -1,58 +1,9 @@
 import type { NextConfig } from "next";
 import withBundleAnalyzer from '@next/bundle-analyzer'
-import { withSentryConfig } from '@sentry/nextjs'
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
-  // Sentry source maps upload (only when auth token is available)
-  productionBrowserSourceMaps: !!process.env.SENTRY_AUTH_TOKEN,
-  // Turbopack config (Next.js 16 default)
-  turbopack: {
-    // Enable code splitting and optimization
-    resolveAlias: {
-      // Optimize large library imports
-      'lucide-react': 'lucide-react/dist/esm/lucide-react',
-    },
-  },
-  // Webpack config for backwards compatibility
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      // Split large vendor chunks
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          ...config.optimization?.splitChunks,
-          chunks: 'all',
-          cacheGroups: {
-            ...config.optimization?.splitChunks?.cacheGroups,
-            // Separate vendor chunks
-            vendors: {
-              test: /[\/]node_modules[\/]/,
-              name: 'vendors',
-              chunks: 'all',
-              priority: 20,
-            },
-            // Separate React chunks
-            react: {
-              test: /[\/]node_modules[\/](react|react-dom|react-server-dom-webpack)[\/]/,
-              name: 'react',
-              chunks: 'all',
-              priority: 30,
-            },
-            // Separate UI library chunks
-            ui: {
-              test: /[\/]node_modules[\/](@radix-ui|@supabase)[\/]/,
-              name: 'ui',
-              chunks: 'all',
-              priority: 25,
-            },
-          },
-        },
-      };
-    }
-    return config;
-  },
-  // Image optimization with CDN caching
+  // Image optimization
   images: {
     remotePatterns: [
       {
@@ -76,7 +27,7 @@ const nextConfig: NextConfig = {
   },
   poweredByHeader: false,
   compress: true,
-  // Security and CDN caching headers
+  // Security headers only (Cache-Control removed — Next.js manages chunk caching internally)
   async headers() {
     return [
       {
@@ -99,14 +50,21 @@ const nextConfig: NextConfig = {
             value: 'nosniff',
           },
           {
+            // SECURITY NOTE: CSP uses 'unsafe-inline' and 'unsafe-eval' which are required
+            // by Next.js for next/image runtime and React dev mode. In production,
+            // consider using strict CSP with nonces once Next.js supports them.
+            // See: https://nextjs.org/docs/app/api-reference/config/next-config-js/contentSecurityPolicy
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://vercel.live https://va.vercel-scripts.com https://*.posthog.com https://*.sentry.io",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
+              // SECURITY NOTE: img-src allows all HTTPS origins (https:) which is broad.
+              // next/image requires this for dynamic remote images from user uploads stored in Supabase/CDN.
+              // TODO: Restrict to specific image CDN domains once finalized.
               "img-src 'self' data: blob: https: *.supabase.co *.amazonaws.com",
-              "connect-src 'self' https://*.supabase.co https://*.posthog.com https://*.sentry.io https://vercel.live",
+              "connect-src 'self' https://*.supabase.co",
               "media-src 'self' blob:",
               "object-src 'none'",
               "frame-ancestors 'self'",
@@ -125,123 +83,10 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Static assets - long-term CDN caching (1 year)
-      {
-        source: '/_next/static/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      // JS chunks - long-term CDN caching (1 year)
-      {
-        source: '/_next/:path*.js',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      // HTML pages - no caching to ensure fresh content (placed after static asset rules)
-      {
-        source: '/((?!_next/static|_next/image|_next/data|static|api/upload|favicon|manifest).*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'no-cache, must-revalidate',
-          },
-        ],
-      },
-      // Static media files - long-term CDN caching
-      {
-        source: '/static/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      // Optimized images - medium-term caching (30 days)
-      {
-        source: '/_next/image',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=2592000, stale-while-revalidate=86400',
-          },
-        ],
-      },
-      // Avatars and banners from Supabase storage - CDN caching
-      {
-        source: '/api/upload/avatar/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400, stale-while-revalidate=604800',
-          },
-        ],
-      },
-      {
-        source: '/api/upload/banner/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400, stale-while-revalidate=604800',
-          },
-        ],
-      },
-      // Post media - medium-term caching
-      {
-        source: '/api/upload/post/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400, stale-while-revalidate=604800',
-          },
-        ],
-      },
-      // Fonts - long-term caching
-      {
-        source: '/:path*.(woff2?|ttf|otf|eot)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      // Favicon and manifest - medium-term caching
-      {
-        source: '/:path*.(ico|png|json)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400, stale-while-revalidate=604800',
-          },
-        ],
-      },
     ]
   },
 };
 
-export default withSentryConfig(
-  withBundleAnalyzer({
-    enabled: process.env.ANALYZE === 'true',
-  })(nextConfig),
-  {
-    org: process.env.SENTRY_ORG || '',
-    project: process.env.SENTRY_PROJECT || '',
-    authToken: process.env.SENTRY_AUTH_TOKEN || '',
-    // Only upload source maps when auth token is set
-    silent: true,
-    widenClientFileUpload: true,
-    sourcemaps: {
-      deleteSourcemapsAfterUpload: true,
-    },
-    tunnelRoute: '/monitoring/sentry',
-  }
-)
+export default withBundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+})(nextConfig);

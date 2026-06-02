@@ -61,7 +61,11 @@ export function Hero3DViewer() {
     return (
         <div className="h-full w-full absolute inset-0">
             <Canvas dpr={[1, 1.5]} camera={{ fov: 50, position: [0, 0, 150] }}>
-                <Suspense fallback={null}>
+                <Suspense fallback={
+                    <div className="w-full h-full min-h-[400px] bg-gradient-to-br from-primary/5 to-primary/10 rounded-2xl flex items-center justify-center">
+                        <div className="text-muted-foreground">Loading 3D viewer...</div>
+                    </div>
+                }>
                     <Center>
                         <Model />
                     </Center>

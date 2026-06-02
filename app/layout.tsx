@@ -5,8 +5,6 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { SmoothScrollProvider } from "@/components/providers/smooth-scroll-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
-import { PostHogProvider } from "@/components/providers/posthog-provider";
-import { VercelAnalytics } from "@/components/providers/vercel-analytics";
 import { validateEnv } from "@/lib/validate-env";
 
 const inter = Inter({
@@ -67,23 +65,18 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: "/favicon.ico",
-    shortcut: "/favicon-16x16.png",
-    apple: "/apple-touch-icon.png",
   },
   manifest: "/manifest.json",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  // Validate environment in development and production
+let envValidated = false
+
+function validateEnvOnce() {
+  if (envValidated) return
+  envValidated = true
   if (process.env.NODE_ENV === 'development') {
     validateEnv()
   }
-  
-  // In production, validate critical env vars at runtime
   if (process.env.NODE_ENV === 'production') {
     try {
       validateEnv()
@@ -92,6 +85,14 @@ export default function RootLayout({
       // Don't throw in production - let app continue with degraded functionality
     }
   }
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  validateEnvOnce()
   
   return (
     <html lang="en" suppressHydrationWarning>
@@ -99,7 +100,6 @@ export default function RootLayout({
         className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}
         suppressHydrationWarning
       >
-        <PostHogProvider>
           <SmoothScrollProvider>
             <QueryProvider>
               <ThemeProvider
@@ -116,11 +116,9 @@ export default function RootLayout({
                 </a>
                 {children}
                 <Toaster richColors position="top-right" />
-                <VercelAnalytics />
               </ThemeProvider>
             </QueryProvider>
           </SmoothScrollProvider>
-        </PostHogProvider>
       </body>
     </html>
   );

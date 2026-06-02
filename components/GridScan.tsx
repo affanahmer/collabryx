@@ -716,9 +716,18 @@ export const GridScan: React.FC<GridScanProps> = ({
     const load = async () => {
       try {
         const faceapi = await import('face-api.js');
+        const loadWithFallback = async (net: { loadFromUri: (uri: string) => Promise<void> }, path: string) => {
+          try {
+            await net.loadFromUri(path);
+          } catch {
+            const fallbackPath = '/models/';
+            console.warn(`[GridScan] Primary CDN failed for face-api model, falling back to ${fallbackPath}`);
+            await net.loadFromUri(fallbackPath);
+          }
+        };
         await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri(modelsPath),
-          faceapi.nets.faceLandmark68TinyNet.loadFromUri(modelsPath)
+          loadWithFallback(faceapi.nets.tinyFaceDetector, modelsPath),
+          loadWithFallback(faceapi.nets.faceLandmark68TinyNet, modelsPath)
         ]);
         if (!canceled) setModelsReady(true);
       } catch (_error) {

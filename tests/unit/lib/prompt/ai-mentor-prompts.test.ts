@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildEnhancedSystemPrompt, buildFallbackSystemPrompt } from '@/lib/prompt/ai-mentor-prompts'
-import type { RAGContext } from '@/lib/rag/types'
+import type { ExtendedRAGContext } from '@/lib/rag/types'
 
 describe('ai-mentor-prompts', () => {
   describe('buildFallbackSystemPrompt', () => {
@@ -40,7 +40,7 @@ describe('ai-mentor-prompts', () => {
 
   describe('buildEnhancedSystemPrompt with full context', () => {
     it('should build prompt with all context sections', () => {
-      const fullContext: RAGContext = {
+      const fullContext: ExtendedRAGContext = {
         profile: {
           user_id: 'user-123',
           display_name: 'Sarah Chen',
@@ -58,6 +58,8 @@ describe('ai-mentor-prompts', () => {
           career_level: 'mid-career',
           location: 'San Francisco'
         },
+        startup: null,
+        multiUser: null,
         retrieved_contexts: [
           {
             content: 'Collaboration best practices for remote teams',
@@ -115,7 +117,7 @@ describe('ai-mentor-prompts', () => {
 
   describe('buildEnhancedSystemPrompt with partial context', () => {
     it('should handle missing profile gracefully', () => {
-      const contextWithoutProfile: RAGContext = {
+      const contextWithoutProfile: ExtendedRAGContext = {
         profile: {
           user_id: 'user-123',
           display_name: 'Test User',
@@ -125,6 +127,8 @@ describe('ai-mentor-prompts', () => {
           skills: [],
           interests: []
         },
+        startup: null,
+        multiUser: null,
         retrieved_contexts: [
           {
             content: 'Portfolio improvement tips',
@@ -149,7 +153,7 @@ describe('ai-mentor-prompts', () => {
     })
 
     it('should handle empty retrieved contexts', () => {
-      const contextWithNoRetrieved: RAGContext = {
+      const contextWithNoRetrieved: ExtendedRAGContext = {
         profile: {
           user_id: 'user-456',
           display_name: 'Jane Smith',
@@ -160,6 +164,8 @@ describe('ai-mentor-prompts', () => {
           interests: [],
           career_level: 'early-career'
         },
+        startup: null,
+        multiUser: null,
         retrieved_contexts: [],
         session_summary: null,
         conversation_history: [],
@@ -173,7 +179,7 @@ describe('ai-mentor-prompts', () => {
     })
 
     it('should handle missing session summary', () => {
-      const contextWithoutSummary: RAGContext = {
+      const contextWithoutSummary: ExtendedRAGContext = {
         profile: {
           user_id: 'user-789',
           display_name: 'Mike Johnson',
@@ -184,6 +190,8 @@ describe('ai-mentor-prompts', () => {
           interests: [],
           career_level: 'senior'
         },
+        startup: null,
+        multiUser: null,
         retrieved_contexts: [],
         session_summary: null,
         conversation_history: [],
@@ -198,7 +206,7 @@ describe('ai-mentor-prompts', () => {
 
   describe('buildEnhancedSystemPrompt output format', () => {
     it('should return a valid prompt string', () => {
-      const minimalContext: RAGContext = {
+      const minimalContext: ExtendedRAGContext = {
         profile: {
           user_id: 'user-min',
           display_name: 'Min User',
@@ -208,6 +216,8 @@ describe('ai-mentor-prompts', () => {
           skills: [],
           interests: []
         },
+        startup: null,
+        multiUser: null,
         retrieved_contexts: [],
         session_summary: null,
         conversation_history: [],
@@ -223,7 +233,7 @@ describe('ai-mentor-prompts', () => {
     })
 
     it('should format conversation history with role labels', () => {
-      const contextWithHistory: RAGContext = {
+      const contextWithHistory: ExtendedRAGContext = {
         profile: {
           user_id: 'user-hist',
           display_name: 'History User',
@@ -233,6 +243,8 @@ describe('ai-mentor-prompts', () => {
           skills: [],
           interests: []
         },
+        startup: null,
+        multiUser: null,
         retrieved_contexts: [],
         session_summary: null,
         conversation_history: [
@@ -261,7 +273,7 @@ describe('ai-mentor-prompts', () => {
 
     it('should truncate long messages in history', () => {
       const longMessage = 'A'.repeat(300)
-      const contextWithLongMsg: RAGContext = {
+      const contextWithLongMsg: ExtendedRAGContext = {
         profile: {
           user_id: 'user-long',
           display_name: 'Long User',
@@ -271,6 +283,8 @@ describe('ai-mentor-prompts', () => {
           skills: [],
           interests: []
         },
+        startup: null,
+        multiUser: null,
         retrieved_contexts: [],
         session_summary: null,
         conversation_history: [

@@ -5,8 +5,33 @@ import type { RetrievedContext } from './types'
 
 let openaiInstance: OpenAI | null = null
 
+// TODO: Add ability to refresh the instance when the API key is rotated. The module-level
+// singleton holds a stale key reference forever once created. (#167)
+
+// TODO: Use external cache or scoped instance instead of module-level cache. Module-level
+// state persists across requests in serverless environments and can cause memory leaks. (#166)
+
+// Module-level BM25 index cache to avoid rebuilding on every query.
+// NOTE: Shared across all users intentionally — for a single-tenant / embedded deployment
+// this is fine because all profiles are indexed together. The cache is invalidated by
+// CACHE_TTL_MS below. If multi-tenant isolation is needed, scope the cache by tenant ID.
+interface BM25Cache {
+  index: BM25 | null
+  timestamp: number
+}
+
+const bm25Cache: BM25Cache = {
+  index: null,
+  timestamp: 0
+}
+
+const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
+
 function getOpenAIClient(): OpenAI {
   if (!openaiInstance) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not configured — cannot create OpenAI client')
+    }
     openaiInstance = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   }
   return openaiInstance
@@ -70,6 +95,9 @@ export async function retrieveContextFromVectorStore(
 }
 
 async function generateQueryEmbedding(query: string): Promise<number[]> {
+  // TODO: Add fallback to Python worker embeddings when OpenAI is unavailable.
+  // The Python embedding worker (python-worker/embedding_generator.py) can generate
+  // embeddings locally as a backup to reduce OpenAI dependency costs. (#163)
   const response = await getOpenAIClient().embeddings.create({
     model: 'text-embedding-3-small',
     input: query,
@@ -120,10 +148,31 @@ async function searchKeywordIndex(
 ): Promise<RetrievedContext[]> {
   const supabase = await createClient()
 
+  // TODO: Add LRU eviction to BM25 cache. The current unbounded cache grows indefinitely
+  // as different query patterns trigger rebuilds. Add a max-age or size limit. (#165)
+  // Check if cached BM25 index is still valid (reuse to avoid rebuilding on every query)
+  const now = Date.now()
+  if (bm25Cache.index && (now - bm25Cache.timestamp) < CACHE_TTL_MS) {
+    const results = bm25Cache.index.search(query, limit)
+    const maxScore = results.length > 0 ? results[0].score : 1
+    return results.map(result => ({
+      content: result.doc.text,
+      score: maxScore > 0 ? result.score / maxScore : 0,
+      source: 'keyword' as const,
+      metadata: result.doc.metadata ?? {}
+    }))
+  }
+
+  // TODO: Implement pagination for BM25 index. The current limit(100) on BM25 search results
+  // may miss relevant matches for large user bases. Add offset-based or cursor-based pagination
+  // and merge results across pages. (#164)
+  // NOTE: 500-profile limit for BM25 index construction. The BM25 index is built in-memory
+  // and searched locally, so the payload is proportional to avg profile text length × 500.
+  // If the user base grows beyond 500, consider paginating or switching to Postgres full-text search.
   const { data: profiles, error } = await supabase
     .from('profiles')
     .select('id, display_name, headline, bio, looking_for, skills, interests')
-    .limit(100)
+    .limit(500)
 
   if (error) {
     throw new Error(`Failed to fetch profiles for keyword search: ${error.message}`)
@@ -145,6 +194,10 @@ async function searchKeywordIndex(
 
   const bm25 = new BM25()
   bm25.index(documents)
+
+  // Update cache
+  bm25Cache.index = bm25
+  bm25Cache.timestamp = now
 
   const results = bm25.search(query, limit)
 

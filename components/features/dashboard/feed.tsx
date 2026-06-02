@@ -1,13 +1,15 @@
 "use client"
 
 import { useState, useMemo, useCallback, useEffect } from "react"
+import { motion } from "framer-motion"
+import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { Button } from "@/components/ui/button"
 import { Bot, Inbox, Sparkles, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getInitials } from "@/lib/utils/format-initials"
 import { getCache, setCache, CACHE_KEYS } from "@/lib/dashboard-cache"
 import { sortPostsByPriority, getPostTypeBadge } from "@/lib/utils/post-helpers"
-import { fetchPosts } from "@/lib/services/posts"
+import { fetchPosts, fetchPersonalizedFeed } from "@/lib/services/posts"
 import type { PostWithAuthor } from "@/types/database.types"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
@@ -43,6 +45,7 @@ interface PostUI extends PostWithAuthor {
 }
 
 export function Feed() {
+    const prefersReduced = useReducedMotion()
     // Check if user has completed embedding (for banner display only)
     const [hasEmbedding, setHasEmbedding] = useState<boolean | null>(null)
     
@@ -71,10 +74,10 @@ export function Feed() {
     const fetchInitialPosts = useCallback(async () => {
         setIsInitialLoading(true)
         try {
-            const result = await fetchPosts({ 
-                limit: 20,
-                random: hasEmbedding === false
-            })
+            const result = hasEmbedding
+                ? await fetchPersonalizedFeed({ limit: 20 })
+                : await fetchPosts({ limit: 20, random: false })
+
             
             if (result.error) throw result.error
             
@@ -145,7 +148,7 @@ export function Feed() {
         checkEmbeddingStatus()
     }, [])
 
-    // ── Ecosystem States ──
+    // â”€â”€ Ecosystem States â”€â”€
     const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
     const [newPostsCount, setNewPostsCount] = useState(3)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
@@ -168,11 +171,11 @@ export function Feed() {
         const newOffset = offset + 20
         
         try {
-            const { data, error } = await fetchPosts({ 
-                limit: 20,
-                offset: newOffset,
-                random: hasEmbedding === false
-            })
+            const { data, error } = hasEmbedding
+                ? await fetchPersonalizedFeed({ limit: 20, offset: newOffset })
+                : await fetchPosts({ limit: 20, offset: newOffset, random: false })
+
+
             
             if (error) throw error
             
@@ -210,7 +213,7 @@ export function Feed() {
         const postElement = document.querySelector(`[data-post-id="${postId}"]`)
         if (postElement) {
             const currentReaction = postElement.getAttribute('data-reaction')
-            postElement.setAttribute('data-reaction', currentReaction ? '' : '👍')
+            postElement.setAttribute('data-reaction', currentReaction ? '' : 'ðŸ‘')
         }
     }
 
@@ -226,19 +229,19 @@ export function Feed() {
 
             {/* Embedding Status Banner */}
             {hasEmbedding === false && (
-                <GlassCard innerClassName="p-4 bg-blue-500/10 border border-blue-500/20">
+                <GlassCard innerClassName="p-4">
                     <div className="flex items-start gap-3">
-                        <Sparkles className="w-5 h-5 text-blue-400 mt-0.5" />
+                        <Sparkles className="w-5 h-5 text-muted-foreground mt-0.5" />
                         <div className="flex-1">
                             <h3 className="text-sm font-semibold text-foreground">
                                 Personalizing your feed
                             </h3>
                             <p className="text-xs text-muted-foreground mt-1">
                                 We&apos;re analyzing your profile to show you relevant content. 
-                                Meanwhile, here are some popular posts from the community!
+                                Meanwhile, here are some popular posts from the community.
                             </p>
                         </div>
-                        <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+                        <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
                     </div>
                 </GlassCard>
             )}
@@ -252,8 +255,8 @@ export function Feed() {
             {/* AI Mentor Micro-Entry Point */}
             <GlassCard innerClassName="p-4 md:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:justify-between">
                 <div className="flex items-start sm:items-center gap-3">
-                    <div className="h-10 w-10 bg-purple-500/10 rounded-lg flex items-center justify-center shrink-0 border border-purple-500/20">
-                        <Bot className="h-5 w-5 text-purple-400" />
+                    <div className="h-8 w-8 bg-muted rounded-lg flex items-center justify-center shrink-0">
+                        <Bot className="h-5 w-5 text-muted-foreground" />
                     </div>
                     <div>
                         <h3 className="text-base font-semibold text-foreground">
@@ -269,7 +272,7 @@ export function Feed() {
                     size="sm"
                     className="h-8 px-4 text-sm font-medium border-white/[0.08] hover:bg-white/[0.04] w-full sm:w-auto shrink-0"
                 >
-                    Ask AI Mentor →
+                    Ask AI Mentor â†’
                 </Button>
             </GlassCard>
 
@@ -301,23 +304,23 @@ export function Feed() {
                 ) : sortedPosts.length === 0 ? (
                     /* Empty State */
                     <GlassCard innerClassName="py-16 px-6 text-center">
-                        <div className="h-16 w-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Inbox className="h-8 w-8 text-blue-400" />
+                        <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                            <Inbox className="h-8 w-8 text-muted-foreground" />
                         </div>
                         <h3 className="text-lg font-bold text-foreground mb-2">
                             No posts yet
                         </h3>
                         <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                            Be the first to share something with the community! Start a
+                            Be the first to share something with the community. Start a
                             conversation or announce your project.
                         </p>
                     </GlassCard>
                 ) : (
-                    sortedPosts.map((post) => {
+                    sortedPosts.map((post, index) => {
                         const postTypeBadge = getPostTypeBadge(post.post_type)
 
                         return (
-                            <div key={post.id} className="relative">
+                            <motion.div key={post.id} initial={prefersReduced ? {} : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: prefersReduced ? 0 : Math.min(index * 0.04, 0.6), duration: prefersReduced ? 0 : 0.3, ease: "easeOut" }} className="relative">
                                 {/* Clickable overlay for the whole card */}
                                 <div
                                     className="absolute inset-0 z-0 cursor-pointer"
@@ -385,7 +388,7 @@ export function Feed() {
 )}
                                     </div>
                                 </PostCard>
-                            </div>
+                            </motion.div>
                         )
                     })
                 )}

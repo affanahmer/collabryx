@@ -63,7 +63,8 @@ const SkillsList = React.memo(({
           onDragEnd={onDragEnd}
           className={cn(
             "flex flex-col md:flex-row md:items-center gap-3 md:gap-2 p-4 md:p-3 rounded-lg bg-muted/30 border border-border/30 hover:border-border/50 transition-colors duration-200 cursor-grab active:cursor-grabbing",
-            draggedIndex === index && "opacity-60"
+            draggedIndex === index && "opacity-60",
+            draggedIndex !== null && draggedIndex !== index && "ring-2 ring-primary/30 border-primary/50"
           )}
         >
           {/* Drag handle - larger touch target on mobile */}
@@ -134,8 +135,9 @@ export function StepSkills() {
   const [draggedIndex, setDraggedIndex] = React.useState<number | null>(null)
   
   // Get role from form context
-  const role = watch("role") || watch("looking_for")?.[0] || null
-  const roleSuggestions = role ? ROLE_SKILL_SUGGESTIONS[role] || POPULAR_SKILLS : POPULAR_SKILLS
+    const headline = watch("headline") || ""
+  const detectedRole = Object.keys(ROLE_SKILL_SUGGESTIONS).find(r => headline.toLowerCase().includes(r.toLowerCase())) || null
+  const roleSuggestions = detectedRole ? ROLE_SKILL_SUGGESTIONS[detectedRole] : POPULAR_SKILLS
 
   const skillOptions: ComboboxOption[] = React.useMemo(() => 
     skillsDatabase.map((skill: Skill) => ({
@@ -288,6 +290,7 @@ export function StepSkills() {
                   <SearchableCombobox
                     options={skillOptions}
                     selected={skills.map(s => s.id)}
+                    getSelectedLabel={(id) => skills.find(s => s.id === id)?.label || id}
                     onChange={(selectedIds) => {
                       const newSkills = selectedIds.map((id) => {
                         const existing = skills.find(s => s.id === id)
@@ -329,8 +332,8 @@ export function StepSkills() {
                   <div className="flex items-center gap-2 text-xs md:text-sm text-muted-foreground">
                     <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-amber-500" />
                     <span>
-                      {role 
-                        ? `Based on your role (${role}), consider adding:`
+                      {detectedRole 
+                        ? `Based on your role (${detectedRole}), consider adding:`
                         : "Popular skills to consider:"
                       }
                     </span>

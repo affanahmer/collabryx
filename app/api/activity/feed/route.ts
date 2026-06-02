@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { z } from "zod"
 import { logger } from "@/lib/logger"
 
 /**
@@ -9,9 +10,25 @@ import { logger } from "@/lib/logger"
  * Query params:
  * - limit: number (default: 20)
  * - offset: number (default: 0)
+ * - type: string (optional filter)
  */
+
+const FeedQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  offset: z.coerce.number().int().min(0).default(0),
+  type: z.string().optional(),
+})
+
 export async function GET(request: Request) {
   try {
+    // Guard: DEVELOPMENT_MODE must only apply in development environment
+    if (process.env.DEVELOPMENT_MODE === 'true' && process.env.NODE_ENV !== 'development') {
+      return NextResponse.json(
+        { error: 'Development mode is not allowed in production' },
+        { status: 403 }
+      )
+    }
+
     const supabase = await createClient()
     
     // Get authenticated user
@@ -24,18 +41,34 @@ export async function GET(request: Request) {
       )
     }
 
-    // Parse query params with bounds checking
+    // Parse and validate query params with Zod (#38)
     const { searchParams } = new URL(request.url)
-    const DEFAULT_LIMIT = 20
-    const MAX_LIMIT = 100
-    const limit = Math.min(Math.max(parseInt(searchParams.get("limit") || "20", 10), 1), MAX_LIMIT)
-    const offset = Math.max(parseInt(searchParams.get("offset") || "0", 10), 0)
+    const rawParams = {
+      limit: searchParams.get("limit") ?? undefined,
+      offset: searchParams.get("offset") ?? undefined,
+      type: searchParams.get("type") ?? undefined,
+    }
+    const parsedParams = FeedQuerySchema.safeParse(rawParams)
+    if (!parsedParams.success) {
+      return NextResponse.json(
+        { error: "Invalid query parameters", details: parsedParams.error.errors },
+        { status: 400 }
+      )
+    }
+    const { limit, offset, type } = parsedParams.data
 
     // Fetch match activity with related user data
-    const { data: activities, error: queryError, count } = await supabase
+    let query = supabase
       .from("match_activity")
       .select(`
-        *,
+        id,
+        actor_user_id,
+        target_user_id,
+        type,
+        activity,
+        match_percentage,
+        is_read,
+        created_at,
         actor_profile:profiles!match_activity_actor_user_id_fkey (
           id,
           display_name,
@@ -45,6 +78,12 @@ export async function GET(request: Request) {
         )
       `, { count: 'exact' })
       .eq("target_user_id", user.id)
+    
+    if (type) {
+      query = query.eq("type", type)
+    }
+    
+    const { data: activities, error: queryError, count } = await query
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1)
 

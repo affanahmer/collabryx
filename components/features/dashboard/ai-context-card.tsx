@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Sparkles, Settings2 } from "lucide-react"
+import { Settings2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { glass } from "@/lib/utils/glass-variants"
 import { GlassCard } from "@/components/shared/glass-card"
@@ -27,13 +27,13 @@ export function AIContextCard({
     return (
         <GlassCard className={cn("px-1 py-1 sm:py-2", className)} innerClassName="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 text-muted-foreground">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <span className="text-sm font-medium">Matching on:</span>
+                
+                <span className="text-sm font-medium text-muted-foreground">Matching on</span>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
                 {contexts.map((context, index) => (
                     <Badge
-                        key={index}
+                        key={context?.toLowerCase().replace(/\s+/g, '-') || index}
                         variant="secondary"
                         className={cn(
                             "px-2.5 py-1.5 text-xs font-medium rounded-full",

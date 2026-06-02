@@ -1,13 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { headers } from 'next/headers'
 import { assembleAndBuildPrompt } from '@/lib/rag/context-assembler'
 import { getProviderRegistry } from '@/lib/ai/providers/registry'
 import { createMessageStream } from '@/lib/ai/streaming'
+import { createClient } from '@/lib/supabase/server'
 import type { Message } from '@/lib/ai/providers/base'
+import type { StartupContext } from '@/lib/rag/types'
 
 export async function POST(request: NextRequest) {
+  // CSRF protection (#33) — validate same-origin
+  const headersList = await headers()
+  const origin = headersList.get('origin')
+  const host = headersList.get('host')
+  if (origin && host && !origin.endsWith(host)) {
+    return NextResponse.json({ error: 'Invalid origin' }, { status: 403 })
+  }
+
   try {
     const body = await request.json()
-    const { userId, sessionId, messages, query, preferredProvider } = body
+    const { userId, sessionId, messages, query, preferredProvider, otherUserIds, startupContext } = body
 
     if (!userId) {
       return NextResponse.json(
@@ -16,12 +27,29 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { systemPrompt } = await assembleAndBuildPrompt(
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+    if (user.id !== userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const { systemPrompt, warnings } = await assembleAndBuildPrompt({
       userId,
-      query || '',
+      query: query || '',
       sessionId,
-      messages || []
-    )
+      messages: messages || [],
+      otherUserIds: otherUserIds as string[] | undefined,
+      startupContext: startupContext as StartupContext | null | undefined,
+    })
 
     const registry = getProviderRegistry()
     const provider = registry.getProvider(preferredProvider)
@@ -33,7 +61,14 @@ export async function POST(request: NextRequest) {
       })
     )
 
-    return await createMessageStream(conversationMessages, provider, systemPrompt)
+    const response = await createMessageStream(conversationMessages, provider, systemPrompt)
+
+    // Include warnings in response headers for debugging
+    if (warnings.length > 0) {
+      response.headers.set('X-RAG-Warnings', JSON.stringify(warnings))
+    }
+
+    return response
   } catch (error) {
     console.error('AI stream error:', error)
     return NextResponse.json(

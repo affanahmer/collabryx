@@ -1,4 +1,4 @@
-# Deployment Checklist
+﻿# Deployment Checklist
 
 Complete checklist for deploying Collabryx to production.
 
@@ -24,8 +24,8 @@ Complete checklist for deploying Collabryx to production.
   NEXT_PUBLIC_APP_URL=https://collabryx.com
   
   # AI Features
-  OPENAI_API_KEY=xxx (or ANTHROPIC_API_KEY)
-  LLM_PROVIDER=openai (or anthropic)
+  # AI provider keys (set via AI_PROVIDER_N_* vars)
+  # See environment-variables.md for AI provider config
   
   # Optional
   NODE_ENV=production
@@ -103,21 +103,12 @@ Complete checklist for deploying Collabryx to production.
 
 #### Monitoring Setup
 
-- [ ] **Error Tracking**
-  - [ ] Sentry configured
-  - [ ] Error boundaries working
-  - [ ] Sourcemaps uploaded
+- [ ] **Error Handling**
 
-- [ ] **Analytics**
-  - [ ] PostHog configured
-  - [ ] Events tracking:
-    - User signup
-    - Post creation
-    - Connection requests
-    - Messages sent
+  - [ ] Error boundaries working
+  - [ ] Error logging configured
 
 - [ ] **Performance**
-  - [ ] Vercel Analytics enabled
   - [ ] Core Web Vitals monitoring
   - [ ] Uptime monitoring configured
 
@@ -265,8 +256,7 @@ Complete checklist for deploying Collabryx to production.
   - [ ] DNS propagation complete
 
 - [ ] **Monitoring**
-  - [ ] Error tracking active
-  - [ ] Analytics recording
+  - [ ] Error logging active
   - [ ] Alerts configured
   - [ ] On-call schedule set
 
@@ -350,7 +340,7 @@ If critical issues occur:
 - **Vercel:** https://vercel.com/dashboard
 - **Supabase:** https://supabase.com/dashboard
 - **Render:** https://render.com/dashboard
-- **Sentry:** https://sentry.io/organizations/
+
 
 ---
 

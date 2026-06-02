@@ -1,3 +1,4 @@
+"use client";
 
 import * as React from "react"
 
@@ -15,6 +16,8 @@ import {
 } from "@/components/ui/tooltip"
 import { useSidebar } from "@/components/shared/sidebar-context"
 import { NotificationsWidget } from "@/components/features/dashboard/notifications-widget"
+import { useMatches } from "@/hooks/use-matches-query"
+import { useConnectionRequests } from "@/hooks/use-connections"
 import {
     LayoutDashboard,
     Sparkles,
@@ -27,10 +30,15 @@ import {
     Briefcase,
     Bell,
     Settings,
-    LucideIcon
+    LucideIcon,
+    Activity,
+    BarChart3,
+    Bookmark,
+    Shield,
+    HelpCircle
 } from "lucide-react"
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler"
-import { useUser } from "@/hooks/use-user"
+import { useUser } from "@/hooks/use-profile"
 
 interface SidebarNavProps extends React.HTMLAttributes<HTMLDivElement> {
     isMobile?: boolean
@@ -38,10 +46,14 @@ interface SidebarNavProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function SidebarNav({ className, isMobile, ...props }: SidebarNavProps) {
     const pathname = usePathname()
-    const { user, profile } = useUser()
+    const { profile } = useUser()
     const sidebarContext = useSidebar()
     const isCollapsed = isMobile ? false : sidebarContext.isCollapsed
     const toggleSidebar = sidebarContext.toggleSidebar
+
+    const { data: matchesData } = useMatches()
+    const { receivedRequests } = useConnectionRequests()
+    const requestCount = receivedRequests.length
 
     const [showTooltips, setShowTooltips] = React.useState(false)
 
@@ -70,7 +82,7 @@ export function SidebarNav({ className, isMobile, ...props }: SidebarNavProps) {
                     title: "Smart Matches",
                     href: "/matches",
                     icon: Sparkles,
-                    badge: 8, // AI-powered match count
+                    badge: matchesData?.length || 0,
                 },
             ]
         },
@@ -86,7 +98,27 @@ export function SidebarNav({ className, isMobile, ...props }: SidebarNavProps) {
                     title: "Requests",
                     href: "/requests",
                     icon: TrendingUp,
-                    badge: 2,
+                    badge: requestCount,
+                },
+            ]
+        },
+        {
+            label: "DISCOVER",
+            items: [
+                {
+                    title: "Activity",
+                    href: "/activity",
+                    icon: Activity,
+                },
+                {
+                    title: "Notifications",
+                    href: "/notifications",
+                    icon: Bell,
+                },
+                {
+                    title: "Analytics",
+                    href: "/analytics",
+                    icon: BarChart3,
                 },
             ]
         },
@@ -107,6 +139,26 @@ export function SidebarNav({ className, isMobile, ...props }: SidebarNavProps) {
                     title: "My Profile",
                     href: "/my-profile",
                     icon: UserCircle,
+                },
+                {
+                    title: "Bookmarks",
+                    href: "/bookmarks",
+                    icon: Bookmark,
+                },
+                {
+                    title: "Privacy",
+                    href: "/privacy",
+                    icon: Shield,
+                },
+            ]
+        },
+        {
+            label: "SUPPORT",
+            items: [
+                {
+                    title: "Help",
+                    href: "/help",
+                    icon: HelpCircle,
                 },
             ]
         }
@@ -170,7 +222,7 @@ export function SidebarNav({ className, isMobile, ...props }: SidebarNavProps) {
                                                 <AvatarFallback>
                                                     {profile?.full_name 
                                                         ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-                                                        : user?.email?.charAt(0).toUpperCase() || 'U'
+                                                        : 'U'
                                                     }
                                                 </AvatarFallback>
                                             </Avatar>
@@ -184,7 +236,7 @@ export function SidebarNav({ className, isMobile, ...props }: SidebarNavProps) {
                                     <div className={cn("text-center transition-all duration-300 whitespace-nowrap overflow-hidden",
                                         isCollapsed ? "max-w-0 max-h-0 opacity-0" : "max-w-[200px] max-h-[50px] opacity-100 delay-[50ms]")}>
                                         <h3 className="font-bold text-lg text-foreground tracking-tight truncate">
-                                            {profile?.full_name || user?.email?.split('@')[0] || 'User'}
+                                            {profile?.full_name || 'User'}
                                         </h3>
                                         <p className="text-xs text-muted-foreground font-medium mt-0.5 flex items-center justify-center gap-1.5 truncate">
                                             <Briefcase className="h-3 w-3 shrink-0" />
@@ -197,7 +249,7 @@ export function SidebarNav({ className, isMobile, ...props }: SidebarNavProps) {
                         </TooltipTrigger>
                         {isCollapsed && showTooltips && (
                             <TooltipContent side="right" className="font-medium">
-                                <p>{profile?.full_name || user?.email || 'User'}</p>
+                                <p>{profile?.full_name || 'User'}</p>
                             </TooltipContent>
                         )}
                     </Tooltip>

@@ -69,5 +69,19 @@ scripts/seed-data/data_generators/__pycache__/
 scripts/seed-data/seeders/__pycache__/
 scripts/seed-data/*.pyc
 scripts/seed-data/*.pyo
-scripts/seed-data/.venv/
+scripts/seed-data/.venv
 
+scripts/seed-data/avatars/
+scripts/seed-data/.tmp_avatars/
+
+# temp & avatar directories (never track)
+.tmp/
+temp/
+*tmp*/
+*avatars/
+*manimations/
+media/
+*animations/
+
+# understand-anything generated artifacts
+.understand-anything/

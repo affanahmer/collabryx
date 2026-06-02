@@ -117,7 +117,7 @@ export function StepExperience({}: StepExperienceProps) {
                 </Button>
 
                 <div className="space-y-4">
-                  <div className="grid gap-2">
+                  <div className="grid gap-2 relative">
                     <Label htmlFor={`experiences.${index}.title`} className="text-sm font-semibold text-foreground">Job Title / Role</Label>
                     <Controller
                       control={control}
@@ -146,10 +146,13 @@ export function StepExperience({}: StepExperienceProps) {
                       id={`experiences.${index}.company`}
                       placeholder="e.g. TechStart Inc."
                       {...register(`experiences.${index}.company`, {
-                        required: "Company name is required",
                         minLength: {
                           value: 2,
                           message: "Company name must be at least 2 characters"
+                        },
+                        maxLength: {
+                          value: 100,
+                          message: "Company name must be less than 100 characters"
                         }
                       })}
                       className={cn(
@@ -263,10 +266,16 @@ export function StepExperience({}: StepExperienceProps) {
                       <Input
                         id={`links.${index}.url`}
                         placeholder={`https://${platform.id}.com/username`}
-                        {...register(`links.${index}.url`)}
+                        {...register(`links.${index}.url`, {
+                          pattern: {
+                            value: /^(https?:\/\/)?([\w-]+\.)+[\w-]+(\/[\w-./?%&=]*)?$/,
+                            message: "Please enter a valid URL"
+                          }
+                        })}
                         className={cn(
                           "h-11 text-sm pl-11",
-                          glass("input")
+                          glass("input"),
+                          currentError && "border-destructive focus:border-destructive"
                         )}
                       />
                     </div>

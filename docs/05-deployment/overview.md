@@ -12,7 +12,6 @@ Complete guide for deploying Collabryx to production environments.
 - [Database Migration](#database-migration)
 - [Environment Variables](#environment-variables)
 - [Domain Configuration](#domain-configuration)
-- [Monitoring & Analytics](#monitoring--analytics)
 - [CI/CD Pipeline](#cicd-pipeline)
 - [Troubleshooting](#troubleshooting)
 
@@ -73,12 +72,19 @@ NODE_ENV=production
 # Required: Python Worker (Embeddings)
 PYTHON_WORKER_URL=https://your-embedding-service.com
 
-# Optional: Analytics
-NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
-NEXT_PUBLIC_VERCEL_ANALYTICS_ID=your-analytics-id
+# Required: AI Providers (at least one)
+AI_PROVIDER_1_NAME=openai
+AI_PROVIDER_1_API_KEY=sk-prod-key
+AI_PROVIDER_1_BASE_URL=https://api.openai.com/v1
+AI_PROVIDER_1_MODEL=gpt-4o-mini
+AI_PROVIDER_1_PRIORITY=1
 
-# Optional: Error Tracking
-NEXT_PUBLIC_SENTRY_DSN=https://your-sentry-dsn
+# Optional: Secondary provider for failover
+AI_PROVIDER_2_NAME=anthropic
+AI_PROVIDER_2_API_KEY=sk-ant-prod-key
+AI_PROVIDER_2_BASE_URL=https://api.anthropic.com
+AI_PROVIDER_2_MODEL=claude-sonnet-4-20250514
+AI_PROVIDER_2_PRIORITY=2
 
 # Optional: Feature Flags
 NEXT_PUBLIC_ENABLE_AI_FEATURES=true
@@ -363,9 +369,22 @@ NODE_ENV=production
 # Required: Python Worker (Embeddings)
 PYTHON_WORKER_URL=
 
+# Required: AI Providers (Universal Provider System)
+# Configure at least one provider. For production, configure 2+ for failover.
+AI_PROVIDER_1_NAME=
+AI_PROVIDER_1_API_KEY=
+AI_PROVIDER_1_BASE_URL=
+AI_PROVIDER_1_MODEL=
+AI_PROVIDER_1_PRIORITY=1
+
+# Optional: Secondary provider
+# AI_PROVIDER_2_NAME=
+# AI_PROVIDER_2_API_KEY=
+# AI_PROVIDER_2_BASE_URL=
+# AI_PROVIDER_2_MODEL=
+# AI_PROVIDER_2_PRIORITY=2
+
 # Optional
-NEXT_PUBLIC_GA_ID=
-NEXT_PUBLIC_SENTRY_DSN=
 ```
 
 ### Python Worker Deployment
@@ -448,65 +467,6 @@ sudo apt install certbot
 # Get certificate
 sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
 ```
-
----
-
-## Monitoring & Analytics
-
-### Google Analytics
-
-1. Create GA4 property
-2. Add tracking ID to `.env.production`:
-   ```env
-   NEXT_PUBLIC_GA_ID=G-XXXXXXXXXX
-   ```
-
-### Vercel Analytics
-
-Built-in for Vercel deployments:
-```bash
-npm install @vercel/analytics
-```
-
-Add to `app/layout.tsx`:
-```typescript
-import { Analytics } from '@vercel/analytics/react';
-
-export default function RootLayout({ children }) {
-  return (
-    <html>
-      <body>
-        {children}
-        <Analytics />
-      </body>
-    </html>
-  );
-}
-```
-
-### Error Tracking (Sentry)
-
-1. **Install Sentry**
-   ```bash
-   npm install @sentry/nextjs
-   ```
-
-2. **Initialize**
-   ```bash
-   npx @sentry/wizard@latest -i nextjs
-   ```
-
-3. **Add DSN to environment**
-   ```env
-   NEXT_PUBLIC_SENTRY_DSN=your-dsn-here
-   ```
-
-### Uptime Monitoring
-
-Recommended tools:
-- [UptimeRobot](https://uptimerobot.com/) (Free)
-- [Pingdom](https://www.pingdom.com/)
-- [StatusCake](https://www.statuscake.com/)
 
 ---
 
@@ -629,8 +589,8 @@ pm2 logs collabryx
    - Verify images are optimized
 
 3. **Review Core Web Vitals**
-   - Use Vercel Analytics
-   - Check Lighthouse scores
+   - Use Lighthouse
+   - Check performance scores
 
 ### Database Issues
 
@@ -653,8 +613,6 @@ pm2 logs collabryx
 ### Checklist
 
 - [ ] Test all major features in production
-- [ ] Verify analytics tracking works
-- [ ] Check error monitoring is active
 - [ ] Set up uptime monitoring
 - [ ] Configure backups
 - [ ] Document deployment process
@@ -664,7 +622,6 @@ pm2 logs collabryx
 
 **Daily:**
 - Check error logs
-- Review analytics
 
 **Weekly:**
 - Review performance metrics

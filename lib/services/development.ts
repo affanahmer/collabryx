@@ -25,6 +25,7 @@ const DEVELOPMENT_MODE = normalizeDevMode(process.env.DEVELOPMENT_MODE)
 const DEBUG_ENABLED = process.env.DEBUG === "true" || process.env.DEBUG === "1"
 const ENABLE_PERFORMANCE_LOGS = process.env.ENABLE_PERFORMANCE_LOGS === "true"
 const LOG_LEVEL = process.env.LOG_LEVEL || "info"
+const SKIP_EMAIL_VERIFICATION = process.env.SKIP_EMAIL_VERIFICATION === "true"
 
 const TEST_USER_EMAIL = "test123@collabryx.com"
 const TEST_USER_PASSWORD = "test123"
@@ -36,8 +37,9 @@ const TEST_USER_PASSWORD = "test123"
 /**
  * Log development mode configuration on module load
  * This helps developers understand the current environment setup
+ * NOTE: Guarded to prevent module-level side effects on import (#138)
  */
-if (DEVELOPMENT_MODE || DEBUG_ENABLED) {
+if (typeof window !== 'undefined' && (DEVELOPMENT_MODE || DEBUG_ENABLED)) {
   console.log(`
 ╔════════════════════════════════════════════════════════╗
 ║           DEVELOPMENT MODE CONFIGURATION               ║
@@ -47,9 +49,11 @@ if (DEVELOPMENT_MODE || DEBUG_ENABLED) {
 ║  DEBUG:             ${String(process.env.DEBUG)?.padEnd(30)}║
 ║  LOG_LEVEL:         ${LOG_LEVEL.padEnd(30)}║
 ║  PERF_LOGS:         ${String(ENABLE_PERFORMANCE_LOGS).padEnd(30)}║
+║  SKIP_EMAIL_VERIFY: ${String(SKIP_EMAIL_VERIFICATION).padEnd(30)}║
 ║                                                          ║
 ║  Dev Mode Active:   ${String(DEVELOPMENT_MODE).padEnd(30)}║
 ║  Debug Enabled:     ${String(DEBUG_ENABLED).padEnd(30)}║
+║  Skip Email Verify: ${String(SKIP_EMAIL_VERIFICATION).padEnd(30)}║
 ╚════════════════════════════════════════════════════════╝
   `.trim())
 }
@@ -80,6 +84,12 @@ function validateEnvironment(): void {
     warnings.push("DEBUG=true but LOG_LEVEL=error - debug logs will not appear")
   }
   
+  // Check SKIP_EMAIL_VERIFICATION value
+  const skipEmailValue = process.env.SKIP_EMAIL_VERIFICATION
+  if (skipEmailValue && skipEmailValue !== "true" && skipEmailValue !== "false") {
+    warnings.push(`SKIP_EMAIL_VERIFICATION="${skipEmailValue}" is not a recognized value. Use: "true" or "false"`)
+  }
+  
   // Log warnings
   if (warnings.length > 0) {
     console.warn("\n⚠️  Environment Configuration Warnings:")
@@ -89,7 +99,8 @@ function validateEnvironment(): void {
 }
 
 // Run validation on module load if in dev mode
-if (DEVELOPMENT_MODE) {
+// NOTE: Guarded to prevent module-level side effects on import (#138)
+if (typeof window !== 'undefined' && DEVELOPMENT_MODE) {
   validateEnvironment()
 }
 
@@ -279,6 +290,18 @@ export function isDevelopmentMode(): boolean {
 }
 
 /**
+ * Check if email verification should be skipped
+ * 
+ * Returns true when SKIP_EMAIL_VERIFICATION environment variable is set to "true"
+ * This is useful for development environments where email sending is not configured
+ * 
+ * @returns boolean indicating if email verification should be skipped
+ */
+export function isEmailVerificationSkipped(): boolean {
+  return SKIP_EMAIL_VERIFICATION
+}
+
+/**
  * Get current development configuration
  * Useful for debugging and environment checks
  * 
@@ -288,17 +311,21 @@ export function getDevelopmentConfig(): {
   isDevelopmentMode: boolean
   isDebugEnabled: boolean
   isPerformanceLogEnabled: boolean
+  isEmailVerificationSkipped: boolean
   logLevel: string
   nodeEnv: string | undefined
   developmentModeValue: string | undefined
+  skipEmailVerificationValue: string | undefined
 } {
   return {
     isDevelopmentMode: DEVELOPMENT_MODE,
     isDebugEnabled: DEBUG_ENABLED,
     isPerformanceLogEnabled: ENABLE_PERFORMANCE_LOGS,
+    isEmailVerificationSkipped: SKIP_EMAIL_VERIFICATION,
     logLevel: LOG_LEVEL,
     nodeEnv: process.env.NODE_ENV,
     developmentModeValue: process.env.DEVELOPMENT_MODE,
+    skipEmailVerificationValue: process.env.SKIP_EMAIL_VERIFICATION,
   }
 }
 

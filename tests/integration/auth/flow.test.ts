@@ -24,6 +24,7 @@ const mockUser = {
   email: 'test@example.com',
 }
 
+// Test-only mock — never use real tokens in tests
 const mockSession: MockSession = {
   user: mockUser,
   access_token: 'mock-access-token',

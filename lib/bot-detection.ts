@@ -61,7 +61,15 @@ export function checkBot(request: NextRequest): BotCheckResult {
   let isSafeBot = false
   let isSuspicious = false
 
-  if (SAFE_BOT_PATTERNS.some(pattern => pattern.test(userAgent))) {
+  // Check suspicious paths BEFORE safe-bot early return
+  // A safe bot accessing /wp-admin, /.env etc. is still suspicious
+  if (SUSPICIOUS_PATHS.some(p => path.startsWith(p))) {
+    score += 50
+    isSuspicious = true
+    reasons.push('Accessing suspicious path')
+  }
+
+  if (SAFE_BOT_PATTERNS.some(pattern => pattern.test(userAgent)) && !isSuspicious) {
     isSafeBot = true
     return {
       isBot: true,
@@ -75,12 +83,6 @@ export function checkBot(request: NextRequest): BotCheckResult {
   if (KNOWN_BOT_PATTERNS.some(pattern => pattern.test(userAgent))) {
     score += 40
     reasons.push('Known bot pattern in User-Agent')
-  }
-
-  if (SUSPICIOUS_PATHS.some(p => path.startsWith(p))) {
-    score += 50
-    isSuspicious = true
-    reasons.push('Accessing suspicious path')
   }
 
   if (!userAgent || userAgent.length < 10) {

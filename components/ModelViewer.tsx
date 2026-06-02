@@ -347,7 +347,7 @@ const ModelInner: FC<ModelInnerProps> = ({
     };
 
     el.addEventListener('pointerdown', down, { passive: true });
-    window.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointermove', move, { passive: true });
     window.addEventListener('pointerup', up, { passive: true });
     window.addEventListener('pointercancel', up, { passive: true });
     return () => {

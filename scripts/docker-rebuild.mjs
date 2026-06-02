@@ -123,7 +123,7 @@ function buildImage() {
   
   try {
     const startTime = Date.now();
-    execVerbose(`cd "${CONFIG.workerDir}" && docker-compose build --no-cache`);
+    execVerbose(`cd "${CONFIG.workerDir}" && docker-compose build`);
     const buildTime = ((Date.now() - startTime) / 1000).toFixed(1);
     log(`✅ Image built successfully in ${buildTime}s`, 'green');
     return true;

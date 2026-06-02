@@ -9,6 +9,7 @@
 // POOL CONFIGURATION
 // ===========================================
 
+// TODO: Make pool sizes configurable via env vars (e.g. DB_MIN_POOL, DB_MAX_POOL)
 export const DATABASE_POOL_CONFIG = {
   // Pool size limits
   MIN_POOL_SIZE: 2,
