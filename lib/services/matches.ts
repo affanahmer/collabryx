@@ -208,60 +208,19 @@ export async function connectWithMatch(matchedUserId: string): Promise<{ error: 
       return { error: new Error("Please log in to connect with matches.") }
     }
 
-    // Create connection request first
-    const { data: connectionData, error: connectionError } = await supabase
-      .from("connections")
-      .insert({
-        requester_id: user.id,
-        receiver_id: matchedUserId,
-        status: "pending",
+    // Atomic RPC call: creates pending connection request and marks match suggestion status as connected
+    const { error: rpcError } = await supabase
+      .rpc("connect_with_match", {
+        p_user_id: user.id,
+        p_matched_user_id: matchedUserId,
       })
-      .select("id")
-      .single()
 
-    if (connectionError) {
-      logger.app.error("Failed to create connection", connectionError)
-      throw connectionError
-    }
-
-    // Update match suggestion status
-    const { error: updateError } = await supabase
-      .from("match_suggestions")
-      .update({ status: "connected" })
-      .eq("user_id", user.id)
-      .eq("matched_user_id", matchedUserId)
-
-    if (updateError) {
-      // TODO(#147): Replace manual rollback with database transactions. The current approach
-      // has a race condition where the connection insert succeeds but the match_suggestions
-      // update fails, and the manual rollback delete may also fail, leaving orphaned rows.
-      //
-      // Proposed fix: supabase.rpc('connect_with_match', { p_user_id, p_matched_user_id })
-      //
-      // CREATE OR REPLACE FUNCTION public.connect_with_match(p_user_id UUID, p_matched_user_id UUID)
-      // RETURNS void AS $$
-      // BEGIN
-      //   INSERT INTO connections (requester_id, receiver_id, status)
-      //     VALUES (p_user_id, p_matched_user_id, 'pending');
-      //   UPDATE match_suggestions SET status = 'connected'
-      //     WHERE user_id = p_user_id AND matched_user_id = p_matched_user_id;
-      // END;
-      // $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-      //
-      // Rollback: delete the connection if status update fails (best-effort)
-      logger.app.error("Failed to update match status, rolling back connection", {
-        error: updateError.message,
-        connectionId: connectionData.id,
+    if (rpcError) {
+      logger.app.error("Failed to connect with match via RPC", {
+        error: rpcError.message,
         matchedUserId,
       })
-      const { error: rollbackError } = await supabase.from("connections").delete().eq("id", connectionData.id)
-      if (rollbackError) {
-        logger.app.error("Rollback also failed — orphaned connection row", {
-          connectionId: connectionData.id,
-          rollbackError: rollbackError.message,
-        })
-      }
-      throw updateError
+      throw rpcError
     }
 
     return { error: null }
@@ -340,19 +299,22 @@ export async function fetchMatchActivity(
       throw error
     }
 
-    const mappedActivities: MatchActivityWithUser[] = (data || []).map((activity) => ({
-      id: activity.id,
-      actor_user_id: activity.actor_user_id,
-      target_user_id: activity.target_user_id,
-      type: activity.type,
-      activity: activity.activity,
-      match_percentage: activity.match_percentage,
-      is_read: activity.is_read,
-      created_at: activity.created_at,
-      user_name: activity.actor_profile?.display_name || activity.actor_profile?.full_name || "Unknown",
-      user_avatar: activity.actor_profile?.avatar_url || "",
-      user_initials: formatInitials(activity.actor_profile?.display_name || activity.actor_profile?.full_name || "Unknown"),
-    }))
+    const mappedActivities: MatchActivityWithUser[] = (data || []).map((activity) => {
+      const actorProfile = activity.actor_profile?.[0]
+      return {
+        id: activity.id,
+        actor_user_id: activity.actor_user_id,
+        target_user_id: activity.target_user_id,
+        type: activity.type,
+        activity: activity.activity,
+        match_percentage: activity.match_percentage,
+        is_read: activity.is_read,
+        created_at: activity.created_at,
+        user_name: actorProfile?.display_name || actorProfile?.full_name || "Unknown",
+        user_avatar: actorProfile?.avatar_url || "",
+        user_initials: formatInitials(actorProfile?.display_name || actorProfile?.full_name || "Unknown"),
+      }
+    })
 
     logger.app.info("Match activity fetched successfully", {
       count: mappedActivities.length,

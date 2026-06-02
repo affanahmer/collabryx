@@ -61,11 +61,21 @@ export async function assembleRAGContext(options: AssemblerOptions): Promise<Ext
     multiUser,
     retrieved_contexts: vectorResult.contexts,
     session_summary: summaryResult.summary,
-    // TODO: Implement token-aware truncation instead of message-count truncation.
-    // The current messages.slice(-10) can overflow the context window when messages
-    // contain long code blocks or file contents. Count actual tokens and truncate
-    // to a safe budget (e.g. 4000 tokens) instead of a fixed message count. (#158)
-    conversation_history: messages.slice(-10),
+    // Safe character-budget truncation limits history to roughly 4000 tokens (~16000 characters)
+    // to protect context window limits from overflowing with heavy messages/code blocks.
+    conversation_history: (() => {
+      let charCount = 0
+      const safeHistory: AIMessage[] = []
+      // Iterate backwards from most recent messages to prioritize recent context
+      for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i]
+        const length = msg.content ? msg.content.length : 0
+        if (charCount + length > 16000) break
+        charCount += length
+        safeHistory.unshift(msg)
+      }
+      return safeHistory
+    })(),
     assembled_at: new Date().toISOString(),
   }
 }

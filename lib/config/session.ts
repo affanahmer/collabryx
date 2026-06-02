@@ -8,12 +8,12 @@
 // ===========================================
 
 /**
- * Session duration in seconds
- * 7 days = 604800 seconds
- * Previously: 30 days = 2592000 seconds
- * TODO: Make session duration configurable via env var (e.g. SESSION_DURATION_SECONDS)
+ * Session duration in seconds (configurable via environment variables)
+ * Default: 7 days = 604800 seconds
  */
-export const SESSION_DURATION_SECONDS = 7 * 24 * 60 * 60 // 604800 seconds
+export const SESSION_DURATION_SECONDS = process.env.SESSION_DURATION_SECONDS 
+  ? parseInt(process.env.SESSION_DURATION_SECONDS, 10) 
+  : 7 * 24 * 60 * 60 // 604800 seconds
 
 /**
  * Session expiry warning threshold

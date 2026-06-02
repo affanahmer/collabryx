@@ -9,11 +9,11 @@
 // POOL CONFIGURATION
 // ===========================================
 
-// TODO: Make pool sizes configurable via env vars (e.g. DB_MIN_POOL, DB_MAX_POOL)
+// Database pool sizes are now configurable via environment variables
 export const DATABASE_POOL_CONFIG = {
   // Pool size limits
-  MIN_POOL_SIZE: 2,
-  MAX_POOL_SIZE: 20,
+  MIN_POOL_SIZE: process.env.DB_MIN_POOL ? parseInt(process.env.DB_MIN_POOL, 10) : 2,
+  MAX_POOL_SIZE: process.env.DB_MAX_POOL ? parseInt(process.env.DB_MAX_POOL, 10) : 20,
   
   // Timeouts (in milliseconds)
   CONNECTION_TIMEOUT: 10000,        // 10 seconds

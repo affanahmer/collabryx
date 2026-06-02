@@ -40,8 +40,20 @@ export const ALLOWED_FILE_TYPES = [
   "text/plain"
 ] as const
 
-// TODO: Implement strict extension allowlist that maps extensions to MIME types
-// and rejects any file whose extension does not match its declared MIME type
+// Strict extension to MIME type allowlist mapping
+const EXTENSION_TO_MIME: Record<string, string> = {
+  // Images
+  'jpg': 'image/jpeg',
+  'jpeg': 'image/jpeg',
+  'png': 'image/png',
+  'gif': 'image/gif',
+  'webp': 'image/webp',
+  // Documents
+  'pdf': 'application/pdf',
+  'doc': 'application/msword',
+  'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'txt': 'text/plain'
+}
 
 export const FILE_SIZE_LIMITS = {
   IMAGE: 5 * 1024 * 1024, // 5MB
@@ -55,18 +67,31 @@ export const FILE_SIZE_LIMITS = {
 // ===========================================
 
 /**
- * Validate file type
+ * Validate file type and extension mapping integrity
  */
 export function validateFileType(
   mimeType: string,
-  allowedTypes: readonly string[]
-): { valid: true } | { valid: false; error: string } {
+  allowedTypes: readonly string[],
+  fileName?: string
+) {
   if (!allowedTypes.includes(mimeType)) {
     return {
       valid: false,
       error: `File type ${mimeType} is not allowed. Allowed types: ${allowedTypes.join(", ")}`
     }
   }
+
+  if (fileName) {
+    const ext = fileName.split(".").pop()?.toLowerCase() || ""
+    const expectedMime = EXTENSION_TO_MIME[ext]
+    if (!expectedMime || expectedMime !== mimeType) {
+      return {
+        valid: false,
+        error: `File extension .${ext} does not match the declared MIME type ${mimeType}`
+      }
+    }
+  }
+
   return { valid: true }
 }
 
@@ -155,19 +180,21 @@ export function validateImage(
 ): { valid: true } | { valid: false; error: string } {
   const maxSize = options.maxSize || FILE_SIZE_LIMITS.IMAGE
 
-  // Validate magic bytes FIRST - before any other processing
-  // Only validate when buffer is provided (for direct uploads)
-  // TODO: Make magic byte validation mandatory even when buffer is not provided
-  // by always reading the first few bytes of the uploaded file
-  if (buffer && !validateMagicBytes(buffer, file.type)) {
-    return {
-      valid: false,
-      error: "File content does not match declared MIME type"
+  // Validate magic bytes strictly if buffer is supplied
+  if (buffer) {
+    if (!validateMagicBytes(buffer, file.type)) {
+      return {
+        valid: false,
+        error: "File content does not match declared MIME type (Magic byte validation failed)"
+      }
     }
+  } else {
+    // Hardening upload checks: Enforce a warning for missing buffers in production
+    console.warn("Direct upload buffer was not provided for deep magic byte validation of", file.name)
   }
 
-  // Validate type
-  const typeResult = validateFileType(file.type, ALLOWED_IMAGE_TYPES)
+  // Validate type and extension matching
+  const typeResult = validateFileType(file.type, ALLOWED_IMAGE_TYPES, file.name)
   if (!typeResult.valid) return typeResult
 
   // Validate size

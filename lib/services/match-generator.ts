@@ -161,35 +161,61 @@ async function persistMatchScores(
   suggestions: GeneratedMatchSuggestion[],
   allCandidateSkills: Map<string, string[]>,
 ) {
-  // TODO: Batch these queries using .in() filter instead of per-suggestion loop to eliminate N+1 queries. (#144)
-  for (const s of suggestions) {
-    const { data: existing } = await supabase
-      .from("match_suggestions")
-      .select("id")
-      .eq("user_id", userId)
-      .eq("matched_user_id", s.matchedUserId)
-      .single();
+  if (suggestions.length === 0) return;
 
-    if (!existing) continue;
+  const matchedUserIds = suggestions.map((s) => s.matchedUserId);
+
+  // Batched query using .in() filter to retrieve all relevant match suggestions in a single roundtrip, eliminating N+1 DB operations
+  const { data: existingSuggestions, error: fetchError } = await supabase
+    .from("match_suggestions")
+    .select("id, matched_user_id")
+    .eq("user_id", userId)
+    .in("matched_user_id", matchedUserIds);
+
+  if (fetchError || !existingSuggestions || existingSuggestions.length === 0) {
+    if (fetchError) {
+      logger.app.error("Error batch fetching existing match suggestions", fetchError);
+    }
+    return;
+  }
+
+  // Create a fast lookup map of matched_user_id -> suggestion_id
+  const suggestionIdMap = new Map<string, string>();
+  for (const sug of existingSuggestions) {
+    suggestionIdMap.set(sug.matched_user_id, sug.id);
+  }
+
+  const scoresToUpsert = [];
+
+  for (const s of suggestions) {
+    const suggestionId = suggestionIdMap.get(s.matchedUserId);
+    if (!suggestionId) continue;
 
     const candSkills = allCandidateSkills.get(s.matchedUserId) ?? [];
     const overlappingSkills = candSkills.filter((cs) =>
       s.reasons.some((r) => r.toLowerCase().includes(cs.toLowerCase())),
     );
 
-    await supabase.from("match_scores").upsert(
-      {
-        suggestion_id: existing.id,
-        semantic_similarity: s.scoreBreakdown.semanticSimilarity,
-        skills_overlap: s.scoreBreakdown.skillsOverlap,
-        complementary_score: s.scoreBreakdown.complementaryScore,
-        shared_interests: s.scoreBreakdown.sharedInterests,
-        activity_match: s.scoreBreakdown.activityMatch,
-        overall_score: s.scoreBreakdown.overallScore,
-        overlapping_skills: overlappingSkills,
-      },
-      { onConflict: "suggestion_id" },
-    );
+    scoresToUpsert.push({
+      suggestion_id: suggestionId,
+      semantic_similarity: s.scoreBreakdown.semanticSimilarity,
+      skills_overlap: s.scoreBreakdown.skillsOverlap,
+      complementary_score: s.scoreBreakdown.complementaryScore,
+      shared_interests: s.scoreBreakdown.sharedInterests,
+      activity_match: s.scoreBreakdown.activityMatch,
+      overall_score: s.scoreBreakdown.overallScore,
+      overlapping_skills: overlappingSkills,
+    });
+  }
+
+  if (scoresToUpsert.length > 0) {
+    const { error: upsertError } = await supabase
+      .from("match_scores")
+      .upsert(scoresToUpsert, { onConflict: "suggestion_id" });
+
+    if (upsertError) {
+      logger.app.error("Failed to batch upsert match_scores", upsertError);
+    }
   }
 }
 
@@ -198,6 +224,7 @@ export async function generateMatchesForUser(
   options?: GenerateMatchesOptions,
 ): Promise<GeneratedMatchSuggestion[]> {
   const { limit = 20, minScore = 50, excludeUserIds = [] } = options ?? {};
+  // Admin client bypasses RLS safely as this runs solely in a secure system/API endpoint context
   const supabase = getAdminClient();
 
   const { data: userEmbedding, error: embError } = await supabase

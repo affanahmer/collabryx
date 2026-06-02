@@ -15,6 +15,14 @@ const AnalyticsDailyRequestSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format. Use YYYY-MM-DD").optional(),
 });
 
+interface AdminCacheEntry {
+  isAdmin: boolean
+  timestamp: number
+}
+
+// Module-level global administration check cache with TTL invalidation
+const globalAdminCache = new Map<string, AdminCacheEntry>()
+
 export interface AnalyticsDailyResponse {
   status: "success" | "error";
   date: string;
@@ -64,15 +72,34 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Check if user is admin (you can customize this logic)
-  // TODO: Add TTL-based cache invalidation for admin role check (#37)
-  const { data: userProfile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .single();
-  
-  const isAdmin = userProfile?.role === "admin" || process.env.DEVELOPMENT_MODE === "true";
+  // Simple TTL-based cache for admin role verification (10 minute expiry)
+  const ADMIN_CACHE_TTL = 10 * 60 * 1000 // 10 minutes
+  const getAdminCachedStatus = async (uid: string): Promise<boolean> => {
+    const cached = globalAdminCache.get(uid)
+    const now = Date.now()
+    if (cached && (now - cached.timestamp) < ADMIN_CACHE_TTL) {
+      return cached.isAdmin
+    }
+
+    const { data: userProfile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", uid)
+      .single();
+
+    const result = userProfile?.role === "admin" || process.env.DEVELOPMENT_MODE === "true";
+    
+    // Evict old entries if cache grows
+    if (globalAdminCache.size >= 100) {
+      const oldestKey = globalAdminCache.keys().next().value
+      if (oldestKey) globalAdminCache.delete(oldestKey)
+    }
+    
+    globalAdminCache.set(uid, { isAdmin: result, timestamp: now })
+    return result
+  }
+
+  const isAdmin = await getAdminCachedStatus(user.id);
   
   if (!isAdmin) {
     return NextResponse.json(

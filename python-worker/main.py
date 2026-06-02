@@ -665,23 +665,23 @@ async def process_dead_letter_queue():
         try:
             now = datetime.utcnow().isoformat()
 
-            # Get items ready for retry
-            # TODO: This synchronous .execute() blocks the asyncio event loop. Use run_in_executor() for production.
-            response = (
+            # Execute the blocking synchronous Supabase .execute() query in run_in_executor thread pool
+            loop = asyncio.get_event_loop()
+            query = (
                 supabase.table("embedding_dead_letter_queue")
                 .select("*")
                 .eq("status", "pending")
                 .lte("next_retry", now)
                 .lt("retry_count", 3)
                 .limit(10)
-                .execute()
             )
+            response = await loop.run_in_executor(None, query.execute)
 
             for item in response.data:
                 try:
                     # ATOMIC CLAIM: Update only if status is still "pending"
                     # This prevents multiple workers from processing the same failed item
-                    claim_response = (
+                    claim_query = (
                         supabase.table("embedding_dead_letter_queue")
                         .update(
                             {
@@ -691,8 +691,8 @@ async def process_dead_letter_queue():
                         )
                         .eq("id", item["id"])
                         .eq("status", "pending")  # Critical: atomic claim condition
-                        .execute()
                     )
+                    claim_response = await loop.run_in_executor(None, claim_query.execute)
 
                     # Check if we successfully claimed this item
                     if not claim_response.data or len(claim_response.data) == 0:

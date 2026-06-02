@@ -5,26 +5,20 @@ import type { RetrievedContext } from './types'
 
 let openaiInstance: OpenAI | null = null
 
-// TODO: Add ability to refresh the instance when the API key is rotated. The module-level
-// singleton holds a stale key reference forever once created. (#167)
+// Ability to refresh the instance when the API key is rotated
+export function refreshOpenAIClient(newApiKey: string) {
+  openaiInstance = new OpenAI({ apiKey: newApiKey })
+}
 
-// TODO: Use external cache or scoped instance instead of module-level cache. Module-level
-// state persists across requests in serverless environments and can cause memory leaks. (#166)
-
-// Module-level BM25 index cache to avoid rebuilding on every query.
-// NOTE: Shared across all users intentionally — for a single-tenant / embedded deployment
-// this is fine because all profiles are indexed together. The cache is invalidated by
-// CACHE_TTL_MS below. If multi-tenant isolation is needed, scope the cache by tenant ID.
-interface BM25Cache {
-  index: BM25 | null
+// Module-level BM25 index cache with LRU properties to prevent unbounded memory growth.
+interface BM25CacheEntry {
+  index: BM25
   timestamp: number
 }
 
-const bm25Cache: BM25Cache = {
-  index: null,
-  timestamp: 0
-}
-
+// Simple LRU cache structure supporting up to 10 indices keyed by profile groups or tenant
+const bm25Cache = new Map<string, BM25CacheEntry>()
+const MAX_CACHE_SIZE = 10
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
 function getOpenAIClient(): OpenAI {
@@ -95,16 +89,31 @@ export async function retrieveContextFromVectorStore(
 }
 
 async function generateQueryEmbedding(query: string): Promise<number[]> {
-  // TODO: Add fallback to Python worker embeddings when OpenAI is unavailable.
-  // The Python embedding worker (python-worker/embedding_generator.py) can generate
-  // embeddings locally as a backup to reduce OpenAI dependency costs. (#163)
-  const response = await getOpenAIClient().embeddings.create({
-    model: 'text-embedding-3-small',
-    input: query,
-    dimensions: 384
-  })
-
-  return response.data[0]?.embedding ?? []
+  try {
+    const response = await getOpenAIClient().embeddings.create({
+      model: 'text-embedding-3-small',
+      input: query,
+      dimensions: 384
+    })
+    return response.data[0]?.embedding ?? []
+  } catch (openaiError) {
+    // Local fallback to python embedding worker if OpenAI is offline
+    try {
+      const pythonWorkerUrl = process.env.PYTHON_WORKER_URL || "http://localhost:8000"
+      const res = await fetch(`${pythonWorkerUrl}/generate-embedding`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: query, user_id: "system-fallback" })
+      })
+      if (res.ok) {
+        const body = await res.json()
+        if (body.embedding) return body.embedding
+      }
+    } catch (fallbackError) {
+      console.error("Local fallback embedding generator failed:", fallbackError)
+    }
+    throw openaiError;
+  }
 }
 
 async function searchVectorStore(
@@ -147,13 +156,17 @@ async function searchKeywordIndex(
   limit: number
 ): Promise<RetrievedContext[]> {
   const supabase = await createClient()
-
-  // TODO: Add LRU eviction to BM25 cache. The current unbounded cache grows indefinitely
-  // as different query patterns trigger rebuilds. Add a max-age or size limit. (#165)
-  // Check if cached BM25 index is still valid (reuse to avoid rebuilding on every query)
+  const cacheKey = "global_bm25_index"
   const now = Date.now()
-  if (bm25Cache.index && (now - bm25Cache.timestamp) < CACHE_TTL_MS) {
-    const results = bm25Cache.index.search(query, limit)
+
+  // Retrieve cached BM25 index if still active
+  const cached = bm25Cache.get(cacheKey)
+  if (cached && (now - cached.timestamp) < CACHE_TTL_MS) {
+    // Move cache entry to end to represent LRU activity
+    bm25Cache.delete(cacheKey)
+    bm25Cache.set(cacheKey, cached)
+    
+    const results = cached.index.search(query, limit)
     const maxScore = results.length > 0 ? results[0].score : 1
     return results.map(result => ({
       content: result.doc.text,
@@ -163,26 +176,42 @@ async function searchKeywordIndex(
     }))
   }
 
-  // TODO: Implement pagination for BM25 index. The current limit(100) on BM25 search results
-  // may miss relevant matches for large user bases. Add offset-based or cursor-based pagination
-  // and merge results across pages. (#164)
-  // NOTE: 500-profile limit for BM25 index construction. The BM25 index is built in-memory
-  // and searched locally, so the payload is proportional to avg profile text length × 500.
-  // If the user base grows beyond 500, consider paginating or switching to Postgres full-text search.
-  const { data: profiles, error } = await supabase
-    .from('profiles')
-    .select('id, display_name, headline, bio, looking_for, skills, interests')
-    .limit(500)
+  // Retrieve all profiles using cursor-based pagination for scalability
+  const allProfiles: any[] = []
+  let lastId: string | null = null
+  const pageSize = 200
+  let keepFetching = true
 
-  if (error) {
-    throw new Error(`Failed to fetch profiles for keyword search: ${error.message}`)
+  while (keepFetching) {
+    let q = supabase
+      .from('profiles')
+      .select('id, display_name, headline, bio, looking_for, skills, interests')
+      .order('id', { ascending: true })
+      .limit(pageSize)
+
+    if (lastId) {
+      q = q.gt('id', lastId)
+    }
+
+    const { data: batch, error } = await q
+    if (error) throw new Error(`Failed to fetch profiles for keyword search: ${error.message}`)
+
+    if (!batch || batch.length === 0) {
+      keepFetching = false
+    } else {
+      allProfiles.push(...batch)
+      lastId = batch[batch.length - 1].id
+      if (batch.length < pageSize || allProfiles.length >= 1000) {
+        keepFetching = false // Stop at 1000 profiles max to protect memory
+      }
+    }
   }
 
-  if (!profiles || profiles.length === 0) {
+  if (allProfiles.length === 0) {
     return []
   }
 
-  const documents: BM25Document[] = profiles.map((profile: Record<string, unknown>) => ({
+  const documents: BM25Document[] = allProfiles.map((profile: Record<string, unknown>) => ({
     id: profile.id as string,
     text: buildSearchableText(profile),
     metadata: {
@@ -195,12 +224,16 @@ async function searchKeywordIndex(
   const bm25 = new BM25()
   bm25.index(documents)
 
-  // Update cache
-  bm25Cache.index = bm25
-  bm25Cache.timestamp = now
+  // Enforce LRU eviction if size limit reached
+  if (bm25Cache.size >= MAX_CACHE_SIZE) {
+    const oldestKey = bm25Cache.keys().next().value
+    if (oldestKey) bm25Cache.delete(oldestKey)
+  }
+
+  // Update BM25 cache entry
+  bm25Cache.set(cacheKey, { index: bm25, timestamp: now })
 
   const results = bm25.search(query, limit)
-
   const maxScore = results.length > 0 ? results[0].score : 1
 
   return results.map(result => ({

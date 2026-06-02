@@ -54,71 +54,27 @@ export async function sendConnectionRequest(targetUserId: string) {
     return { error: 'Connection already exists or request pending' }
   }
 
-  const { data: request, error } = await withAudit(
+  const request = await withAudit(
     async () => {
-      // Insert connection request
-      const { data, error: insertError } = await supabase
-        .from('connections')
-        .insert({
-          requester_id: user.id,
-          receiver_id: targetUserId,
-          status: 'pending',
+      // Atomic RPC call: creates connection and notification within a single database transaction
+      const { data: connectionId, error: rpcError } = await supabase
+        .rpc('send_connection', {
+          p_requester_id: user.id,
+          p_receiver_id: targetUserId,
         })
-        .select('id, requester_id, receiver_id, status, created_at')
-        .single()
 
-      if (insertError) throw insertError
+      if (rpcError) throw rpcError
 
-      // TODO(#147): Replace manual rollback with supabase.rpc('send_connection', { p_requester_id, p_receiver_id })
-      // for true database-level atomicity. The manual rollback below can also fail, leaving orphaned rows.
-      // Proposed RPC:
-      //
-      // CREATE OR REPLACE FUNCTION public.send_connection(p_requester_id UUID, p_receiver_id UUID)
-      // RETURNS uuid AS $$
-      // DECLARE v_connection_id UUID;
-      // BEGIN
-      //   INSERT INTO connections (requester_id, receiver_id, status)
-      //     VALUES (p_requester_id, p_receiver_id, 'pending')
-      //     RETURNING id INTO v_connection_id;
-      //   INSERT INTO notifications (user_id, type, content, resource_id)
-      //     VALUES (p_receiver_id, 'connect', p_requester_id || ' wants to connect with you', v_connection_id);
-      //   RETURN v_connection_id;
-      // END;
-      // $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-      // Create notification for the recipient (within same transaction context)
-      const { error: notifError } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: targetUserId,
-          type: 'connect',
-          content: `${user.id} wants to connect with you`,
-          resource_id: data.id,
-        })
-      
-      if (notifError) {
-        // Rollback: delete the connection request if notification fails.
-        // NOTE: This rollback can also fail, leaving an orphaned row.
-        const { error: rbError } = await supabase
-          .from('connections').delete().eq('id', data.id)
-        if (rbError) {
-          logger.db.error('sendConnection rollback failed — orphaned connection', {
-            connectionId: data.id, rollbackError: rbError.message,
-          })
-        }
-        throw notifError
+      return {
+        id: connectionId,
+        requester_id: user.id,
+        receiver_id: targetUserId,
+        status: 'pending',
       }
-      
-      return data
     },
     'connection_request_send',
     user.id
   )
-
-  if (error) {
-    logger.db.error('Failed to send connection request:', error)
-    return { error: 'Failed to send connection request' }
-  }
 
   revalidatePath('/requests')
   revalidatePath(`/profile/${targetUserId}`)
@@ -156,53 +112,14 @@ export async function acceptConnectionRequest(requestId: string) {
 
   await withAudit(
     async () => {
-      // Update connection status
-      const { error: updateError } = await supabase
-        .from('connections')
-        .update({ status: 'accepted' })
-        .eq('id', requestId)
-
-      if (updateError) throw updateError
-
-      // TODO(#147): Replace manual rollback with supabase.rpc('accept_connection', { p_request_id, p_receiver_id })
-      // for true database-level atomicity. The manual rollback below can also fail.
-      // Proposed RPC:
-      //
-      // CREATE OR REPLACE FUNCTION public.accept_connection(p_request_id UUID, p_receiver_id UUID)
-      // RETURNS void AS $$
-      // DECLARE v_requester_id UUID;
-      // BEGIN
-      //   UPDATE connections SET status = 'accepted'
-      //     WHERE id = p_request_id AND receiver_id = p_receiver_id
-      //     RETURNING requester_id INTO v_requester_id;
-      //   IF NOT FOUND THEN RAISE EXCEPTION 'Request not found'; END IF;
-      //   INSERT INTO notifications (user_id, type, content, resource_id)
-      //     VALUES (v_requester_id, 'connect', p_receiver_id || ' accepted your connection request', p_request_id);
-      // END;
-      // $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
-
-      // Create notification for the sender (with rollback on failure)
-      const { error: notifError } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: request.requester_id,
-          type: 'connect',
-          content: `${user.id} accepted your connection request`,
-          resource_id: requestId,
+      // Atomic RPC call: updates status and creates notification in a single transaction
+      const { error: rpcError } = await supabase
+        .rpc('accept_connection', {
+          p_request_id: requestId,
+          p_receiver_id: user.id,
         })
-      
-      if (notifError) {
-        // Rollback: revert connection status if notification fails.
-        // NOTE: This rollback can also fail, leaving inconsistent state.
-        const { error: rbError } = await supabase
-          .from('connections').update({ status: 'pending' }).eq('id', requestId)
-        if (rbError) {
-          logger.db.error('acceptConnection rollback failed — inconsistent connection status', {
-            requestId, rollbackError: rbError.message,
-          })
-        }
-        throw notifError
-      }
+
+      if (rpcError) throw rpcError
       
       return { success: true }
     },

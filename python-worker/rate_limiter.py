@@ -58,9 +58,12 @@ class RateLimiter:
         # Always check database - no cache for distributed rate limiting
         # This ensures consistent rate limiting across multiple worker instances
         try:
-            response = self.supabase.rpc(
-                "check_embedding_rate_limit", {"p_user_id": user_id}
-            ).execute()
+            import asyncio
+            loop = asyncio.get_event_loop()
+            
+            # Wrap the blocking synchronous Supabase .execute() call in run_in_executor to prevent event loop delays
+            query = self.supabase.rpc("check_embedding_rate_limit", {"p_user_id": user_id})
+            response = await loop.run_in_executor(None, query.execute)
 
             if response.data and len(response.data) > 0:
                 result = response.data[0]

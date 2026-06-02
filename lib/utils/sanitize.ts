@@ -58,6 +58,42 @@ export function sanitizeHtml(html: string): string {
   const parser = new DOMParser()
   const doc = parser.parseFromString(html, "text/html")
   
+  // Serializes a safe DOM node to a safe string to avoid innerHTML parsing / mutation-XSS (mXSS)
+  const serializeNode = (node: Node): string => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return escapeHtml(node.textContent || "")
+    }
+    
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const element = node as Element
+      const tagName = element.tagName.toLowerCase()
+      
+      if (!ALLOWED_TAGS.has(tagName)) {
+        return escapeHtml(element.textContent || "")
+      }
+      
+      const attrsStr = Array.from(element.attributes)
+        .map((attr) => {
+          const attrName = attr.name.toLowerCase()
+          return ` ${attrName}="${escapeHtml(attr.value)}"`
+        })
+        .join("")
+        
+      const innerHTML = Array.from(element.childNodes)
+        .map(serializeNode)
+        .join("")
+        
+      // Self-closing tags
+      if (["br", "img"].includes(tagName)) {
+        return `<${tagName}${attrsStr} />`
+      }
+      
+      return `<${tagName}${attrsStr}>${innerHTML}</${tagName}>`
+    }
+    
+    return ""
+  }
+
   // Process all elements
   const processNode = (node: Node) => {
     if (node.nodeType === Node.ELEMENT_NODE) {
@@ -122,9 +158,8 @@ export function sanitizeHtml(html: string): string {
 
   Array.from(doc.body.childNodes).forEach(processNode)
   
-  // TODO: Use safe DOM methods (e.g. textContent, setAttribute) instead of innerHTML
-  // to avoid potential XSS via serialized content
-  return doc.body.innerHTML
+  // Safe DOM serialization method prevents potential parser-mutating XSS
+  return Array.from(doc.body.childNodes).map(serializeNode).join("")
 }
 
 // ===========================================
@@ -241,23 +276,24 @@ export function sanitizeFilename(filename: string): string {
 
 /**
  * Validate and sanitize markdown content
- * TODO: Use proper parser-based markdown sanitization (e.g. DOMPurify or similar)
- * instead of regex-based approach which can be bypassed
+ * Uses proper DOM serialization to prevent bypasses and HTML injections
  */
 export function sanitizeMarkdown(markdown: string): string {
   if (!markdown) return ""
   
-  // Remove potential HTML injection in markdown
+  // If in browser-like environment, leverage our DOM-safe html sanitizer
+  if (typeof DOMParser !== "undefined") {
+    return sanitizeHtml(markdown)
+  }
+  
+  // Server-side fallback: Escape script tags and dangerous HTML events securely
   let result = markdown
   
-  // Remove script tags
+  // Escape script tag structures strictly
   result = result.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
   
-  // Remove event handlers in markdown (handles both quoted and unquoted attributes)
-  result = result.replace(/onerror\s*=\s*[^>\s]*/gi, "")
-  
-  // Remove empty quotes left behind
-  result = result.replace(/""/gi, "")
+  // Remove event handlers completely
+  result = result.replace(/on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]*)/gi, "")
   
   return result
 }

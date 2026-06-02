@@ -5,10 +5,8 @@
 
 import { logger } from "@/lib/logger"
 
-// TODO(#142): Remove NEXT_PUBLIC prefix in production — it exposes the internal
-// Python worker URL to the client bundle. Use a server-only env var (e.g.
-// PYTHON_WORKER_URL) and proxy through an API route instead.
-const PYTHON_WORKER_URL = process.env.NEXT_PUBLIC_PYTHON_WORKER_URL || "http://localhost:8000"
+// Use a server-only environment variable to prevent exposing internal worker URL to the client bundle
+const PYTHON_WORKER_URL = process.env.PYTHON_WORKER_URL || "http://localhost:8000"
 
 export interface MatchGenerationResult {
   suggestions_created: number

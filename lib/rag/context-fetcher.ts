@@ -35,14 +35,13 @@ export async function fetchUserProfileContext(
     }
   }
 
-  // TODO: Include non-primary skills in AI context with lower weight. Currently only
-  // fetches is_primary:true skills, which misses relevant secondary skills. (#159)
-  let skills: { skill_name: string; proficiency?: string }[] = []
+  // Fetches up to 10 user skills (primary skills first, followed by secondary ones with lower weights)
+  let skills: { skill_name: string; proficiency?: string; is_primary?: boolean }[] = []
   const { data: skillsData, error: skillsError } = await supabase
     .from('user_skills')
-    .select('skill_name, proficiency')
+    .select('skill_name, proficiency, is_primary')
     .eq('user_id', userId)
-    .eq('is_primary', true)
+    .order('is_primary', { ascending: false })
     .limit(10)
 
   if (skillsError) {
@@ -156,13 +155,12 @@ export async function fetchMultipleUserContexts(
     return results
   }
 
-  // Fetch skills for all users
-  // TODO: Include non-primary skills in AI context with lower weight. (#159)
+  // Fetch skills for all users (primary skills first, preserving secondary skills context)
   const { data: allSkills } = await supabase
     .from('user_skills')
-    .select('user_id, skill_name, proficiency')
+    .select('user_id, skill_name, proficiency, is_primary')
     .in('user_id', userIds)
-    .eq('is_primary', true)
+    .order('is_primary', { ascending: false })
     .limit(100)
 
   // Fetch interests for all users

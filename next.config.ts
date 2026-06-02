@@ -60,10 +60,8 @@ const nextConfig: NextConfig = {
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com",
-              // SECURITY NOTE: img-src allows all HTTPS origins (https:) which is broad.
-              // next/image requires this for dynamic remote images from user uploads stored in Supabase/CDN.
-              // TODO: Restrict to specific image CDN domains once finalized.
-              "img-src 'self' data: blob: https: *.supabase.co *.amazonaws.com",
+              // Tightened image remote domains to Supabase, Unsplash, and Amazon CDN only
+              "img-src 'self' data: blob: https://images.unsplash.com https://*.supabase.co https://*.amazonaws.com",
               "connect-src 'self' https://*.supabase.co",
               "media-src 'self' blob:",
               "object-src 'none'",
