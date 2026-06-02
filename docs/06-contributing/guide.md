@@ -119,13 +119,13 @@ Follow our [coding standards](#coding-standards) and best practices.
 
 ```bash
 # Run development server
-npm run dev
+bun run dev
 
 # Build for production
-npm run build
+bun run build
 
 # Run linter
-npm run lint
+bun run lint
 ```
 
 **Manual testing checklist:**
@@ -373,8 +373,8 @@ Ensure your PR:
 - [ ] Follows coding standards
 - [ ] Includes descriptive commit messages
 - [ ] Has been tested manually
-- [ ] Builds successfully (`npm run build`)
-- [ ] Passes linting (`npm run lint`)
+- [ ] Builds successfully (`bun run build`)
+- [ ] Passes linting (`bun run lint`)
 - [ ] Updates documentation if needed
 
 ### PR Template
@@ -526,15 +526,15 @@ Contributors will be:
 # Clean build artifacts
 rm -rf .next
 
-# Clear npm cache
-npm cache clean --force
+# Clear package cache
+bun pm cache rm
 
 # Reinstall dependencies
 rm -rf node_modules package-lock.json
-npm install
+bun install
 
 # Check for outdated packages
-npm outdated
+bun outdated
 ```
 
 ### Debugging

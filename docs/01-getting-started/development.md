@@ -29,7 +29,7 @@ If you haven't already, complete the [Installation Guide](./INSTALLATION.md) fir
 Start the Next.js development server:
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 The application will be available at:
@@ -48,16 +48,16 @@ For full embedding functionality, run the Python worker service using Docker:
 
 ```bash
 # Start the service (auto-builds + health check)
-npm run docker:up
+bun run docker:up
 
 # View real-time logs
-npm run docker:logs
+bun run docker:logs
 
 # Check service health
-npm run docker:health
+bun run docker:health
 
 # Stop the service
-npm run docker:down
+bun run docker:down
 ```
 
 The service will be available at: http://localhost:8000
@@ -96,7 +96,7 @@ git pull origin main
 git checkout -b feature/your-feature-name
 
 # 3. Start development server
-npm run dev
+bun run dev
 
 # 4. Make your changes
 # Edit files in app/, components/, etc.
@@ -106,7 +106,7 @@ npm run dev
 # Check for console errors
 
 # 6. Lint your code
-npm run lint
+bun run lint
 
 # 7. Commit your changes
 git add .
@@ -126,68 +126,68 @@ git push origin feature/your-feature-name
 
 | Command | Description | Usage |
 |---------|-------------|-------|
-| `npm run dev` | Start development server | Daily development |
-| `npm run build` | Create production build | Before deployment |
-| `npm run start` | Run production build locally | Test production build |
-| `npm run lint` | Run ESLint | Code quality check |
+| `bun run dev` | Start development server | Daily development |
+| `bun run build` | Create production build | Before deployment |
+| `bun run start` | Run production build locally | Test production build |
+| `bun run lint` | Run ESLint | Code quality check |
 
 ### Docker Commands (Python Worker)
 
 | Command | Description | Usage |
 |---------|-------------|-------|
-| `npm run docker:up` | Start Python worker | Start embedding service |
-| `npm run docker:down` | Stop Python worker | Stop embedding service |
-| `npm run docker:down:clean` | Stop + deep cleanup | Remove orphaned containers |
-| `npm run docker:logs` | Stream logs | Debug issues |
-| `npm run docker:logs:recent` | Show last 50 lines | Quick log check |
-| `npm run docker:health` | Health check | Verify service status |
-| `npm run docker:health:monitor` | Continuous monitoring | Development monitoring |
-| `npm run docker:status` | Full status report | Check resource usage |
-| `npm run docker:restart` | Restart service | Apply changes |
-| `npm run docker:rebuild` | Force rebuild | Fix container issues |
+| `bun run docker:up` | Start Python worker | Start embedding service |
+| `bun run docker:down` | Stop Python worker | Stop embedding service |
+| `bun run docker:down:clean` | Stop + deep cleanup | Remove orphaned containers |
+| `bun run docker:logs` | Stream logs | Debug issues |
+| `bun run docker:logs:recent` | Show last 50 lines | Quick log check |
+| `bun run docker:health` | Health check | Verify service status |
+| `bun run docker:health:monitor` | Continuous monitoring | Development monitoring |
+| `bun run docker:status` | Full status report | Check resource usage |
+| `bun run docker:restart` | Restart service | Apply changes |
+| `bun run docker:rebuild` | Force rebuild | Fix container issues |
 
 ### Development Commands
 
 ```bash
 # Start dev server
-npm run dev
+bun run dev
 
 # Build for production
-npm run build
+bun run build
 
 # Start production server (after build)
-npm run start
+bun run start
 
 # Run linter
-npm run lint
+bun run lint
 
 # Run linter with auto-fix
-npm run lint -- --fix
+bun run lint -- --fix
 ```
 
 ### Package Management
 
 ```bash
 # Install a new dependency
-npm install package-name
+bun add package-name
 
 # Install a dev dependency
-npm install -D package-name
+bun add -D package-name
 
 # Remove a dependency
-npm uninstall package-name
+bun remove package-name
 
 # Update all dependencies (use with caution)
-npm update
+bun update
 
 # Check for outdated packages
-npm outdated
+bun outdated
 
 # Audit for vulnerabilities
-npm audit
+bun audit
 
 # Fix vulnerabilities automatically
-npm audit fix
+bun audit
 ```
 
 ---
@@ -461,7 +461,7 @@ Before submitting a PR, verify:
 
 ```bash
 # Test on different devices using network URL
-npm run dev
+bun run dev
 # Access via http://192.168.x.x:3000 on other devices
 ```
 
@@ -491,7 +491,7 @@ Create `.vscode/launch.json`:
       "name": "Next.js: debug server-side",
       "type": "node-terminal",
       "request": "launch",
-      "command": "npm run dev"
+      "command": "bun run dev"
     },
     {
       "name": "Next.js: debug client-side",

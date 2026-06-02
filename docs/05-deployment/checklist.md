@@ -59,7 +59,7 @@ Complete checklist for deploying Collabryx to production.
   ```
   Framework Preset: Next.js
   Node Version: 20.x
-  Build Command: npm run build
+  Build Command: bun run build
   Output Directory: .next (default)
   ```
 

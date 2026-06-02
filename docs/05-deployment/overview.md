@@ -22,8 +22,8 @@ Complete guide for deploying Collabryx to production environments.
 Before deploying to production, ensure:
 
 ### Code Quality
-- [ ] All TypeScript errors resolved (`npm run build`)
-- [ ] ESLint passes with no errors (`npm run lint`)
+- [ ] All TypeScript errors resolved (`bun run build`)
+- [ ] ESLint passes with no errors (`bun run lint`)
 - [ ] No console.log or debug statements in production code
 - [ ] All hardcoded values moved to environment variables
 
@@ -140,9 +140,9 @@ Vercel is built by the creators of Next.js and offers the best Next.js deploymen
 
 3. **Configure Build Settings**
    - Framework Preset: **Next.js** (auto-detected)
-   - Build Command: `npm run build`
+   - Build Command: `bun run build`
    - Output Directory: `.next`
-   - Install Command: `npm install`
+   - Install Command: `bun install`
 
 4. **Add Environment Variables**
    - In Vercel dashboard, go to Settings → Environment Variables
@@ -183,7 +183,7 @@ Vercel is built by the creators of Next.js and offers the best Next.js deploymen
 
 ```bash
 # Install Netlify CLI
-npm install -g netlify-cli
+bun install -g netlify-cli
 
 # Login to Netlify
 netlify login
@@ -197,7 +197,7 @@ netlify deploy --prod
 
 ```toml
 [build]
-  command = "npm run build"
+  command = "bun run build"
   publish = ".next"
 
 [[plugins]]
@@ -213,13 +213,13 @@ netlify deploy --prod
 1. **Create Dockerfile**
 
 ```dockerfile
-FROM node:20-alpine AS base
+FROM oven/bun:1 AS base
 
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
-COPY package*.json ./
-RUN npm ci
+COPY bun.lock package.json ./
+RUN bun install --frozen-lockfile
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -229,7 +229,7 @@ COPY . .
 
 # Set environment variables
 ENV NEXT_TELEMETRY_DISABLED 1
-RUN npm run build
+RUN bun run build
 
 # Production image
 FROM base AS runner
@@ -281,13 +281,13 @@ docker run -p 3000:3000 \
 
 ```bash
 # Install PM2
-npm install -g pm2
+bun install -g pm2
 
 # Build the application
-npm run build
+bun run build
 
 # Start with PM2
-pm2 start npm --name "collabryx" -- start
+pm2 start bun --name "collabryx" -- run start
 
 # Save PM2 configuration
 pm2 save
@@ -311,7 +311,7 @@ pm2 startup
 
 ```bash
 # Install Supabase CLI
-npm install -g supabase
+bun install -g supabase
 
 # Login
 supabase login
@@ -496,13 +496,13 @@ jobs:
           node-version: '20'
           
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
         
       - name: Run linter
-        run: npm run lint
+        run: bun run lint
         
       - name: Build
-        run: npm run build
+        run: bun run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
@@ -538,11 +538,11 @@ Required secrets:
 
 ```bash
 # Check for errors locally
-npm run build
+bun run build
 
 # Clear cache and rebuild
 rm -rf .next
-npm run build
+bun run build
 ```
 
 #### Issue: Environment variables not found
@@ -580,7 +580,7 @@ pm2 logs collabryx
 
 1. **Analyze bundle size**
    ```bash
-   npm run build
+   bun run build
    # Check .next/stats.json
    ```
 

@@ -306,7 +306,7 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 
 ```bash
 # Start development server
-npm run dev
+bun run dev
 
 # Check for errors
 # If variables are missing, you'll see connection errors

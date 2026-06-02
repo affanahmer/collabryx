@@ -6,8 +6,8 @@
 
 ```bash
 # Generate bundle analysis report
-npm run build
-ANALYZE=true npm run build
+bun run build
+ANALYZE=true bun run build
 ```
 
 This generates a visual report showing:
@@ -237,7 +237,7 @@ Track these metrics:
 # Lighthouse tab -> Generate report
 
 # CLI
-npm install -g lighthouse
+bun install -g lighthouse
 lighthouse https://collabryx.com --view
 ```
 

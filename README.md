@@ -91,7 +91,7 @@
 ### Prerequisites
 
 - **Node.js 20+** (LTS)
-- **npm 10+** (yarn/bun not supported)
+- **Bun 1.x** (package manager — never use npm)
 - **Git**
 - **Docker** (for Python worker - optional for development)
 - **Supabase account** (free tier works)
@@ -106,14 +106,14 @@ git clone https://github.com/your-username/collabryx.git
 cd collabryx
 
 # Install dependencies
-npm install
+bun install
 
 # Set up environment variables
 cp .env.example .env.local
 # Edit .env.local with your Supabase credentials
 
 # Run the development server
-npm run dev
+bun run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to view the application.
@@ -124,24 +124,24 @@ Open [http://localhost:3000](http://localhost:3000) to view the application.
 
 ```bash
 # Run all unit/component/integration tests (Vitest)
-npm run test
+bun run test
 
 # Run with coverage
-npm run test -- --coverage
+bun run test -- --coverage
 
 # Run in watch mode
-npm run test -- --watch
+bun run test -- --watch
 
 # Run E2E tests (Playwright)
-npm run test:e2e
+bun run test:e2e
 
 # Run specific module
-npm run test -- --run tests/unit/hooks/
-npm run test -- --run tests/integration/auth/
-npm run test -- --run tests/components/features/matches/
+bun run test -- --run tests/unit/hooks/
+bun run test -- --run tests/integration/auth/
+bun run test -- --run tests/components/features/matches/
 
 # Run specific test case by name
-npm run test -- -t "RLS blocks"
+bun run test -- -t "RLS blocks"
 ```
 
 📖 **Full test documentation:** [tests/README.md](./tests/README.md)
@@ -248,22 +248,22 @@ collabryx/
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start development server at `localhost:3000` |
-| `npm run build` | Build production-ready application |
-| `npm run start` | Run production server |
-| `npm run lint` | Run ESLint for code quality |
-| `npm run typecheck` | Run TypeScript type checking |
+| `bun run dev` | Start development server at `localhost:3000` |
+| `bun run build` | Build production-ready application |
+| `bun run start` | Run production server |
+| `bun run lint` | Run ESLint for code quality |
+| `bun run typecheck` | Run TypeScript type checking |
 
 ### Docker Commands (Python Worker)
 
 | Command | Description |
 |---------|-------------|
-| `npm run docker:up` | Start Python worker with auto-build |
-| `npm run docker:down` | Stop Python worker |
-| `npm run docker:logs` | View worker logs (real-time) |
-| `npm run docker:health` | Check worker health status |
-| `npm run docker:status` | Full status report |
-| `npm run docker:rebuild` | Force rebuild worker |
+| `bun run docker:up` | Start Python worker with auto-build |
+| `bun run docker:down` | Stop Python worker |
+| `bun run docker:logs` | View worker logs (real-time) |
+| `bun run docker:health` | Check worker health status |
+| `bun run docker:status` | Full status report |
+| `bun run docker:rebuild` | Force rebuild worker |
 
 📖 **Docker commands:** [Docker Scripts](./docs/05-deployment/docker-scripts.md)
 
@@ -321,17 +321,17 @@ Collabryx includes a comprehensive test suite with unit, component, and E2E test
 
 ```bash
 # Run all tests
-npm run test
+bun run test
 
 # Run with UI
-npm run test:ui
+bun run test:ui
 
 # Run with coverage
-npm run test:coverage
+bun run test:coverage
 
 # E2E tests
-npm run test:e2e
-npm run test:e2e:ui
+bun run test:e2e
+bun run test:e2e:ui
 ```
 
 📖 **Testing Guide**: [docs/06-contributing/guide.md](./docs/06-contributing/guide.md)
@@ -377,8 +377,8 @@ git clone https://github.com/your-username/collabryx.git
 git checkout -b feature/your-feature-name
 
 # Make changes and test
-npm run dev
-npm run test
+bun run dev
+bun run test
 
 # Commit with conventional commits
 git commit -m "feat: add new feature"

@@ -31,6 +31,7 @@ Violating any of these will result in immediate rejection:
 5. **NO `any` TYPES:** Strict TypeScript only. Use `unknown` and type narrowing.
 6. **NO FILE REWRITES:** Apply minimal, surgical, line-by-line modifications to solve the immediate problem. Never rewrite entire files.
 7. **NO ROOT MODIFICATIONS:** Do not touch root directory files unless explicitly commanded.
+8. **BUN ONLY:** Always use `bun` for package management, scripts, and running tests. Never use `npm` or `npx`. Use `bunx` instead of `npx`.
 
 ## 🏗 ARCHITECTURAL & QUALITY CONSTRAINTS
 ### TypeScript Strictness

@@ -111,8 +111,8 @@ misc changes
 - [ ] Tests added/updated
 - [ ] Documentation updated
 - [ ] No TypeScript errors
-- [ ] Linting passes (`npm run lint`)
-- [ ] Build succeeds (`npm run build`)
+- [ ] Linting passes (`bun run lint`)
+- [ ] Build succeeds (`bun run build`)
 
 ### PR Template
 

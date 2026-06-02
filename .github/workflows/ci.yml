@@ -7,8 +7,7 @@ on:
     branches: [main]
 
 env:
-  NODE_VERSION: '22'
-  NODE_OPTIONS: "--max-old-space-size=8192"
+  BUN_VERSION: '1'
 
 jobs:
   typecheck-and-lint:
@@ -16,23 +15,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Clean Next.js cache
         run: rm -rf .next
 
       - name: Type check
-        run: npm run typecheck
+        run: bun run typecheck
 
       - name: Lint
-        run: npm run lint
+        run: bun run lint
 
   unit-tests:
     runs-on: ubuntu-latest
@@ -40,20 +38,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Clean Next.js cache
         run: rm -rf .next
 
       - name: Run unit tests
-        run: npm run test -- tests/unit tests/components --coverage
+        run: bun run test -- tests/unit tests/components --coverage
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4
@@ -67,20 +64,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Clean Next.js cache
         run: rm -rf .next
 
       - name: Run integration tests
-        run: npm run test -- tests/integration --coverage
+        run: bun run test -- tests/integration --coverage
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4
@@ -94,17 +90,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Clean Next.js cache
         run: rm -rf .next
 
       - name: Build
-        run: npm run build
+        run: bun run build

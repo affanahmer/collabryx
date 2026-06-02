@@ -1,6 +1,6 @@
 ﻿# Commands Reference
 
-Complete reference for all npm scripts and commands in Collabryx.
+Complete reference for all bun scripts and commands in Collabryx.
 
 ---
 
@@ -18,12 +18,12 @@ Complete reference for all npm scripts and commands in Collabryx.
 
 ## Core Commands
 
-### `npm run dev`
+### `bun run dev`
 
 Start the Next.js development server.
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 **Details:**
@@ -33,17 +33,17 @@ npm run dev
 
 **Custom Port:**
 ```bash
-PORT=3001 npm run dev
+PORT=3001 bun run dev
 ```
 
 ---
 
-### `npm run build`
+### `bun run build`
 
 Create a production build of the application.
 
 ```bash
-npm run build
+bun run build
 ```
 
 **Details:**
@@ -63,27 +63,27 @@ npm run build
 
 ---
 
-### `npm run start`
+### `bun run start`
 
 Start the production server (after build).
 
 ```bash
-npm run start
+bun run start
 ```
 
 **Details:**
 - Runs on port 3000
 - Uses production build
-- Requires `npm run build` first
+- Requires `bun run build` first
 
 ---
 
-### `npm run lint`
+### `bun run lint`
 
 Run ESLint for code quality checking.
 
 ```bash
-npm run lint
+bun run lint
 ```
 
 **Details:**
@@ -93,7 +93,7 @@ npm run lint
 
 **Auto-fix:**
 ```bash
-npm run lint -- --fix
+bun run lint -- --fix
 ```
 
 ---
@@ -102,12 +102,12 @@ npm run lint -- --fix
 
 **118 test files | 750+ test cases | 10 modules (TC-001→TC-100)**
 
-### `npm run test`
+### `bun run test`
 
 Run the full Vitest test suite (unit + component + integration).
 
 ```bash
-npm run test
+bun run test
 ```
 
 **Details:**
@@ -116,12 +116,12 @@ npm run test
 - Outputs results to console
 - Exits with error code on failure
 
-### `npm run test:e2e`
+### `bun run test:e2e`
 
 Run Playwright E2E browser tests.
 
 ```bash
-npm run test:e2e
+bun run test:e2e
 ```
 
 **Details:**
@@ -136,34 +136,34 @@ npm run test:e2e
 
 ```bash
 # Module 1: Environment & CLI (TC-001→010)
-npm run test -- --run tests/scripts/ tests/unit/lib/env-validation.test.ts tests/integration/environment/ tests/integration/seeder/
+bun run test -- --run tests/scripts/ tests/unit/lib/env-validation.test.ts tests/integration/environment/ tests/integration/seeder/
 
 # Module 2: Auth & Security (TC-011→020)
-npm run test -- --run tests/unit/auth/ tests/unit/lib/auth-rate-limit.test.ts tests/components/features/auth/ tests/integration/auth/
+bun run test -- --run tests/unit/auth/ tests/unit/lib/auth-rate-limit.test.ts tests/components/features/auth/ tests/integration/auth/
 
 # Module 3: User Profiling (TC-021→030)
-npm run test -- --run tests/unit/actions/profile-actions.test.ts tests/unit/settings-validation.test.ts tests/integration/profile/ tests/components/features/onboarding/ tests/components/features/profile/ tests/components/features/dashboard/profile-card.test.tsx
+bun run test -- --run tests/unit/actions/profile-actions.test.ts tests/unit/settings-validation.test.ts tests/integration/profile/ tests/components/features/onboarding/ tests/components/features/profile/ tests/components/features/dashboard/profile-card.test.tsx
 
 # Module 4: UI & Accessibility (TC-031→040)
-npm run test -- --run tests/components/ui/ tests/components/shared/ tests/integration/ui/
+bun run test -- --run tests/components/ui/ tests/components/shared/ tests/integration/ui/
 
 # Module 5: Vector Embedding (TC-041→050)
-npm run test -- --run tests/unit/lib/embedding-* tests/integration/embeddings/
+bun run test -- --run tests/unit/lib/embedding-* tests/integration/embeddings/
 
 # Module 6: Semantic Matching (TC-051→060)
-npm run test -- --run tests/unit/services/match-* tests/unit/services/feed-scorer.ts (native TS scoring) tests/components/features/matches/ tests/integration/matches/
+bun run test -- --run tests/unit/services/match-* tests/unit/services/feed-scorer.ts (native TS scoring) tests/components/features/matches/ tests/integration/matches/
 
 # Module 7: Real-Time Networking (TC-061→075)
-npm run test -- --run tests/unit/hooks/use-connection* tests/unit/hooks/use-messages* tests/unit/hooks/use-conversations* tests/unit/hooks/use-typing* tests/components/features/connections/ tests/components/features/messages/ tests/integration/realtime/ tests/integration/messaging/
+bun run test -- --run tests/unit/hooks/use-connection* tests/unit/hooks/use-messages* tests/unit/hooks/use-conversations* tests/unit/hooks/use-typing* tests/components/features/connections/ tests/components/features/messages/ tests/integration/realtime/ tests/integration/messaging/
 
 # Module 8: AI Mentor (TC-076→085)
-npm run test -- --run tests/unit/lib/prompt-injection.test.ts tests/unit/lib/ai/ tests/components/features/ai-mentor/ tests/integration/ai-mentor/
+bun run test -- --run tests/unit/lib/prompt-injection.test.ts tests/unit/lib/ai/ tests/components/features/ai-mentor/ tests/integration/ai-mentor/
 
 # Module 9: Notifications & Moderation (TC-086→095)
-npm run test -- --run tests/unit/services/notification-engine (native TS) tests/unit/services/content-moderator* tests/components/shared/notification-item* tests/components/features/dashboard/posts/ tests/integration/notifications/ tests/integration/moderation/ tests/integration/analytics/
+bun run test -- --run tests/unit/services/notification-engine (native TS) tests/unit/services/content-moderator* tests/components/shared/notification-item* tests/components/features/dashboard/posts/ tests/integration/notifications/ tests/integration/moderation/ tests/integration/analytics/
 
 # Module 10: System Integration (TC-096→100)
-npm run test -- --run tests/integration/edge-functions/ tests/integration/analytics/aggregator.test.ts && npm run test:e2e
+bun run test -- --run tests/integration/edge-functions/ tests/integration/analytics/aggregator.test.ts && bun run test:e2e
 ```
 
 ---
@@ -172,28 +172,28 @@ npm run test -- --run tests/integration/edge-functions/ tests/integration/analyt
 
 ```bash
 # Watch mode (re-runs on file changes)
-npm run test -- --watch
+bun run test -- --watch
 
 # Coverage report (text + HTML + JSON)
-npm run test -- --coverage
+bun run test -- --coverage
 
 # Run specific test file
-npm run test -- tests/unit/lib/sanitize.test.ts
+bun run test -- tests/unit/lib/sanitize.test.ts
 
 # Run specific test case by name pattern
-npm run test -- -t "RLS blocks"
+bun run test -- -t "RLS blocks"
 ```
 
 ---
 
 ## Build Commands
 
-### `npm run build:analyze`
+### `bun run build:analyze`
 
 Analyze bundle size.
 
 ```bash
-npm run build:analyze
+bun run build:analyze
 ```
 
 **Details:**
@@ -205,12 +205,12 @@ npm run build:analyze
 
 ---
 
-### `npm run build:vercel`
+### `bun run build:vercel`
 
 Build for Vercel deployment.
 
 ```bash
-npm run build:vercel
+bun run build:vercel
 ```
 
 **Details:**
@@ -221,12 +221,12 @@ npm run build:vercel
 
 ## Utility Commands
 
-### `npm run clean`
+### `bun run clean`
 
 Clean build artifacts and caches.
 
 ```bash
-npm run clean
+bun run clean
 ```
 
 **Removes:**
@@ -236,12 +236,12 @@ npm run clean
 
 ---
 
-### `npm run typecheck`
+### `bun run typecheck`
 
 Run TypeScript type checking.
 
 ```bash
-npm run typecheck
+bun run typecheck
 ```
 
 **Details:**
@@ -251,12 +251,12 @@ npm run typecheck
 
 ---
 
-### `npm run format`
+### `bun run format`
 
 Format code with Prettier.
 
 ```bash
-npm run format
+bun run format
 ```
 
 **Details:**
@@ -265,23 +265,23 @@ npm run format
 
 **Check Only:**
 ```bash
-npm run format:check
+bun run format:check
 ```
 
 ---
 
-### `npm run prepare`
+### `bun run prepare`
 
 Run Husky setup for git hooks.
 
 ```bash
-npm run prepare
+bun run prepare
 ```
 
 **Details:**
 - Installs git hooks
 - Enables pre-commit linting
-- Auto-run on `npm install`
+- Auto-run on `bun install`
 
 ---
 
@@ -323,7 +323,7 @@ git push origin feature/your-feature-name
 ### Install Supabase CLI
 
 ```bash
-npm install -g supabase
+bun install -g supabase
 ```
 
 ### Login
@@ -417,19 +417,19 @@ Add to your shell config for convenience:
 
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
-alias dev='npm run dev'
-alias build='npm run build'
-alias test='npm run test'
-alias lint='npm run lint'
+alias dev='bun run dev'
+alias build='bun run build'
+alias test='bun run test'
+alias lint='bun run lint'
 ```
 
 ### PowerShell
 
 ```powershell
 # Add to profile
-Set-Alias dev "npm run dev"
-Set-Alias build "npm run build"
-Set-Alias test "npm run test"
+Set-Alias dev "bun run dev"
+Set-Alias build "bun run build"
+Set-Alias test "bun run test"
 ```
 
 ---
@@ -438,14 +438,14 @@ Set-Alias test "npm run test"
 
 | Task | Command |
 |------|---------|
-| Start development | `npm run dev` |
-| Build for production | `npm run build` |
-| Run tests | `npm run test` |
-| Run tests (watch) | `npm run test:watch` |
-| Check code quality | `npm run lint` |
-| Format code | `npm run format` |
-| Type check | `npm run typecheck` |
-| Clean build | `npm run clean` |
+| Start development | `bun run dev` |
+| Build for production | `bun run build` |
+| Run tests | `bun run test` |
+| Run tests (watch) | `bun run test:watch` |
+| Check code quality | `bun run lint` |
+| Format code | `bun run format` |
+| Type check | `bun run typecheck` |
+| Clean build | `bun run clean` |
 
 ---
 

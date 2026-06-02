@@ -30,11 +30,11 @@ Before you begin, ensure you have the following installed on your machine:
      node --version  # Should output v20.x.x or higher
      ```
 
-2. **npm** (v9.x or higher)
-    - Comes with Node.js installation
+2. **Bun** (v1.x or higher)
+    - Install from: https://bun.sh/
     - Verify installation:
       ```bash
-      npm --version   # Should output 9.x.x or higher
+      bun --version   # Should output 1.x.x or higher
       ```
 
 3. **Git** (v2.x or higher)
@@ -91,10 +91,10 @@ cd collabryx
 
 ### Step 2: Install Dependencies
 
-Install all required npm packages:
+Install all required packages:
 
 ```bash
-npm install
+bun install
 ```
 
 **Expected Output:**
@@ -143,7 +143,7 @@ The Python worker runs in Docker with automated management scripts:
 
 1. **Start the embedding service:**
    ```bash
-   npm run docker:up
+   bun run docker:up
    ```
    
    This will:
@@ -153,7 +153,7 @@ The Python worker runs in Docker with automated management scripts:
 
 2. **Verify the service:**
    ```bash
-   npm run docker:health
+   bun run docker:health
    ```
     
    Expected response:
@@ -172,12 +172,12 @@ The Python worker runs in Docker with automated management scripts:
 
 3. **View logs:**
    ```bash
-   npm run docker:logs
+   bun run docker:logs
    ```
 
 4. **Stop the service:**
    ```bash
-   npm run docker:down
+   bun run docker:down
    ```
 
 📖 **Complete guide:** [Docker Scripts Documentation](./05-deployment/docker-scripts.md)
@@ -232,7 +232,7 @@ The Python worker runs in Docker with automated management scripts:
 
 1. **Install Supabase CLI**:
    ```bash
-   npm install -g supabase
+   bun install -g supabase
    ```
 
 2. **Login to Supabase**:
@@ -267,7 +267,7 @@ WHERE table_schema = 'public';
 ### Step 1: Start the Development Server
 
 ```bash
-npm run dev
+bun run dev
 ```
 
 **Expected Output:**
@@ -304,23 +304,23 @@ Open the browser console (F12) and terminal:
 
 ### Common Issues
 
-#### Issue 1: `npm install` fails
+#### Issue 1: `bun install` fails
 
 **Symptoms:**
 ```
-npm ERR! peer dependency error
+bun install error
 ```
 
 **Solutions:**
 ```bash
-# Clear npm cache
-npm cache clean --force
+# Clear package cache
+bun pm cache rm
 
-# Delete node_modules and package-lock.json
-rm -rf node_modules package-lock.json
+# Delete node_modules and bun.lock
+rm -rf node_modules
 
 # Reinstall
-npm install
+bun install
 ```
 
 #### Issue 2: Port 3000 already in use
@@ -344,7 +344,7 @@ lsof -ti:3000 | xargs kill -9
 
 Option 2: Use a different port
 ```bash
-PORT=3001 npm run dev
+PORT=3001 bun run dev
 ```
 
 #### Issue 3: Supabase connection errors
@@ -376,7 +376,7 @@ rm -rf .next
 # Press Ctrl+Shift+P → "TypeScript: Restart TS Server"
 
 # Rebuild
-npm run dev
+bun run dev
 ```
 
 #### Issue 5: Module not found errors
@@ -392,7 +392,7 @@ Module not found: Can't resolve 'module-name'
 pwd  # Should show /path/to/collabryx
 
 # Reinstall dependencies
-npm install
+bun install
 
 # Check if the module exists in package.json
 cat package.json | grep "module-name"

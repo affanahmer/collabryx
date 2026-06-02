@@ -262,7 +262,7 @@ app/
 - **Composable** - Build complex UIs from simple parts
 - **Customizable** - Extend and modify as needed
 
-Components are copied into the project (not npm installed), giving full control:
+Components are copied into the project (not installed from a registry), giving full control:
 ```
 components/ui/
 ├── button.tsx      # Customized button component

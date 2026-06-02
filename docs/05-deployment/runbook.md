@@ -20,10 +20,10 @@ Step-by-step deployment procedures for Collabryx production and staging environm
 ## Pre-Deployment Checks
 
 ### Code Quality
-- [ ] `npm run build` passes with no errors
-- [ ] `npm run lint` passes with no errors
-- [ ] `npm run typecheck` passes
-- [ ] `npm run test` passes (all 750+ tests)
+- [ ] `bun run build` passes with no errors
+- [ ] `bun run lint` passes with no errors
+- [ ] `bun run typecheck` passes
+- [ ] `bun run test` passes (all 750+ tests)
 - [ ] No `console.log` or debug statements in production code
 - [ ] No hardcoded secrets or API keys
 

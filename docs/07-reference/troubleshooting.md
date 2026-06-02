@@ -16,23 +16,23 @@ Common issues and solutions for Collabryx development.
 
 ## Installation Issues
 
-### Issue: npm install fails
+### Issue: bun install fails
 
 **Symptoms:**
 ```
-npm ERR! peer dependency error
+bun install error
 ```
 
 **Solutions:**
 ```bash
-# Clear npm cache
-npm cache clean --force
+# Clear bun cache
+bun pm cache rm
 
-# Delete node_modules and lock file
-rm -rf node_modules package-lock.json
+# Delete node_modules
+rm -rf node_modules
 
 # Reinstall
-npm install
+bun install
 ```
 
 ---
@@ -54,7 +54,7 @@ taskkill /PID <PID> /F
 lsof -ti:3000 | xargs kill -9
 
 # Or use different port
-PORT=3001 npm run dev
+PORT=3001 bun run dev
 ```
 
 ---
@@ -77,7 +77,7 @@ rm -rf .next
 # VS Code: Ctrl+Shift+P → "TypeScript: Restart TS Server"
 
 # Rebuild
-npm run dev
+bun run dev
 ```
 
 ---
@@ -92,7 +92,7 @@ Module not found: Can't resolve 'module-name'
 **Solutions:**
 ```bash
 # Reinstall dependencies
-npm install
+bun install
 
 # Check package.json
 cat package.json | grep "module-name"
@@ -185,7 +185,7 @@ Type error TS2345: Argument of type 'X' is not assignable...
 **Solutions:**
 ```bash
 # Check for type errors
-npm run typecheck
+bun run typecheck
 
 # Fix TypeScript errors
 # Common issues:
@@ -199,7 +199,7 @@ npm run typecheck
 ### Issue: Build succeeds but page is blank
 
 **Symptoms:**
-- `npm run build` completes
+- `bun run build` completes
 - Production page is white/blank
 
 **Solutions:**
@@ -215,7 +215,7 @@ npm run typecheck
 ### Issue: Slow page loads
 
 **Solutions:**
-1. Check bundle size: `npm run build:analyze`
+1. Check bundle size: `bun run build:analyze`
 2. Optimize images with `next/image`
 3. Implement lazy loading
 4. Check database query performance
