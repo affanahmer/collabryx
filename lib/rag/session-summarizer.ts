@@ -21,8 +21,28 @@ export interface LLMClient {
   }): Promise<{ choices: { message: { content: string | null } }[] }>
 }
 
+/**
+ * WHY THIS CHANGE (OpenRouter Hardening — Phase 4):
+ * The original createDefaultLLMClient() hardcoded process.env.OPENAI_API_KEY,
+ * which meant the session summarizer (called during RAG context assembly)
+ * would fail in any deployment using only OpenRouter credentials. Since the
+ * summarizer is called on EVERY message after the 8th in a session, this
+ * was a silent failure path that degraded RAG quality over time.
+ *
+ * The fix mirrors the same approach used in vector-retriever.ts:
+ *   1. Prefer OPENROUTER_API_KEY with OPENROUTER_BASE_URL
+ *   2. Fall back to OPENAI_API_KEY
+ *   3. If neither is configured, the original error will surface naturally
+ *
+ * The SUMMARIZER_MODEL env var is preserved for cost control (defaults to
+ * gpt-3.5-turbo) since OpenRouter supports specifying models directly.
+ */
 function createDefaultLLMClient(): LLMClient {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY
+  const baseURL = process.env.OPENROUTER_API_KEY
+    ? (process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1')
+    : undefined
+  const openai = new OpenAI({ apiKey, baseURL })
   return {
     chatCompletionsCreate: (params: {
       model: string
