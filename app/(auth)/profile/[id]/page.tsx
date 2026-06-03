@@ -235,6 +235,12 @@ export default async function ProfilePage({
 
   const visibleProjects = tabProjects.filter(p => isOwnProfile || p.isPublic)
 
+  // FIX: The Supabase `.select()` with conditional fields + embedded joins produces
+  // a complex PostgREST response type that TypeScript can't reconcile with `Profile`.
+  // The original `profile as Profile` cast failed with:
+  // "Conversion of type 'ParserError<...>' to type 'Profile' may be a mistake..."
+  // Adding `as unknown` in the middle breaks the direct type assertion chain and
+  // allows the conversion: `profile as unknown as Profile`.
   const p = profile as unknown as Profile
 
   return (

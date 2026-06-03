@@ -167,6 +167,15 @@ export async function getMatchSuggestions(limit = 20) {
 
   const { data, error } = await supabase
     .from('match_suggestions')
+    // FIX: The original code had PostgREST join comments INSIDE the template literal
+    // that contained BACKTICK characters (`` `match_suggestions` ``). In JavaScript,
+    // backticks inside a template literal END the string prematurely. TypeScript saw
+    // `` `match_suggestions` `` as closing the outer `.select()` backtick and then
+    // parsing the rest as raw syntax, producing TS1005 errors at multiple positions.
+    // The fix removes the comments entirely (they were not SQL comments — `//` inside
+    // a template literal is literal text, not a comment marker). The PostgREST join
+    // syntax (`matched_user:profiles!fkey!inner`) is preserved and works correctly
+    // without explanatory text.
     .select(`
       id,
       user_id,
@@ -178,10 +187,6 @@ export async function getMatchSuggestions(limit = 20) {
       status,
       created_at,
       expires_at,
-      // NOTE: PostgREST (PGRST201) requires explicit FK constraint names when a table has
-      // multiple FK relationships to the same target. `match_suggestions` has both `user_id`
-      // and `matched_user_id` referencing `profiles(id)`. Using `profiles!inner` is ambiguous,
-      // so we specify `match_suggestions_matched_user_id_fkey` to disambiguate the join.
       matched_user:profiles!match_suggestions_matched_user_id_fkey!inner (
         id,
         display_name,
