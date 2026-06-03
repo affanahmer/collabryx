@@ -182,7 +182,7 @@ async function persistMatchScores(
     if (fetchError) {
       logger.app.error("Error batch fetching existing match suggestions", {
         message: fetchError.message,
-        code: (fetchError as Record<string, unknown>).code,
+        code: (fetchError as unknown as Record<string, unknown>).code,
       });
     }
     return;
