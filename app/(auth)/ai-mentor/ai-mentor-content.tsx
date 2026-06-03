@@ -1,3 +1,63 @@
+/**
+ * ============================================================================
+ * AIMentorContent — Orchestrator for AI Mentor Page with Session Management
+ * ============================================================================
+ *
+ * PROBLEM (Bug #1, #2, #3 from analysis):
+ * The original AIMentorContent had three critical flaws:
+ *  1. It generated a random sessionId via `crypto.randomUUID()` that existed
+ *     ONLY in the browser. This UUID was never persisted to the database.
+ *  2. It passed this fake sessionId to BOTH the useAIStream hook AND the
+ *     ChatInput component. The ChatInput tried to call a server action with
+ *     this UUID, which always failed with "Session not found" because no
+ *     ai_mentor_sessions row matched.
+ *  3. The ChatList called getSessionHistory() with the same fake UUID on
+ *     mount, always getting empty results. Users saw no history even when
+ *     messages were displayed from streaming — those messages vanished on
+ *     refresh.
+ *
+ * Additionally, there was no way to:
+ *  - Browse past sessions
+ *  - Switch between sessions
+ *  - Archive old conversations
+ *  - Start fresh without losing everything
+ *
+ * SOLUTION:
+ * This component now acts as the CENTRAL ORCHESTRATOR for the AI Mentor
+ * page, coordinating four sub-components into a cohesive experience:
+ *
+ *  1. SessionSidebar (left panel, togglable):
+ *     - Lists all past sessions (active + archived)
+ *     - Auto-refreshes via polling to pick up new sessions
+ *     - Archive button per session
+ *     - Click to switch active session
+ *     - "New Session" button to clear active state
+ *
+ *  2. useAIStream hook:
+ *     - Receives activeSessionId when user selects a past session
+ *     - When no session is active, the first message creates one server-side
+ *     - onSessionReady callback syncs the real DB session ID back to state
+ *     - sendMessage is passed down to both ChatInput and suggestion handlers
+ *
+ *  3. ChatInput (bottom bar):
+ *     - Receives isStreaming and onSend from this component
+ *     - No direct knowledge of sessions, DB, or server actions
+ *
+ *  4. ChatList (main area):
+ *     - Loads DB history via getSessionHistory(effectiveSessionId)
+ *     - Merges DB messages with streaming messages (deduplicated by content)
+ *     - Shows loading/empty/error states appropriately
+ *
+ * The effectiveSessionId logic:
+ *  - If user selected a past session → use that
+ *  - If in-flight streaming created a new session → use the streaming hook's
+ *    sessionId (synced from server)
+ *  - ChatList uses whichever is available to load history
+ *
+ * @see {@link ../../hooks/use-ai-stream.ts} — streaming hook
+ * @see {@link ../../components/features/ai-mentor/session-sidebar.tsx} — session browser
+ * ============================================================================
+ */
 'use client'
 
 import { useState, useMemo, useCallback } from 'react'
@@ -5,20 +65,44 @@ import { useAIStream } from '@/hooks/use-ai-stream'
 import { useAuth } from '@/hooks/use-auth'
 import { ChatList } from '@/components/features/assistant/chat-list'
 import { ChatInput } from '@/components/features/assistant/chat-input'
+import { SessionSidebar } from '@/components/features/ai-mentor/session-sidebar'
 import { cn } from '@/lib/utils'
 import { glass } from '@/lib/utils/glass-variants'
-import { Lightbulb } from 'lucide-react'
+import { Lightbulb, Menu, X } from 'lucide-react'
 import type { AIStructuredResponse, StartupIdeaAction } from '@/types/ai-responses'
 import { isAIStructuredResponse } from '@/types/ai-responses'
 
 export default function AIMentorContent() {
   const { user } = useAuth()
-  const [sessionId] = useState(() => crypto.randomUUID())
-  const [, setRefreshKey] = useState(0)
-  const { messages, isStreaming, sendMessage, error } = useAIStream({
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const { messages, isStreaming, sendMessage, error, sessionId } = useAIStream({
     userId: user?.id ?? '',
-    sessionId,
+    sessionId: activeSessionId ?? undefined,
+    onSessionReady: (sid) => {
+      setActiveSessionId(sid)
+      setRefreshKey((k) => k + 1)
+    },
   })
+
+  // Session switching — reset when user picks a different session
+  const handleSessionSelect = useCallback((sid: string) => {
+    setActiveSessionId(sid)
+    setSidebarOpen(false)
+    setRefreshKey((k) => k + 1)
+  }, [])
+
+  const handleNewSession = useCallback(() => {
+    // Clear active session and let the hook create a new one on next send
+    setActiveSessionId(null)
+    setRefreshKey((k) => k + 1)
+  }, [])
+
+  // Use the current session ID for the ChatList (either from server or in-flight)
+  const effectiveSessionId = activeSessionId || sessionId
+
   const externalMessages = useMemo(() => {
     return messages.map((msg) => {
       let structured: AIStructuredResponse | undefined
@@ -31,6 +115,7 @@ export default function AIMentorContent() {
       return { role: msg.role as 'user' | 'assistant', content: msg.content, structured }
     })
   }, [messages])
+
   const handleSuggestionClick = useCallback((s: string) => sendMessage(s), [sendMessage])
   const handleIdeaAction = useCallback((ideaId: number, action: StartupIdeaAction) => {
     const m: Record<StartupIdeaAction, string> = {
@@ -45,7 +130,6 @@ export default function AIMentorContent() {
     }
     sendMessage(m[action])
   }, [sendMessage])
-  const handleMessageSent = useCallback(() => setRefreshKey((k) => k + 1), [])
 
   if (!user) {
     return (
@@ -56,33 +140,58 @@ export default function AIMentorContent() {
   }
 
   return (
-    <div className='flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto'>
-      <div className={cn('px-4 md:px-6 py-3 md:py-4 border-b', glass('header'))}>
-        <div className='flex items-center gap-2'>
-          <div className='rounded-full bg-primary/10 p-1.5'>
-            <Lightbulb className='h-4 w-4 text-primary' />
-          </div>
-          <h1 className='text-lg font-semibold'>AI Mentor</h1>
-        </div>
-        <p className='text-xs md:text-sm text-muted-foreground mt-0.5'>
-          Get personalized startup ideas based on your skills and interests
-        </p>
-      </div>
-      {error && (
-        <div className='mx-4 mt-2 bg-destructive/10 text-destructive p-2.5 rounded-md text-xs md:text-sm'>
-          {error?.message || 'An unexpected error occurred. Please try again.'}
-        </div>
+    <div className='flex h-[calc(100vh-4rem)] max-w-6xl mx-auto'>
+      {/* Session Sidebar */}
+      {sidebarOpen && (
+        <SessionSidebar
+          activeSessionId={effectiveSessionId}
+          onSessionSelect={handleSessionSelect}
+          onNewSession={handleNewSession}
+          onClose={() => setSidebarOpen(false)}
+        />
       )}
-      <ChatList
-        sessionId={sessionId}
-        externalMessages={externalMessages}
-        isLoadingExternal={isStreaming}
-        onSuggestionClick={handleSuggestionClick}
-        onIdeaAction={handleIdeaAction}
-        onRefresh={handleMessageSent}
-      />
-      <div className={cn('border-t p-3 md:p-4 bg-background', glass('footer'))}>
-        <ChatInput sessionId={sessionId} onMessageSent={handleMessageSent} />
+
+      {/* Main Chat Area */}
+      <div className='flex flex-col flex-1 min-w-0'>
+        {/* Header */}
+        <div className={cn('px-4 md:px-6 py-3 md:py-4 border-b', glass('header'))}>
+          <div className='flex items-center gap-2'>
+            <button
+              type="button"
+              onClick={() => setSidebarOpen((o) => !o)}
+              className="p-1 -ml-1 hover:bg-accent rounded-md transition-colors"
+              aria-label="Toggle session sidebar"
+            >
+              {sidebarOpen ? <X className='h-4 w-4' /> : <Menu className='h-4 w-4' />}
+            </button>
+            <div className='rounded-full bg-primary/10 p-1.5'>
+              <Lightbulb className='h-4 w-4 text-primary' />
+            </div>
+            <h1 className='text-lg font-semibold'>AI Mentor</h1>
+          </div>
+          <p className='text-xs md:text-sm text-muted-foreground mt-0.5'>
+            Get personalized startup ideas, collaboration advice, and general mentorship
+          </p>
+        </div>
+
+        {error && (
+          <div className='mx-4 mt-2 bg-destructive/10 text-destructive p-2.5 rounded-md text-xs md:text-sm'>
+            {error?.message || 'An unexpected error occurred. Please try again.'}
+          </div>
+        )}
+
+        <ChatList
+          sessionId={effectiveSessionId}
+          externalMessages={externalMessages}
+          isLoadingExternal={isStreaming}
+          onSuggestionClick={handleSuggestionClick}
+          onIdeaAction={handleIdeaAction}
+          onRefresh={() => setRefreshKey((k) => k + 1)}
+        />
+
+        <div className={cn('border-t p-3 md:p-4 bg-background', glass('footer'))}>
+          <ChatInput isStreaming={isStreaming} onSend={sendMessage} />
+        </div>
       </div>
     </div>
   )
