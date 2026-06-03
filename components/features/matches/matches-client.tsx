@@ -10,6 +10,7 @@ import { MatchFilters } from "@/components/features/matches/match-filters"
 import { toast } from "sonner"
 import { Users, Sparkles, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { GlassCard } from "@/components/shared/glass-card"
 import { useMatches, useGenerateMatches } from "@/hooks/use-matches-query"
 import { getCache, CACHE_KEYS } from "@/lib/dashboard-cache"
 import { useAuth } from "@/hooks/use-auth"
@@ -19,16 +20,22 @@ type ViewMode = "grid" | "list"
 
 interface UIMatch {
     id: string
+    profileId: string
     name: string
     role: string
     avatar: string
     compatibility: number
     skills: string[]
+    interests: string[]
     bio: string
     location: string
     timezone: string
     availability: "full-time" | "part-time" | "side-project"
+    collaborationReadiness: string
     insights: Array<{ type: "complementary" | "shared" | "similar"; text: string }>
+    aiConfidence?: number
+    aiExplanation?: string
+    reasons?: string[]
 }
 
 interface MatchCardErrorBoundaryProps {
@@ -57,10 +64,10 @@ function MatchCardErrorBoundary({ children, matchId }: MatchCardErrorBoundaryPro
 
     if (hasError) {
         return (
-            <div className="p-4 rounded-lg border border-destructive/20 bg-destructive/5 text-center">
+            <GlassCard className="p-4 text-center">
                 <AlertTriangle className="h-5 w-5 text-destructive mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">Unable to load this match</p>
-            </div>
+            </GlassCard>
         )
     }
     return <>{children}</>
@@ -90,13 +97,13 @@ function renderMatchCard(match: UIMatch, index: number, viewMode: ViewMode) {
             error: error instanceof Error ? error.message : String(error),
         })
         return (
-            <div
+            <GlassCard
                 key={match.id}
-                className="p-4 rounded-lg border border-destructive/20 bg-destructive/5 text-center"
+                className="p-4 text-center"
             >
                 <AlertTriangle className="h-5 w-5 text-destructive mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground">Unable to load this match</p>
-            </div>
+            </GlassCard>
         )
     }
 }
@@ -108,21 +115,48 @@ export function MatchesClient() {
 
     const matches: UIMatch[] = useMemo(() => {
         if (matchesData && matchesData.length > 0) {
-            return matchesData.map((match) => ({
-                id: match.id,
-                name: match.matched_user_name ?? "Unknown",
-                role: match.matched_user_role ?? "",
-                avatar: match.matched_user_avatar ?? "/avatars/01.png",
-                compatibility: match.match_percentage,
-                skills: [],
-                bio: "",
-                location: "",
-                timezone: "PST",
-                availability: "full-time" as const,
-                insights: [
-                    { type: "complementary" as const, text: "Matches your skills" },
-                ],
-            }))
+            return matchesData.map((match) => {
+                const reasonTexts: Array<{ type: "complementary" | "shared" | "similar"; text: string }> = []
+                const reasons = match.reasons || []
+                if (Array.isArray(reasons)) {
+                    for (const reason of reasons) {
+                        if (typeof reason === "string") {
+                            if (reason.toLowerCase().includes("skill")) {
+                                reasonTexts.push({ type: "similar", text: reason })
+                            } else if (reason.toLowerCase().includes("complement")) {
+                                reasonTexts.push({ type: "complementary", text: reason })
+                            } else if (reason.toLowerCase().includes("interest") || reason.toLowerCase().includes("shared")) {
+                                reasonTexts.push({ type: "shared", text: reason })
+                            } else {
+                                reasonTexts.push({ type: "similar", text: reason })
+                            }
+                        }
+                    }
+                }
+                if (reasonTexts.length === 0) {
+                    reasonTexts.push({ type: "complementary", text: "Matches your skills" })
+                }
+
+                return {
+                    id: match.id,
+                    profileId: match.matched_user_id,
+                    name: match.matched_user_name ?? "Unknown",
+                    role: match.matched_user_role ?? "",
+                    avatar: match.matched_user_avatar ?? "/avatars/01.png",
+                    compatibility: match.match_percentage,
+                    skills: match.matched_user_skills || [],
+                    interests: match.matched_user_interests || [],
+                    bio: match.matched_user_bio ?? "",
+                    location: match.matched_user_location ?? "",
+                    timezone: "PST",
+                    availability: "full-time" as const,
+                    collaborationReadiness: match.matched_user_collaboration ?? "available",
+                    insights: reasonTexts,
+                    aiConfidence: match.ai_confidence,
+                    aiExplanation: match.ai_explanation,
+                    reasons: Array.isArray(match.reasons) ? match.reasons.map(r => String(r)) : [],
+                }
+            })
         }
         if (error) {
             const cached = getCache<UIMatch[]>(CACHE_KEYS.MATCHES)
@@ -178,7 +212,7 @@ export function MatchesClient() {
                 />
                 {isPending ? (
                     viewMode === "grid" ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 lg:gap-8 pb-20">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 pb-20">
                         <MatchCardSkeleton count={8} />
                     </div>
                     ) : (
@@ -187,7 +221,7 @@ export function MatchesClient() {
                     </div>
                     )
                 ) : error && matches.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
+                    <GlassCard className="flex flex-col items-center justify-center py-24 px-4 text-center">
                         <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-red-500/10 flex items-center justify-center mb-4 sm:mb-6">
                             <Users className="h-8 w-8 sm:h-10 sm:w-10 text-red-400" />
                         </div>
@@ -197,9 +231,9 @@ export function MatchesClient() {
                         <p className="text-sm md:text-base text-muted-foreground max-w-md mx-auto mb-6">
                             Please check your connection and try again.
                         </p>
-                    </div>
+                    </GlassCard>
                 ) : matches.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-24 px-4 text-center">
+                    <GlassCard className="flex flex-col items-center justify-center py-24 px-4 text-center">
                         <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-primary/10 flex items-center justify-center mb-4 sm:mb-6">
                             <Users className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
                         </div>
@@ -234,9 +268,9 @@ export function MatchesClient() {
                                 )}
                             </Button>
                         </div>
-                    </div>
+                    </GlassCard>
                 ) : viewMode === "grid" ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 lg:gap-8 pb-20">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 pb-20">
                         {matches.map((match, index) => renderMatchCard(match, index, viewMode))}
                     </div>
                 ) : viewMode === "list" ? (

@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { UserPlus, Sparkles, Brain } from "lucide-react"
+import { UserPlus, Sparkles, MapPin, Clock, Lightbulb } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { WhyMatchModal } from "./why-match-modal"
 import { GlassCard } from "@/components/shared/glass-card"
@@ -16,26 +16,30 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils"
 import { glass } from "@/lib/utils/glass-variants"
 import { formatInitials } from "@/lib/utils/format-initials"
-import { getScoreColorClasses, formatConfidence } from "@/lib/services/match-scores"
+import { getScoreColorClasses } from "@/lib/services/match-scores"
 
 interface MatchCardProps {
     match: {
         id: string
+        profileId: string
         name: string
         role: string
         avatar: string
         compatibility: number
         skills: string[]
+        interests: string[]
         bio: string
         location?: string
         timezone?: string
         availability?: "full-time" | "part-time" | "side-project"
+        collaborationReadiness?: string
         insights?: {
             type: "complementary" | "shared" | "similar"
             text: string
         }[]
         aiConfidence?: number
         aiExplanation?: string
+        reasons?: string[]
     }
     index?: number
 }
@@ -44,6 +48,21 @@ const availabilityLabels: Record<string, string> = {
     "full-time": "Full-time",
     "part-time": "Part-time",
     "side-project": "Side-project"
+}
+
+const collaborationLabels: Record<string, { label: string; className: string }> = {
+    available: {
+        label: "Available now",
+        className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+    },
+    open: {
+        label: "Open to offers",
+        className: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+    },
+    "not-available": {
+        label: "Not available",
+        className: "bg-muted/50 text-muted-foreground border-border/40"
+    }
 }
 
 export const MatchCard = React.memo(function MatchCard({ match, index = 0 }: MatchCardProps) {
@@ -55,13 +74,14 @@ export const MatchCard = React.memo(function MatchCard({ match, index = 0 }: Mat
     const isStrongMatch = match.compatibility >= 90
     const isLowMatch = match.compatibility < 80
     const scoreColors = getScoreColorClasses(match.compatibility)
-    const hasHighConfidence = (match.aiConfidence || 0) >= 0.8
+    const collab = collaborationLabels[match.collaborationReadiness || "available"] || collaborationLabels.available
+    const hasBio = match.bio && match.bio.trim().length > 0
+    const hasLocation = match.location && match.location.trim().length > 0
+    const hasSkills = match.skills && match.skills.length > 0
+    const hasInterests = match.interests && match.interests.length > 0
 
-    // Combine location and availability for a clean subtitle
-    const subtitleParts = []
-    if (match.location) subtitleParts.push(match.location)
-    if (match.availability) subtitleParts.push(availabilityLabels[match.availability])
-    const subtitle = subtitleParts.join(" • ")
+    const MAX_SKILLS = 4
+    const MAX_INTERESTS = 3
 
     return (
         <>
@@ -75,42 +95,39 @@ export const MatchCard = React.memo(function MatchCard({ match, index = 0 }: Mat
                     hoverable
                     className={cn(
                         "group relative h-full overflow-hidden transition-all duration-300",
-                        isLowMatch ? "opacity-60" : ""
+                        "bg-card border-border"
                     )}
                     innerClassName="h-full cursor-pointer flex flex-col justify-between"
-                    onClick={() => router.push(`/profile/${match.id}`)}
+                    onClick={() => router.push(`/profile/${match.profileId}`)}
                 >
                     <div className="flex flex-col h-full p-4">
                         {/* Top Row: Avatar | Name & Role | Match Score */}
                         <div className="flex items-start justify-between gap-3 mb-3">
-                            {/* Avatar - Top Left */}
                             <div className="relative shrink-0">
-                                <div className="relative rounded-full ring-1 ring-border transition-all duration-300 group-hover:ring-primary/50">
-                                    <Avatar className="h-12 w-12">
+                                <div className="relative rounded-full ring-2 ring-border/60 transition-all duration-300 group-hover:ring-primary/40">
+                                    <Avatar className="h-14 w-14">
                                         <AvatarImage src={match.avatar} alt={match.name} className="object-cover" />
-                                        <AvatarFallback className="text-sm font-bold bg-muted text-foreground">
+                                        <AvatarFallback className="text-base font-bold bg-muted text-foreground">
                                             {formatInitials(match.name)}
                                         </AvatarFallback>
                                     </Avatar>
                                 </div>
                                 {isStrongMatch && (
-                                    <div className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500/20 backdrop-blur-sm">
+                                    <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 backdrop-blur-sm">
                                         <span className="text-[10px]">🔥</span>
                                     </div>
                                 )}
                             </div>
 
-                            {/* Name & Role - Middle */}
-                            <div className="flex-1 min-w-0 flex flex-col justify-center h-12">
+                            <div className="flex-1 min-w-0 flex flex-col justify-center h-14">
                                 <h3 className="text-sm font-bold tracking-tight text-foreground truncate">
                                     {match.name}
                                 </h3>
-                                <p className="text-xs text-muted-foreground truncate font-medium">
+                                <p className="text-xs text-foreground/70 truncate font-medium">
                                     {match.role}
                                 </p>
                             </div>
 
-                            {/* Match Score - Top Right */}
                             <TooltipProvider delayDuration={300}>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -132,12 +149,6 @@ export const MatchCard = React.memo(function MatchCard({ match, index = 0 }: Mat
                                                     {match.compatibility}% Match
                                                 </span>
                                             </div>
-                                            {match.aiConfidence && (
-                                                <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                                                    <Brain className="h-3 w-3" />
-                                                    <span>AI Confidence: {formatConfidence(match.aiConfidence)}</span>
-                                                </div>
-                                            )}
                                             <p className="text-[10px] text-muted-foreground/80">
                                                 Click to see detailed breakdown
                                             </p>
@@ -147,83 +158,105 @@ export const MatchCard = React.memo(function MatchCard({ match, index = 0 }: Mat
                             </TooltipProvider>
                         </div>
 
-                        {/* Location / Availability Subtitle */}
-                        {subtitle && (
-                            <p className="text-xs text-muted-foreground/80 mb-3 truncate">
-                                {subtitle}
+                        {/* Location + Collaboration Readiness Pill */}
+                        <div className="flex items-center gap-2 mb-3 flex-wrap">
+                            {hasLocation && (
+                                <span className="inline-flex items-center gap-1 text-xs text-foreground/60">
+                                    <MapPin className="h-3 w-3" />
+                                    {match.location}
+                                </span>
+                            )}
+                            <Badge className={cn("text-[10px] px-2 py-0 border", collab.className)}>
+                                {collab.label}
+                            </Badge>
+                        </div>
+
+                        {/* Bio */}
+                        {hasBio && (
+                            <p className="text-xs text-foreground/70 line-clamp-3 mb-3 leading-relaxed">
+                                {match.bio}
+                            </p>
+                        )}
+                        {!hasBio && (
+                            <p className="text-xs text-foreground/40 italic line-clamp-2 mb-3 leading-relaxed">
+                                No bio yet
                             </p>
                         )}
 
-                        {/* Bio Sneak Peek */}
-                        <p className="text-xs text-muted-foreground/90 line-clamp-2 mb-3 leading-relaxed">
-                            {match.bio}
-                        </p>
-
-                        {/* Minimalist Tags (2 skills, 1 insight) */}
-                        <div className="flex flex-col gap-2 mb-auto">
-                            {/* AI Confidence Badge for High-Confidence Matches */}
-                            {hasHighConfidence && (
-                                <div className="flex items-center gap-1.5 mb-1">
-                                    <div className={cn(
-                                        "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium backdrop-blur-sm border",
-                                        scoreColors.bg,
-                                        scoreColors.text,
-                                        scoreColors.border
-                                    )}>
-                                        <Sparkles className="h-3 w-3" />
-                                        <span>AI-Powered Match</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {match.insights && match.insights.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
-                                    <MatchReasonBadge
-                                        type={match.insights[0].type === "complementary" ? "complementary" : match.insights[0].type === "shared" ? "interest" : "skill"}
-                                        label={match.insights[0].text}
-                                        className="text-xs py-0 px-2"
-                                    />
-                                    {match.insights.length > 1 && (
-                                        <span className="text-xs text-muted-foreground/60 flex items-center">+{match.insights.length - 1}</span>
-                                    )}
-                                </div>
-                            )}
-
-                            <div className="flex flex-wrap gap-1.5 items-center">
-                                {match.skills.slice(0, 2).map((skill) => (
-                                    <Badge
-                                        key={skill}
-                                        variant="secondary"
-                                        className={cn(
-                                            "text-xs px-2 py-0 font-medium",
-                                            glass("badge")
-                                        )}
-                                    >
-                                        {skill}
-                                    </Badge>
-                                ))}
-                                {match.skills.length > 2 && (
-                                    <TooltipProvider delayDuration={300}>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Badge 
-                                                    variant="outline" 
-                                                    className={cn(
-                                                        "text-xs px-2 py-0 font-medium border-dashed cursor-help",
-                                                        glass("badge")
-                                                    )}
-                                                >
-                                                    +{match.skills.length - 2}
-                                                </Badge>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="top" className="max-w-[200px] text-xs">
-                                                <p>{match.skills.slice(2).join(", ")}</p>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
+                        {/* Insights from match reasons */}
+                        {match.reasons && match.reasons.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-2">
+                                <MatchReasonBadge
+                                    type="skill"
+                                    label={match.reasons[0]}
+                                    className="text-[10px] py-0 px-2"
+                                />
+                                {match.reasons.length > 1 && (
+                                    <span className="text-[10px] text-foreground/50 flex items-center">+{match.reasons.length - 1}</span>
                                 )}
                             </div>
-                        </div>
+                        )}
+
+                        {/* Skills Section */}
+                        {hasSkills && (
+                            <div className="mb-2">
+                                <div className="flex flex-wrap gap-1.5 items-center">
+                                    {match.skills.slice(0, MAX_SKILLS).map((skill) => (
+                                        <Badge
+                                            key={skill}
+                                            variant="secondary"
+                                            className={cn(
+                                                "text-[10px] px-2 py-0.5 font-medium",
+                                                glass("badge"),
+                                                "hover:bg-primary/10 hover:text-primary transition-colors"
+                                            )}
+                                        >
+                                            {skill}
+                                        </Badge>
+                                    ))}
+                                    {match.skills.length > MAX_SKILLS && (
+                                        <TooltipProvider delayDuration={300}>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Badge
+                                                        variant="outline"
+                                                        className={cn(
+                                                            "text-[10px] px-2 py-0.5 font-medium border-dashed cursor-help",
+                                                            glass("badge")
+                                                        )}
+                                                    >
+                                                        +{match.skills.length - MAX_SKILLS}
+                                                    </Badge>
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top" className="max-w-[200px] text-xs">
+                                                    <p>{match.skills.slice(MAX_SKILLS).join(", ")}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        </TooltipProvider>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Interests Section */}
+                        {hasInterests && (
+                            <div className="mb-auto">
+                                <div className="flex flex-wrap gap-1 items-center">
+                                    {match.interests.slice(0, MAX_INTERESTS).map((interest) => (
+                                        <Badge
+                                            key={interest}
+                                            variant="outline"
+                                            className="text-[10px] px-2 py-0.5 font-medium text-muted-foreground border-border/50"
+                                        >
+                                            {interest}
+                                        </Badge>
+                                    ))}
+                                    {match.interests.length > MAX_INTERESTS && (
+                                        <span className="text-[10px] text-muted-foreground/50">+{match.interests.length - MAX_INTERESTS}</span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Bottom Row: Action Buttons */}
                         <div className="flex gap-2 mt-4 pt-3 border-t border-border/40 items-center">

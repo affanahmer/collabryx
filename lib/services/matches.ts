@@ -14,6 +14,11 @@ export interface MatchSuggestionWithProfile extends MatchSuggestion {
   matched_user_role?: string;
   matched_user_avatar?: string;
   matched_user_initials?: string;
+  matched_user_bio?: string;
+  matched_user_location?: string;
+  matched_user_collaboration?: string;
+  matched_user_skills?: string[];
+  matched_user_interests?: string[];
 }
 
 export interface FetchMatchesOptions {
@@ -48,6 +53,9 @@ export async function fetchMatches(
       display_name?: string
       avatar_url?: string
       headline?: string
+      bio?: string
+      location?: string
+      collaboration_readiness?: string
     }
   }
 
@@ -89,7 +97,10 @@ export async function fetchMatches(
             full_name,
             display_name,
             avatar_url,
-            headline
+            headline,
+            bio,
+            location,
+            collaboration_readiness
           )
         `)
         .eq("user_id", user.id)
@@ -148,7 +159,46 @@ export async function fetchMatches(
     matched_user_role: match.matched_user?.headline || "",
     matched_user_avatar: match.matched_user?.avatar_url || "",
     matched_user_initials: formatInitials(match.matched_user?.display_name || match.matched_user?.full_name || "Unknown"),
+    matched_user_bio: match.matched_user?.bio || "",
+    matched_user_location: match.matched_user?.location || "",
+    matched_user_collaboration: match.matched_user?.collaboration_readiness || "available",
+    matched_user_skills: [],
+    matched_user_interests: [],
   }))
+
+  const matchedUserIds = mappedMatches.map((m) => m.matched_user_id)
+
+  const { data: skillsData } = await supabase
+    .from("user_skills")
+    .select("user_id, skill_name")
+    .in("user_id", matchedUserIds)
+
+  const { data: interestsData } = await supabase
+    .from("user_interests")
+    .select("user_id, interest")
+    .in("user_id", matchedUserIds)
+
+  if (skillsData) {
+    const skillsMap = new Map<string, string[]>()
+    for (const row of skillsData) {
+      if (!skillsMap.has(row.user_id)) skillsMap.set(row.user_id, [])
+      skillsMap.get(row.user_id)!.push(row.skill_name)
+    }
+    for (const match of mappedMatches) {
+      match.matched_user_skills = skillsMap.get(match.matched_user_id) || []
+    }
+  }
+
+  if (interestsData) {
+    const interestsMap = new Map<string, string[]>()
+    for (const row of interestsData) {
+      if (!interestsMap.has(row.user_id)) interestsMap.set(row.user_id, [])
+      interestsMap.get(row.user_id)!.push(row.interest)
+    }
+    for (const match of mappedMatches) {
+      match.matched_user_interests = interestsMap.get(match.matched_user_id) || []
+    }
+  }
 
   logger.app.info("Matches fetched successfully", {
     count: mappedMatches.length,

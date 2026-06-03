@@ -3,21 +3,23 @@
 import * as React from "react"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from "@/components/ui/tooltip"
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuGroup,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useSidebar } from "@/components/shared/sidebar-context"
-import { NotificationsWidget } from "@/components/features/dashboard/notifications-widget"
-import { useMatches } from "@/hooks/use-matches-query"
 import { useConnectionRequests } from "@/hooks/use-connections"
+import { GlobalSearch } from "@/components/features/search/global-search"
 import {
     LayoutDashboard,
     Sparkles,
@@ -27,149 +29,141 @@ import {
     Menu,
     X,
     TrendingUp,
-    Briefcase,
     Bell,
     Settings,
-    LucideIcon,
-    Activity,
     BarChart3,
     Bookmark,
-    Shield,
-    HelpCircle
+    HelpCircle,
+    MoreVertical,
+    LogOut,
+    LucideIcon,
 } from "lucide-react"
-import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler"
 import { useUser } from "@/hooks/use-profile"
+import { createClient } from "@/lib/supabase/client"
 
 interface SidebarNavProps extends React.HTMLAttributes<HTMLDivElement> {
     isMobile?: boolean
 }
 
+interface NavItem {
+    title: string
+    href: string
+    icon: LucideIcon
+    badge?: number
+}
+
 export function SidebarNav({ className, isMobile, ...props }: SidebarNavProps) {
     const pathname = usePathname()
-    const { profile } = useUser()
+    const router = useRouter()
+    const supabase = createClient()
+    const { user, profile } = useUser()
     const sidebarContext = useSidebar()
     const isCollapsed = isMobile ? false : sidebarContext.isCollapsed
     const toggleSidebar = sidebarContext.toggleSidebar
 
-    const { data: matchesData } = useMatches()
     const { receivedRequests } = useConnectionRequests()
     const requestCount = receivedRequests.length
 
-    const [showTooltips, setShowTooltips] = React.useState(false)
+    const handleLogout = async () => {
+        await supabase.auth.signOut()
+        router.push('/login')
+    }
 
-    React.useEffect(() => {
-        if (isCollapsed) {
-            const timer = setTimeout(() => {
-                setShowTooltips(true)
-            }, 500) // Match transition duration + buffer
-            return () => clearTimeout(timer)
-        } else {
-            setShowTooltips(false)
-        }
-    }, [isCollapsed])
+    // Active route matching — handles nested routes like /messages/123, /settings/billing
+    const isActive = (href: string) => {
+        if (pathname === href) return true
+        if (href !== '/' && pathname.startsWith(href + '/')) return true
+        return false
+    }
 
-    // Intent-driven navigation structure
-    const navigationSections = [
-        {
-            label: "MAIN",
-            items: [
-                {
-                    title: "Dashboard",
-                    href: "/dashboard",
-                    icon: LayoutDashboard,
-                },
-                {
-                    title: "Smart Matches",
-                    href: "/matches",
-                    icon: Sparkles,
-                    badge: matchesData?.length || 0,
-                },
-            ]
-        },
-        {
-            label: "COLLABORATION",
-            items: [
-                {
-                    title: "Messages",
-                    href: "/messages",
-                    icon: MessageSquare,
-                },
-                {
-                    title: "Requests",
-                    href: "/requests",
-                    icon: TrendingUp,
-                    badge: requestCount,
-                },
-            ]
-        },
-        {
-            label: "DISCOVER",
-            items: [
-                {
-                    title: "Activity",
-                    href: "/activity",
-                    icon: Activity,
-                },
-                {
-                    title: "Notifications",
-                    href: "/notifications",
-                    icon: Bell,
-                },
-                {
-                    title: "Analytics",
-                    href: "/analytics",
-                    icon: BarChart3,
-                },
-            ]
-        },
-        {
-            label: "AI TOOLS",
-            items: [
-                {
-                    title: "AI Mentor",
-                    href: "/assistant",
-                    icon: Bot,
-                },
-            ]
-        },
-        {
-            label: "ACCOUNT",
-            items: [
-                {
-                    title: "My Profile",
-                    href: "/my-profile",
-                    icon: UserCircle,
-                },
-                {
-                    title: "Bookmarks",
-                    href: "/bookmarks",
-                    icon: Bookmark,
-                },
-                {
-                    title: "Privacy",
-                    href: "/privacy",
-                    icon: Shield,
-                },
-            ]
-        },
-        {
-            label: "SUPPORT",
-            items: [
-                {
-                    title: "Help",
-                    href: "/help",
-                    icon: HelpCircle,
-                },
-            ]
-        }
+    // Primary navigation — core daily workflow (no section label)
+    const primaryItems: NavItem[] = [
+        { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+        { title: "Messages", href: "/messages", icon: MessageSquare },
+        { title: "Smart Matches", href: "/matches", icon: Sparkles },
+        { title: "Notifications", href: "/notifications", icon: Bell },
+        { title: "AI Mentor", href: "/assistant", icon: Bot },
     ]
 
+    // Secondary navigation — utilities & account (no section label, just a divider)
+    const secondaryItems: NavItem[] = [
+        { title: "Requests", href: "/requests", icon: TrendingUp, badge: requestCount },
+        { title: "Analytics", href: "/analytics", icon: BarChart3 },
+        { title: "My Profile", href: "/my-profile", icon: UserCircle },
+        { title: "Bookmarks", href: "/bookmarks", icon: Bookmark },
+        { title: "Settings", href: "/settings", icon: Settings },
+        { title: "Help", href: "/help", icon: HelpCircle },
+    ]
+
+    function NavLink({ item }: { item: NavItem }) {
+        const active = isActive(item.href)
+        return (
+            <Link
+                href={item.href}
+                className={cn(
+                    "relative flex items-center rounded-xl py-2.5 text-sm transition-all duration-200 group cursor-pointer",
+                    active
+                        ? "bg-primary/15 text-primary font-semibold shadow-[0_0_16px_rgba(99,102,241,0.12)]"
+                        : "font-medium text-muted-foreground hover:bg-muted hover:text-foreground",
+                    isCollapsed ? "justify-center px-4" : "justify-start px-3.5"
+                )}
+                aria-current={active ? "page" : undefined}
+            >
+                {active && !isCollapsed && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1/2 w-1 bg-primary rounded-r-full transition-all duration-300" />
+                )}
+                <item.icon
+                    className={cn(
+                        "h-[1.15rem] w-[1.15rem] shrink-0 transition-colors relative z-10",
+                        active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                    )}
+                />
+                <div
+                    className={cn(
+                        "flex items-center overflow-hidden transition-all duration-300 ease-out whitespace-nowrap",
+                        isCollapsed ? "max-w-0 opacity-0" : "max-w-[200px] opacity-100 delay-[50ms] flex-1 ml-3"
+                    )}
+                >
+                    <span className="tracking-wide relative z-10">{item.title}</span>
+                    {item.badge !== undefined && item.badge > 0 && (
+                        <span
+                            className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground px-1"
+                            aria-label={`${item.badge} pending ${item.title.toLowerCase()}`}
+                        >
+                            {item.badge}
+                        </span>
+                    )}
+                </div>
+            </Link>
+        )
+    }
+
     return (
-        <div id="sidebar-nav" data-testid="sidebar-nav" data-ismobile={String(!!isMobile)} className={cn("flex h-full flex-col relative bg-background overflow-hidden", className)} {...props}>
-            {/* Header Section */}
-            <div className={cn("flex shrink-0 transition-all duration-300",
-                isCollapsed ? "flex-col items-center gap-4 py-6" : "items-center justify-between h-20 px-5")}>
-                <Link href="/" className={cn("flex items-center font-bold text-xl group overflow-hidden transition-all duration-300", isCollapsed ? "justify-center w-full" : "flex-1 px-1")}>
+        <nav
+            id="sidebar-nav"
+            data-testid="sidebar-nav"
+            data-ismobile={String(!!isMobile)}
+            className={cn(
+                "flex h-full flex-col relative bg-background shadow-[4px_0_32px_rgba(99,102,241,0.04)]",
+                className
+            )}
+            aria-label="Main navigation"
+            {...props}
+        >
+            {/* ── Header: Logo + Toggle ── */}
+            <div
+                className={cn(
+                    "flex shrink-0 transition-all duration-300",
+                    isCollapsed ? "flex-col items-center gap-4 py-5" : "items-center justify-between h-16 px-5"
+                )}
+            >
+                <Link
+                    href="/"
+                    className={cn(
+                        "flex items-center font-bold text-xl group overflow-hidden transition-all duration-300",
+                        isCollapsed ? "justify-center w-full" : "flex-1 px-1"
+                    )}
+                >
                     <div className="h-9 w-9 shrink-0 flex items-center justify-center transition-transform group-hover:scale-105 duration-300">
                         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
                             <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
@@ -187,16 +181,19 @@ export function SidebarNav({ className, isMobile, ...props }: SidebarNavProps) {
                     </div>
                 </Link>
 
-                {/* Toggle Button - Desktop Only */}
+                {/* Toggle Button — Desktop Only */}
                 {!isMobile && (
                     <Button
                         variant="ghost"
                         size="icon"
-                        className={cn("text-muted-foreground hover:text-foreground hidden md:flex", isCollapsed ? "h-9 w-9" : "h-7 w-7")}
+                        className={cn(
+                            "text-muted-foreground hover:text-foreground hidden md:flex",
+                            isCollapsed ? "h-9 w-9" : "h-7 w-7"
+                        )}
                         onClick={toggleSidebar}
                         aria-expanded={!isCollapsed}
                         aria-controls="sidebar-nav"
-                        aria-label={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                        aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
                     >
                         <div className="relative h-4 w-4">
                             <Menu className={cn("absolute inset-0 transition-all duration-300", isCollapsed ? "scale-100 opacity-100 rotate-0" : "scale-0 opacity-0 -rotate-90")} />
@@ -206,193 +203,132 @@ export function SidebarNav({ className, isMobile, ...props }: SidebarNavProps) {
                 )}
             </div>
 
-            {/* Profile Section */}
-            <div className={cn("px-4 transition-all duration-500 ease-in-out shrink-0", isCollapsed ? "py-4" : "py-6")}>
-                <TooltipProvider delayDuration={0}>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <div className={cn("flex rounded-2xl transition-all duration-300 overflow-hidden relative cursor-pointer group",
-                                !isCollapsed ? "flex-col p-4 border shadow-sm bg-card" : "items-center justify-center gap-2 bg-transparent border-0 shadow-none p-0")}>
+            {/* ── Universal Search ── */}
+            <div className={cn(
+                "shrink-0 transition-all duration-300",
+                isCollapsed ? "px-3 pt-0 pb-1.5" : "px-3 pb-1"
+            )}>
+                <GlobalSearch
+                    isCollapsed={isCollapsed}
+                    onExpand={toggleSidebar}
+                />
+            </div>
 
-                                <div className={cn("flex items-center transition-all duration-300", !isCollapsed ? "flex-col" : "")}>
-                                    <div className={cn("relative transition-all duration-300", isCollapsed ? "mb-0" : "mb-3")}>
-                                        <div className={cn("rounded-full bg-background transition-all duration-300", !isCollapsed ? "ring-2 ring-border/50 p-1" : "ring-2 ring-primary/10 shadow-sm group-hover:ring-primary/30")}>
-                                            <Avatar className={cn("transition-all duration-300", !isCollapsed ? "h-20 w-20" : "h-10 w-10")}>
-                                                <AvatarImage src={profile?.avatar_url || '/avatars/01.png'} alt={profile?.full_name || '@user'} />
-                                                <AvatarFallback>
-                                                    {profile?.full_name 
-                                                        ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-                                                        : 'U'
-                                                    }
-                                                </AvatarFallback>
-                                            </Avatar>
-                                        </div>
-                                        <div className={cn("absolute bg-green-500 rounded-full shadow-sm transition-all duration-300",
-                                            !isCollapsed
-                                                ? "bottom-1 right-1 h-5 w-5 border-[3px] border-background"
-                                                : "bottom-0 right-0 h-3 w-3 border-2 border-background shadow-none")} />
-                                    </div>
+            {/* Divider below search */}
+            <div className={cn(
+                "mx-3 h-px bg-border/40",
+                isCollapsed ? "mb-0" : "mb-1"
+            )} role="separator" aria-orientation="horizontal" />
 
-                                    <div className={cn("text-center transition-all duration-300 whitespace-nowrap overflow-hidden",
-                                        isCollapsed ? "max-w-0 max-h-0 opacity-0" : "max-w-[200px] max-h-[50px] opacity-100 delay-[50ms]")}>
-                                        <h3 className="font-bold text-lg text-foreground tracking-tight truncate">
-                                            {profile?.full_name || 'User'}
-                                        </h3>
-                                        <p className="text-xs text-muted-foreground font-medium mt-0.5 flex items-center justify-center gap-1.5 truncate">
-                                            <Briefcase className="h-3 w-3 shrink-0" />
-                                            {profile?.headline || 'Member'}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div className={cn("transition-all duration-300", isCollapsed ? "h-0" : "h-2 w-full")} />
-                            </div>
-                        </TooltipTrigger>
-                        {isCollapsed && showTooltips && (
-                            <TooltipContent side="right" className="font-medium">
-                                <p>{profile?.full_name || 'User'}</p>
-                            </TooltipContent>
+            {/* ── Navigation Items — Flat list with divider ── */}
+            <ScrollArea className="flex-1 w-full px-3" type="auto">
+                <div className="flex flex-col py-2">
+                    {/* Primary group */}
+                    <ul role="list" className="flex flex-col gap-0.5" aria-label="Primary">
+                        {primaryItems.map((item) => (
+                            <li key={item.href} role="listitem">
+                                <NavLink item={item} />
+                            </li>
+                        ))}
+                    </ul>
+
+                    {/* Visual divider — no section label */}
+                    <div className="my-3 mx-3 h-px bg-border/50" role="separator" aria-orientation="horizontal" />
+
+                    {/* Secondary group */}
+                    <ul role="list" className="flex flex-col gap-0.5" aria-label="More">
+                        {secondaryItems.map((item) => (
+                            <li key={item.href} role="listitem">
+                                <NavLink item={item} />
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </ScrollArea>
+
+            {/* ── Compact Profile Footer with three-dot menu ── */}
+            <div className={cn("shrink-0 border-t border-border/20", isCollapsed ? "p-3" : "p-3")}>
+                <div className={cn(
+                    "flex items-center rounded-xl transition-colors group",
+                    isCollapsed ? "justify-center" : "gap-2"
+                )}>
+                    <Link
+                        href="/my-profile"
+                        className={cn(
+                            "flex items-center flex-1 rounded-xl hover:bg-muted transition-colors min-w-0",
+                            isCollapsed ? "justify-center p-2" : "gap-3 px-3 py-2"
                         )}
-                    </Tooltip>
-                </TooltipProvider>
-            </div>
-
-            {/* Navigation Items */}
-            <div className="flex-1 min-h-0 overflow-hidden w-full">
-                <ScrollArea className="h-full w-full px-3 py-2 [&_[data-slot=scroll-area-scrollbar]]:hidden">
-                    <div className="flex flex-col gap-1">
-                        <TooltipProvider delayDuration={0}>
-                            {navigationSections.map((section) => (
-                                <div key={section.label} className="mb-4">
-                                    {/* Section Label - Fades seamlessly */}
-                                    <div className={cn("transition-all duration-300 ease-out delay-[50ms] overflow-hidden whitespace-nowrap", isCollapsed ? "max-h-0 max-w-0 opacity-0 mb-0 px-0" : "max-h-[20px] max-w-[200px] opacity-100 mb-2 px-3")}>
-                                        <span className="text-xs md:text-[10px] font-extrabold tracking-widest text-foreground/80 uppercase">
-                                            {section.label}
-                                        </span>
-                                    </div>
-
-                                    {/* Section Items */}
-                                    <div className="flex flex-col gap-1">
-                                        {section.items.map((item: { title: string; href: string; icon: LucideIcon; badge?: number }) => {
-                                            const isActive = pathname === item.href
-                                            return (
-                                                <Tooltip key={item.href}>
-                                                    <TooltipTrigger asChild>
-                                                        <Link
-                                                            href={item.href}
-                                                            className={cn(
-                                                                "relative flex items-center rounded-xl py-3 text-sm transition-all duration-200 group overflow-hidden cursor-pointer",
-                                                                isActive
-                                                                    ? "bg-primary/15 text-primary font-semibold"
-                                                                    : "font-medium text-muted-foreground hover:bg-muted hover:text-foreground",
-                                                                isCollapsed ? "justify-center px-4" : "justify-start px-3.5 hover:translate-x-1"
-                                                            )}
-                                                        >
-                                                            {/* Add left border accent when active */}
-                                                            {isActive && !isCollapsed && (
-                                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1/2 w-1 bg-primary rounded-r-full transition-all duration-300" />
-                                                            )}
-                                                            <item.icon className={cn("h-[1.15rem] w-[1.15rem] shrink-0 transition-colors relative z-10",
-                                                                isActive ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
-                                                            )} />
-                                                            <div className={cn("flex items-center overflow-hidden transition-all duration-300 ease-out whitespace-nowrap",
-                                                                isCollapsed ? "max-w-0 opacity-0" : "max-w-[200px] opacity-100 delay-[50ms] flex-1 ml-3")}>
-                                                                <span className="tracking-wide relative z-10">{item.title}</span>
-                                                                {item.badge && item.badge > 0 && (
-                                                                    <span className="ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-destructive text-xs md:text-[10px] font-bold text-destructive-foreground animate-none">
-                                                                        {item.badge}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        </Link>
-                                                    </TooltipTrigger>
-                                                    {isCollapsed && showTooltips && (
-                                                        <TooltipContent side="right" className="font-medium" sideOffset={10}>
-                                                            {item.title}
-                                                        </TooltipContent>
-                                                    )}
-                                                </Tooltip>
-                                            )
-                                        })}
-                                    </div>
-                                </div>
-                            ))}
-                        </TooltipProvider>
-                    </div>
-                </ScrollArea>
-            </div>
-
-            {/* Footer Actions - Redesigned */}
-            <div className="p-3 mt-auto shrink-0">
-                {!isCollapsed ? (
-                    <div className="flex flex-col gap-2 p-2 bg-card rounded-xl border shadow-sm">
-                        <TooltipProvider delayDuration={0}>
-                            <div className="flex items-center gap-1">
-                                <NotificationsWidget>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-10 w-10 hover:bg-muted/80 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
-                                    >
-                                        <Bell className="h-4 w-4" />
-                                        <span className="sr-only">Notifications</span>
-                                    </Button>
-                                </NotificationsWidget>
-
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Link href="/settings">
-                                            <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-muted/80 rounded-lg text-muted-foreground hover:text-foreground transition-colors">
-                                                <Settings className="h-4 w-4" />
-                                                <span className="sr-only">Settings</span>
-                                            </Button>
-                                        </Link>
-                                    </TooltipTrigger>
-                                    <TooltipContent>Settings</TooltipContent>
-                                </Tooltip>
+                    >
+                        <Avatar className="h-9 w-9 shrink-0 ring-1 ring-border/40 group-hover:ring-primary/30 transition-all">
+                            <AvatarImage src={profile?.avatar_url || '/avatars/01.png'} alt={profile?.full_name || 'User'} />
+                            <AvatarFallback className="text-xs">
+                                {profile?.full_name
+                                    ? profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                                    : 'U'
+                                }
+                            </AvatarFallback>
+                        </Avatar>
+                        {!isCollapsed && (
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">
+                                    {profile?.full_name || 'User'}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                    {profile?.headline || 'Member'}
+                                </p>
                             </div>
-                        </TooltipProvider>
+                        )}
+                    </Link>
 
-                        <div className="h-px w-full bg-border/40 my-1" />
-
-                        <div className="flex justify-center">
-                            <AnimatedThemeToggler variant="slider" />
-                        </div>
-                    </div>
-                ) : (
-                    <div className="flex flex-col gap-2 items-center">
-                        <TooltipProvider delayDuration={0}>
-                            <NotificationsWidget>
+                    {/* Three-dot overflow menu */}
+                    {!isCollapsed && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
                                 <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-10 w-10 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground"
+                                    className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity focus-visible:opacity-100"
+                                    aria-label="Profile options"
                                 >
-                                    <Bell className="h-4 w-4" />
-                                    <span className="sr-only">Notifications</span>
+                                    <MoreVertical className="h-4 w-4" />
                                 </Button>
-                            </NotificationsWidget>
-
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Link href="/settings">
-                                        <Button variant="ghost" size="icon" className="h-10 w-10 hover:bg-muted rounded-xl text-muted-foreground hover:text-foreground">
-                                            <Settings className="h-4 w-4" />
-                                            <span className="sr-only">Settings</span>
-                                        </Button>
-                                    </Link>
-                                </TooltipTrigger>
-                                {showTooltips && <TooltipContent side="right">Settings</TooltipContent>}
-                            </Tooltip>
-                        </TooltipProvider>
-
-                        <div className="h-px w-8 bg-border/40" />
-
-                        <AnimatedThemeToggler className="h-10 w-10 hover:bg-muted rounded-xl" />
-                    </div>
-                )}
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent side="top" align="end" sideOffset={8} className="w-48">
+                                <DropdownMenuLabel className="font-normal">
+                                    <div className="flex flex-col space-y-0.5">
+                                        <p className="text-sm font-medium">
+                                            {profile?.full_name || user?.email?.split('@')[0] || 'User'}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground truncate">
+                                            {user?.email || ''}
+                                        </p>
+                                    </div>
+                                </DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuGroup>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/my-profile" className="flex items-center cursor-pointer">
+                                            <UserCircle className="mr-2 h-4 w-4" />
+                                            <span>View Profile</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/settings" className="flex items-center cursor-pointer">
+                                            <Settings className="mr-2 h-4 w-4" />
+                                            <span>Settings</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                </DropdownMenuGroup>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-destructive focus:text-destructive">
+                                    <LogOut className="mr-2 h-4 w-4" />
+                                    <span>Sign out</span>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+                </div>
             </div>
-
-            {/* Notifications Widget replaced Dialog */}
-        </div>
+        </nav>
     )
 }

@@ -12,8 +12,9 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { AlignJustify, Bell, User, Settings, LogOut } from "lucide-react"
+import { AlignJustify, Bell, User, Settings, LogOut, Search } from "lucide-react"
 import { SidebarNav } from "@/components/shared/sidebar-nav"
+import { GlobalSearchDialog } from "@/components/features/search/global-search-dialog"
 import { NotificationsWidget } from "@/components/features/dashboard/notifications-widget"
 import { useSettings } from "@/hooks/use-settings"
 import { useUser } from "@/hooks/use-profile"
@@ -22,10 +23,13 @@ import { createClient } from "@/lib/supabase/client"
 import Link from "next/link"
 import { useState, useEffect, useRef } from "react"
 import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
+import { glass } from "@/lib/utils/glass-variants"
 
 
 export function MobileNav() {
     const [open, setOpen] = useState(false)
+    const [searchOpen, setSearchOpen] = useState(false)
     const { user, profile } = useUser()
     const router = useRouter()
     const supabase = createClient()
@@ -50,7 +54,7 @@ export function MobileNav() {
 
     return (
         <>
-            <div className="sticky top-0 z-50 flex items-center justify-between border-b bg-background/95 backdrop-blur px-3 py-2.5 md:hidden supports-[backdrop-filter]:bg-background/60 pb-env(safe-area-inset-bottom)">
+            <div className={cn("sticky top-0 z-50 flex items-center justify-between px-3 py-2.5 md:hidden", glass("header"))}>
                 <div className="flex items-center gap-3">
                     <Sheet open={open} onOpenChange={setOpen}>
                         <SheetTrigger asChild>
@@ -74,6 +78,16 @@ export function MobileNav() {
                     </Link>
                 </div>
                 <div className="flex items-center gap-1">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                        aria-label="Search"
+                        onClick={() => setSearchOpen(true)}
+                    >
+                        <Search className="h-[18px] w-[18px]" />
+                    </Button>
+
                     <NotificationsWidget>
                         <Button
                             variant="ghost"
@@ -100,7 +114,7 @@ export function MobileNav() {
                                 </Avatar>
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-48" align="end" sideOffset={8}>
+                        <DropdownMenuContent className={cn("w-48", glass("dropdown"))} align="end" sideOffset={8}>
                             <DropdownMenuLabel className="font-normal">
                                 <div className="flex flex-col space-y-0.5">
                                     <p className="text-sm font-medium">
@@ -131,6 +145,8 @@ export function MobileNav() {
                     </DropdownMenu>
                 </div>
             </div>
+
+            <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
 
         </>
     )

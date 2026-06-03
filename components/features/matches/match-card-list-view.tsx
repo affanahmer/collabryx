@@ -3,7 +3,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { UserPlus } from "lucide-react"
+import { UserPlus, MapPin } from "lucide-react"
 import { motion } from "framer-motion"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
@@ -13,6 +13,8 @@ import { MatchReasonBadge } from "@/components/ui/match-reason-badge"
 import { MatchCardDropdown } from "@/components/shared/glass-dropdown-menu"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { formatInitials } from "@/lib/utils/format-initials"
+import { cn } from "@/lib/utils"
+import { glass } from "@/lib/utils/glass-variants"
 
 interface Insight {
     type: "complementary" | "shared" | "similar"
@@ -21,22 +23,35 @@ interface Insight {
 
 interface Match {
     id: string
+    profileId: string
     name: string
     role: string
     avatar: string
     compatibility: number
     skills: string[]
+    interests: string[]
     bio: string
     insights?: Insight[]
     location?: string
     timezone?: string
     availability?: "full-time" | "part-time" | "side-project"
+    collaborationReadiness?: string
+    reasons?: string[]
 }
 
-const availabilityLabels: Record<string, string> = {
-    "full-time": "Full-time",
-    "part-time": "Part-time",
-    "side-project": "Side-project"
+const collaborationLabels: Record<string, { label: string; className: string }> = {
+    available: {
+        label: "Available",
+        className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+    },
+    open: {
+        label: "Open",
+        className: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+    },
+    "not-available": {
+        label: "Busy",
+        className: "bg-muted/50 text-muted-foreground border-border/40"
+    }
 }
 
 interface MatchCardListViewProps {
@@ -44,18 +59,17 @@ interface MatchCardListViewProps {
     index: number
 }
 
+const MAX_SKILLS = 3
+const MAX_INTERESTS = 2
+
 export function MatchCardListView({ match, index }: MatchCardListViewProps) {
     const router = useRouter()
     const [isSaved, setIsSaved] = useState(false)
     const [requestSent, setRequestSent] = useState(false)
 
     const isStrongMatch = match.compatibility >= 90
-
-    // Combine location and availability for a clean subtitle
-    const subtitleParts = []
-    if (match.location) subtitleParts.push(match.location)
-    if (match.availability) subtitleParts.push(availabilityLabels[match.availability])
-    const subtitle = subtitleParts.join(" • ")
+    const collab = collaborationLabels[match.collaborationReadiness || "available"] || collaborationLabels.available
+    const hasSkills = match.skills && match.skills.length > 0
 
     return (
         <>
@@ -67,91 +81,112 @@ export function MatchCardListView({ match, index }: MatchCardListViewProps) {
             >
                 <GlassCard
                     hoverable
-                    className="p-3 sm:p-4 cursor-pointer"
-                    onClick={() => router.push(`/profile/${match.id}`)}
+                    className="p-3 sm:p-4 cursor-pointer bg-card border-border"
+                    onClick={() => router.push(`/profile/${match.profileId}`)}
                 >
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-                        {/* Avatar - Top Left */}
                         <div className="relative shrink-0">
-                            <Avatar className="h-12 w-12 sm:h-14 sm:w-14 border border-border shrink-0">
+                            <Avatar className="h-14 w-14 sm:h-14 sm:w-14 border border-border shrink-0">
                                 <AvatarImage src={match.avatar} className="object-cover" />
-                                <AvatarFallback className="text-sm font-bold bg-muted text-foreground">
+                                <AvatarFallback className="text-base font-bold bg-muted text-foreground">
                                     {formatInitials(match.name)}
                                 </AvatarFallback>
                             </Avatar>
                             {isStrongMatch && (
-                                <div className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500/20 backdrop-blur-sm">
-                                    <span className="text-[8px]">🔥</span>
+                                <div className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 backdrop-blur-sm">
+                                    <span className="text-[10px]">🔥</span>
                                 </div>
                             )}
                         </div>
 
-                        {/* Name, Role, Location, Skills, Insights - Middle */}
                         <div className="flex-1 min-w-0 w-full">
-                            {/* Name & Role */}
                             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-1">
                                 <h3 className="font-bold text-sm sm:text-base truncate text-foreground">{match.name}</h3>
-                                <Badge variant="secondary" className="text-[10px] px-2 py-0.5 shrink-0 bg-muted/50 text-muted-foreground border border-border">
+                                <Badge variant="secondary" className="text-[10px] px-2 py-0.5 shrink-0 bg-muted/50 text-foreground/70 border border-border">
                                     {match.role}
                                 </Badge>
                             </div>
 
-                            {/* Location & Availability Subtitle */}
-                            {subtitle && (
-                                <p className="text-[11px] text-muted-foreground/80 mb-2 truncate">
-                                    {subtitle}
-                                </p>
-                            )}
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                {match.location && (
+                                    <span className="inline-flex items-center gap-1 text-[11px] text-foreground/60">
+                                        <MapPin className="h-3 w-3" />
+                                        {match.location}
+                                    </span>
+                                )}
+                                <Badge className={cn("text-[10px] px-1.5 py-0 border", collab.className)}>
+                                    {collab.label}
+                                </Badge>
+                            </div>
 
-                            {/* Tags: 2 Skills & 1 Insight for minimalism */}
                             <div className="flex flex-col gap-1.5 mb-1.5">
-                                {match.insights && match.insights.length > 0 && (
+                                {match.reasons && match.reasons.length > 0 && (
                                     <div className="flex flex-wrap gap-1">
                                         <MatchReasonBadge
-                                            type={match.insights[0].type === "complementary" ? "complementary" : match.insights[0].type === "shared" ? "interest" : "skill"}
-                                            label={match.insights[0].text}
+                                            type="skill"
+                                            label={match.reasons[0]}
                                             className="text-[10px] py-0 px-2"
                                         />
-                                        {match.insights.length > 1 && (
-                                            <span className="text-[10px] text-muted-foreground/60 flex items-center">+{match.insights.length - 1}</span>
+                                        {match.reasons.length > 1 && (
+                                            <span className="text-[10px] text-foreground/50 flex items-center">+{match.reasons.length - 1}</span>
                                         )}
                                     </div>
                                 )}
 
-                                <div className="flex flex-wrap gap-1 items-center">
-                                    {match.skills.slice(0, 2).map((skill) => (
-                                        <Badge
-                                            key={skill}
-                                            variant="secondary"
-                                            className="bg-muted/40 text-muted-foreground text-[10px] px-2 py-0 font-medium"
-                                        >
-                                            {skill}
-                                        </Badge>
-                                    ))}
-                                    {match.skills.length > 2 && (
-                                        <TooltipProvider delayDuration={300}>
-                                            <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                    <Badge variant="outline" className="text-[10px] px-2 py-0 font-medium border-dashed text-muted-foreground/70 cursor-help">
-                                                        +{match.skills.length - 2}
-                                                    </Badge>
-                                                </TooltipTrigger>
-                                                <TooltipContent side="top" className="max-w-[200px] text-xs">
-                                                    <p>{match.skills.slice(2).join(", ")}</p>
-                                                </TooltipContent>
-                                            </Tooltip>
-                                        </TooltipProvider>
-                                    )}
-                                </div>
+                                {hasSkills && (
+                                    <div className="flex flex-wrap gap-1 items-center">
+                                        {match.skills.slice(0, MAX_SKILLS).map((skill) => (
+                                            <Badge
+                                                key={skill}
+                                                variant="secondary"
+                                                className={cn(
+                                                    "text-[10px] px-2 py-0.5 font-medium",
+                                                    glass("badge")
+                                                )}
+                                            >
+                                                {skill}
+                                            </Badge>
+                                        ))}
+                                        {match.skills.length > MAX_SKILLS && (
+                                            <TooltipProvider delayDuration={300}>
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Badge variant="outline" className="text-[10px] px-2 py-0.5 font-medium border-dashed text-foreground/60 cursor-help">
+                                                            +{match.skills.length - MAX_SKILLS}
+                                                        </Badge>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent side="top" className="max-w-[200px] text-xs">
+                                                        <p>{match.skills.slice(MAX_SKILLS).join(", ")}</p>
+                                                    </TooltipContent>
+                                                </Tooltip>
+                                            </TooltipProvider>
+                                        )}
+                                    </div>
+                                )}
+
+                                {match.interests && match.interests.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 items-center">
+                                        {match.interests.slice(0, MAX_INTERESTS).map((interest) => (
+                                            <Badge
+                                                key={interest}
+                                                variant="outline"
+                                                className="text-[10px] px-2 py-0.5 font-medium text-foreground/70 border-border/50"
+                                            >
+                                                {interest}
+                                            </Badge>
+                                        ))}
+                                        {match.interests.length > MAX_INTERESTS && (
+                                            <span className="text-[10px] text-foreground/50">+{match.interests.length - MAX_INTERESTS}</span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
-                        {/* Match Score - Top Right */}
                         <div className="shrink-0 hidden sm:block">
                             <MatchScoreCompact overall={match.compatibility} horizontal />
                         </div>
 
-                        {/* Actions */}
                         <div className="flex items-center gap-2 shrink-0 sm:flex-col lg:flex-row mt-3 sm:mt-0 w-full sm:w-auto overflow-hidden">
                             {!requestSent ? (
                                 <Button

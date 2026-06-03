@@ -111,18 +111,26 @@ vi.mock('@/components/ui/alert', () => ({
 
 const defaultMatch = {
   id: 'match-1',
+  profileId: 'user-1',
   name: 'Jane Smith',
   role: 'Full Stack Developer',
   avatar: '/avatars/jane.png',
   compatibility: 92,
   skills: ['React', 'TypeScript', 'Node.js', 'PostgreSQL', 'Docker'],
+  interests: ['Startups', 'Open Source', 'AI/ML'],
   bio: 'Passionate about building scalable web applications',
   location: 'San Francisco',
   availability: 'full-time' as const,
+  collaborationReadiness: 'available',
   insights: [
     { type: 'complementary' as const, text: 'Backend expertise complements your frontend skills' },
     { type: 'shared' as const, text: 'Shared Interest in Startups' },
     { type: 'similar' as const, text: 'Similar stage: MVP development' },
+  ],
+  reasons: [
+    'High semantic profile similarity',
+    '85% skill overlap: React, TypeScript, Node.js',
+    'Shared interests detected',
   ],
   aiConfidence: 0.93,
   aiExplanation: 'Strong skill overlap and complementary strengths',
@@ -138,31 +146,31 @@ describe('TC-057: MatchCard - Why You Matched Tags', () => {
     expect(badges.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('displays the first insight text in a MatchReasonBadge', () => {
+  it('displays the first match reason text in a MatchReasonBadge', () => {
     // Arrange & Act
     render(<MatchCard match={defaultMatch} />)
 
     // Assert
     const badge = screen.getByTestId('match-reason-badge')
-    expect(badge).toHaveTextContent(defaultMatch.insights[0].text)
+    expect(badge).toHaveTextContent(defaultMatch.reasons[0])
   })
 
-  it('shows +N indicator when more than one insight exists', () => {
+  it('shows +N indicator when more than one reason exists', () => {
     // Arrange & Act
     render(<MatchCard match={defaultMatch} />)
 
-    // Assert — with 3 insights, should show "+2"
+    // Assert — with 3 reasons, should show "+2"
     const plusMore = screen.getByText('+2')
     expect(plusMore).toBeInTheDocument()
   })
 
-  it('passes correct type to MatchReasonBadge for complementary insights', () => {
+  it('passes correct type to MatchReasonBadge for match reasons', () => {
     // Arrange & Act
     render(<MatchCard match={defaultMatch} />)
 
     // Assert
     const badge = screen.getByTestId('match-reason-badge')
-    expect(badge).toHaveAttribute('data-type', 'complementary')
+    expect(badge).toHaveAttribute('data-type', 'skill')
   })
 
   it('renders skill badges for the first 2 skills', () => {
@@ -185,26 +193,13 @@ describe('TC-057: MatchCard - Why You Matched Tags', () => {
     expect(screen.getByText('92%')).toBeInTheDocument()
   })
 
-  it('shows AI-Powered Match badge for high-confidence matches', () => {
+  it('renders location and collaboration readiness', () => {
     // Arrange & Act
     render(<MatchCard match={defaultMatch} />)
 
-    // Assert — aiConfidence >= 0.8 triggers the badge
-    expect(screen.getByText('AI-Powered Match')).toBeInTheDocument()
-  })
-
-  it('does NOT show AI-Powered Match for low-confidence matches', () => {
-    // Arrange
-    const lowConfidenceMatch = {
-      ...defaultMatch,
-      aiConfidence: 0.65,
-    }
-
-    // Act
-    render(<MatchCard match={lowConfidenceMatch} />)
-
-    // Assert
-    expect(screen.queryByText('AI-Powered Match')).not.toBeInTheDocument()
+    // Assert — location with icon and collaboration pill
+    expect(screen.getByText('San Francisco')).toBeInTheDocument()
+    expect(screen.getByText('Available now')).toBeInTheDocument()
   })
 
   it('renders the user name and role', () => {
@@ -222,14 +217,6 @@ describe('TC-057: MatchCard - Why You Matched Tags', () => {
 
     // Assert
     expect(screen.getByText('Passionate about building scalable web applications')).toBeInTheDocument()
-  })
-
-  it('renders location and availability as subtitle', () => {
-    // Arrange & Act
-    render(<MatchCard match={defaultMatch} />)
-
-    // Assert
-    expect(screen.getByText('San Francisco • Full-time')).toBeInTheDocument()
   })
 
   it('shows a Connect button', () => {

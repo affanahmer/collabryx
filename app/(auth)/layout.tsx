@@ -3,10 +3,12 @@
 import { SidebarProvider, useSidebar } from "@/components/shared/sidebar-context"
 import { SidebarNav } from "@/components/shared/sidebar-nav"
 import { MobileNav } from "@/components/shared/mobile-nav"
+import { GlobalSearchDialog } from "@/components/features/search/global-search-dialog"
 import { SettingsDialog } from "@/components/features/settings/settings-dialog"
 import { cn } from "@/lib/utils"
 import { useLoginData } from "@/hooks/use-login-data"
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useState, useEffect, useCallback } from "react"
 
 // NOTE: Auth protection is handled by proxy.ts (middleware).
 // Do NOT duplicate auth checks here — layout checks do not re-run
@@ -45,6 +47,19 @@ function getQueryClient() {
 function AuthLayoutContent({ children }: { children: React.ReactNode }) {
     const { isCollapsed } = useSidebar()
     const { isReady } = useLoginData()
+    const [searchOpen, setSearchOpen] = useState(false)
+
+    const handleKeyDown = useCallback((e: KeyboardEvent) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+            e.preventDefault()
+            setSearchOpen(true)
+        }
+    }, [])
+
+    useEffect(() => {
+        document.addEventListener("keydown", handleKeyDown)
+        return () => document.removeEventListener("keydown", handleKeyDown)
+    }, [handleKeyDown])
 
     return (
         <>
@@ -67,7 +82,7 @@ function AuthLayoutContent({ children }: { children: React.ReactNode }) {
 
                 {/* Desktop Sidebar */}
                 <aside className={cn(
-                    "hidden md:flex flex-col fixed inset-y-0 left-0 z-50 border-r bg-background transition-all duration-300 ease-in-out",
+                    "hidden md:flex flex-col fixed inset-y-0 left-0 z-50 transition-all duration-300 ease-in-out",
                     isCollapsed ? "w-[80px]" : "w-[280px]"
                 )}>
                     <SidebarNav />
@@ -82,6 +97,7 @@ function AuthLayoutContent({ children }: { children: React.ReactNode }) {
                 </main>
             </div>
             <SettingsDialog />
+            <GlobalSearchDialog open={searchOpen} onOpenChange={setSearchOpen} />
         </>
     )
 }
