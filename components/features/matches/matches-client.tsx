@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { logger } from "@/lib/logger"
 
 type ViewMode = "grid" | "list"
+type SortOption = "compatibility" | "name" | "role"
 
 interface UIMatch {
     id: string
@@ -166,20 +167,46 @@ export function MatchesClient() {
         }
         return []
     }, [matchesData, error])
-    
-    const [preferences, setPreferences] = useState({
-        role: "CTO",
-        industry: "Fintech",
-        type: "Startup"
-    })
+
+    // Extract unique skills from all fetched matches for the filter dropdown
+    const allSkills = useMemo(() => {
+        const skillSet = new Set<string>()
+        for (const m of matches) {
+            for (const s of m.skills) {
+                skillSet.add(s)
+            }
+        }
+        return Array.from(skillSet).sort()
+    }, [matches])
+
+    const [selectedSkill, setSelectedSkill] = useState("")
+    const [sortBy, setSortBy] = useState<SortOption>("compatibility")
     const [viewMode, setViewMode] = useState<ViewMode>("grid")
 
-    const handleUpdatePreferences = (newPrefs: { role: string; industry: string; type: string }) => {
-        setPreferences(newPrefs)
-        toast("Preferences Updated", {
-            description: `Looking for ${newPrefs.role} in ${newPrefs.industry}...`,
-        })
-    }
+    // Filter + sort matches
+    const filteredMatches = useMemo(() => {
+        let result = matches
+
+        // Filter by skill
+        if (selectedSkill) {
+            result = result.filter((m) => m.skills.includes(selectedSkill))
+        }
+
+        // Sort
+        const sorted = [...result]
+        switch (sortBy) {
+            case "compatibility":
+                sorted.sort((a, b) => b.compatibility - a.compatibility)
+                break
+            case "name":
+                sorted.sort((a, b) => a.name.localeCompare(b.name))
+                break
+            case "role":
+                sorted.sort((a, b) => a.role.localeCompare(b.role))
+                break
+        }
+        return sorted
+    }, [matches, selectedSkill, sortBy])
 
     const handleGenerateMatches = async () => {
         if (!user) {
@@ -202,13 +229,18 @@ export function MatchesClient() {
         <div className="w-full min-h-screen bg-background">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 max-w-[1400px]">
                 <MatchContextHeader
-                    preferences={preferences}
-                    onUpdatePreferences={handleUpdatePreferences}
-                    matchCount={matches.length}
+                    matchCount={filteredMatches.length}
+                    isGenerating={generateMatchesMutation.isPending}
+                    onGenerateMatches={handleGenerateMatches}
                 />
                 <MatchFilters
                     viewMode={viewMode}
                     onViewModeChange={setViewMode}
+                    skills={allSkills}
+                    selectedSkill={selectedSkill}
+                    onSkillChange={setSelectedSkill}
+                    sortBy={sortBy}
+                    onSortChange={setSortBy}
                 />
                 {isPending ? (
                     viewMode === "grid" ? (
@@ -238,48 +270,55 @@ export function MatchesClient() {
                             <Users className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
                         </div>
                         <h2 className="text-xl md:text-2xl font-bold tracking-tight mb-2 text-foreground">
-                            No perfect matches found yet
+                            No matches found yet
                         </h2>
                         <p className="text-sm md:text-base text-muted-foreground max-w-md mx-auto mb-6">
-                            We couldn&apos;t find anyone matching these exact criteria right now. Try broadening your preferences or check back later!
+                            Generate matches to discover collaborators who complement your skills and goals.
                         </p>
-                        <div className="flex gap-3">
-                            <Button
-                                variant="outline"
-                                onClick={() => handleUpdatePreferences({ role: "Any", industry: "Any", type: "Any" })}
-                            >
-                                Reset Preferences
-                            </Button>
-                            <Button
-                                variant="default"
-                                onClick={handleGenerateMatches}
-                                disabled={generateMatchesMutation.isPending}
-                            >
-                                {generateMatchesMutation.isPending ? (
-                                    <>
-                                        <Sparkles className="h-4 w-4 mr-2 animate-spin" />
-                                        Generating...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Sparkles className="h-4 w-4 mr-2" />
-                                        Generate Matches
-                                    </>
-                                )}
-                            </Button>
+                        <Button
+                            variant="default"
+                            onClick={handleGenerateMatches}
+                            disabled={generateMatchesMutation.isPending}
+                        >
+                            {generateMatchesMutation.isPending ? (
+                                <>
+                                    <Sparkles className="h-4 w-4 mr-2 animate-spin" />
+                                    Generating...
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles className="h-4 w-4 mr-2" />
+                                    Generate Matches
+                                </>
+                            )}
+                        </Button>
+                    </GlassCard>
+                ) : filteredMatches.length === 0 ? (
+                    <GlassCard className="flex flex-col items-center justify-center py-24 px-4 text-center">
+                        <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-muted flex items-center justify-center mb-4 sm:mb-6">
+                            <AlertTriangle className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
                         </div>
+                        <h2 className="text-xl md:text-2xl font-bold tracking-tight mb-2 text-foreground">
+                            No matches match this filter
+                        </h2>
+                        <p className="text-sm md:text-base text-muted-foreground max-w-md mx-auto mb-6">
+                            Try selecting a different skill or clearing the filter to see all matches.
+                        </p>
+                        <Button variant="outline" onClick={() => { setSelectedSkill(""); setSortBy("compatibility"); }}>
+                            Clear Filters
+                        </Button>
                     </GlassCard>
                 ) : viewMode === "grid" ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5 pb-20">
-                        {matches.map((match, index) => renderMatchCard(match, index, viewMode))}
+                        {filteredMatches.map((match, index) => renderMatchCard(match, index, viewMode))}
                     </div>
                 ) : viewMode === "list" ? (
                     <div className="flex flex-col gap-4 md:gap-6 pb-20">
-                        {matches.map((match, index) => renderMatchCard(match, index, viewMode))}
+                        {filteredMatches.map((match, index) => renderMatchCard(match, index, viewMode))}
                     </div>
                 ) : (
                     <div className="flex flex-col gap-4 pb-20">
-                        {matches.map((match, index) => renderMatchCard(match, index, viewMode))}
+                        {filteredMatches.map((match, index) => renderMatchCard(match, index, viewMode))}
                     </div>
                 )}
             </div>
