@@ -1,76 +1,80 @@
 "use client"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Link as LinkIcon, Calendar, UserPlus, MessageSquare, CheckCircle2, Clock, Sparkles } from "lucide-react"
+import { MapPin, Link as LinkIcon, Calendar, Sparkles, GraduationCap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { VerificationBadge } from "./verification-badge"
 import { formatInitials } from "@/lib/utils/format-initials"
 import { GlassCard } from "@/components/shared/glass-card"
-import { MatchCardDropdown } from "@/components/shared/glass-dropdown-menu"
-import { glass } from "@/lib/utils/glass-variants"
+import { formatJoinDate } from "@/lib/utils/format-date"
 
-type ConnectionStatus = "none" | "connected" | "pending"
 type CollaborationReadiness = "available" | "open" | "not-available"
 type VerificationType = "student" | "faculty" | "alumni"
 
 interface ProfileHeaderProps {
-    connectionStatus?: ConnectionStatus
-    collaborationReadiness?: CollaborationReadiness
+    collaborationReadiness?: CollaborationReadiness | null
     matchContext?: {
         project: string
         skills: string[]
     }
     isOwnProfile?: boolean
     isVerified?: boolean
-    verificationType?: VerificationType
-    university?: string
+    verificationType?: VerificationType | null
+    university?: string | null
 
-    // Core details mapped from expected-objects/01-profiles.md
-    displayName?: string
-    headline?: string
-    avatarUrl?: string
-    location?: string
-    websiteUrl?: string
-    skills?: string[] // Top displayed skills
+    displayName?: string | null
+    headline?: string | null
+    avatarUrl?: string | null
+    bannerUrl?: string | null
+    location?: string | null
+    websiteUrl?: string | null
+    email?: string | null
+    skills?: string[]
+    createdAt?: string | null
 }
 
 export function ProfileHeader({
-    connectionStatus = "none",
-    collaborationReadiness = "available",
+    collaborationReadiness,
     matchContext,
     isOwnProfile = false,
     isVerified = false,
-    verificationType = "student",
-    university = "Stanford University",
-
-    // Default mock data to preserve old test render state
-    displayName = "Sarah Chen",
-    headline = "Full Stack Developer @ TechStart",
-    avatarUrl = "/avatars/01.png",
-    location = "San Francisco, CA",
-    websiteUrl = "github.com/sarahchen",
-    skills = ["React", "TypeScript", "Node.js", "AWS"]
+    verificationType,
+    university,
+    displayName,
+    headline,
+    avatarUrl,
+    bannerUrl,
+    location,
+    websiteUrl,
+    email,
+    skills,
+    createdAt,
 }: ProfileHeaderProps) {
+    const safeSkills = skills ?? []
+    const safeName = displayName || "User"
+    const safeHeadline = headline || undefined
+
     return (
         <GlassCard className="mb-4 md:mb-6 overflow-visible border border-border/60 shadow-xl" innerClassName="p-0">
             {/* Banner */}
-            <div className="relative h-32 sm:h-40 w-full border-b border-border/30 rounded-t-xl overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-primary/10 via-primary/5 to-transparent object-cover" />
-                {/* Subtle top-right dropdown menu for interactions */}
-                <div className="absolute top-4 right-4 z-10">
-                    <MatchCardDropdown onViewProfile={() => { }} />
-                </div>
+            <div
+                className="relative h-32 sm:h-40 w-full border-b border-border/30 rounded-t-xl overflow-hidden bg-cover bg-center"
+                style={bannerUrl ? { backgroundImage: `url(${bannerUrl})` } : undefined}
+            >
+                <div className={cn(
+                    "absolute inset-0",
+                    bannerUrl ? "bg-black/30" : "bg-gradient-to-r from-primary/10 via-primary/5 to-transparent"
+                )} />
             </div>
 
             <div className="px-4 sm:px-6 md:px-8 pb-6 md:pb-8">
                 <div className="flex flex-col md:flex-row gap-4 md:gap-6 items-start -mt-12 sm:-mt-16">
                     {/* Avatar */}
                     <Avatar className="h-24 w-24 sm:h-32 sm:w-32 md:h-36 md:w-36 ring-4 ring-border shadow-xl shrink-0 z-10 bg-background">
-                        <AvatarImage src={avatarUrl} className="object-cover" />
+                        <AvatarImage src={avatarUrl ?? undefined} className="object-cover" />
                         <AvatarFallback className="text-2xl font-bold bg-muted text-foreground">
-                            {formatInitials(displayName)}
+                            {formatInitials(safeName)}
                         </AvatarFallback>
                     </Avatar>
 
@@ -78,46 +82,34 @@ export function ProfileHeader({
                         <div className="flex flex-col md:flex-row justify-between gap-4 md:gap-6">
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-start sm:items-center gap-2 flex-wrap">
-                                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight break-words text-foreground">{displayName}</h1>
-                                    {isVerified && (
+                                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight break-words text-foreground">{safeName}</h1>
+                                    {isVerified && verificationType && (
                                         <VerificationBadge
                                             type={verificationType}
-                                            university={university}
+                                            university={university ?? undefined}
                                             className="shrink-0"
                                         />
                                     )}
                                 </div>
-                                <p className="text-sm md:text-base text-emerald-500/90 dark:text-emerald-400 font-medium mt-1.5 break-words">{headline}</p>
+                                {safeHeadline && (
+                                    <p className="text-sm md:text-base text-emerald-500/90 dark:text-emerald-400 font-medium mt-1.5 break-words">{safeHeadline}</p>
+                                )}
                             </div>
-
-                            {/* Primary Action Buttons */}
-                            {!isOwnProfile && (
-                                <div className="flex gap-2.5 flex-col w-full sm:w-auto sm:flex-row shrink-0">
-                                    {connectionStatus === "none" && (
-                                        <Button size="default" className="w-full sm:w-auto shadow-md font-medium">
-                                            <UserPlus className="mr-2 h-4 w-4" />
-                                            Connect
-                                        </Button>
-                                    )}
-                                    {connectionStatus === "connected" && (
-                                        <Button variant="secondary" size="default" disabled className="w-full sm:w-auto bg-primary/10 text-primary border-primary/20">
-                                            <CheckCircle2 className="mr-2 h-4 w-4" />
-                                            Connected
-                                        </Button>
-                                    )}
-                                    {connectionStatus === "pending" && (
-                                        <Button variant="secondary" size="default" disabled className="w-full sm:w-auto">
-                                            <Clock className="mr-2 h-4 w-4" />
-                                            Request Sent
-                                        </Button>
-                                    )}
-                                    <Button variant="outline" size="default" className={cn("w-full sm:w-auto shadow-sm backdrop-blur-sm transition-all", glass("buttonGhost"))}>
-                                        <MessageSquare className="mr-2 h-4 w-4" />
-                                        Message
-                                    </Button>
-                                </div>
-                            )}
                         </div>
+
+                        {/* University Display */}
+                        {university && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <GraduationCap className="h-4 w-4 shrink-0 text-primary/70" />
+                                <span>{university}</span>
+                                {email && (
+                                    <>
+                                        <span className="text-border mx-1">•</span>
+                                        <span className="truncate">{email}</span>
+                                    </>
+                                )}
+                            </div>
+                        )}
 
                         {/* AI Match Context - Shown when user arrives from Smart Matches */}
                         {matchContext && (
@@ -146,44 +138,51 @@ export function ProfileHeader({
                                     </a>
                                 </div>
                             )}
-                            <div className="flex items-center gap-1.5 shrink-0">
-                                <Calendar className="h-4 w-4" />
-                                <span className="whitespace-nowrap">Joined Dec 2024</span>
-                            </div>
+                            {createdAt && (
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                    <Calendar className="h-4 w-4" />
+                                    <span className="whitespace-nowrap">Joined {formatJoinDate(createdAt)}</span>
+                                </div>
+                            )}
                         </div>
 
-                        <div className="flex flex-wrap gap-2">
-                            {skills.map((skill) => (
-                                <Badge key={skill} variant="secondary" className="px-2.5 py-1 text-xs border border-border/40 font-medium">
-                                    {skill}
-                                </Badge>
-                            ))}
-                        </div>
+                        {/* Skills */}
+                        {safeSkills.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                                {safeSkills.map((skill) => (
+                                    <Badge key={skill} variant="secondary" className="px-2.5 py-1 text-xs border border-border/40 font-medium">
+                                        {skill}
+                                    </Badge>
+                                ))}
+                            </div>
+                        )}
 
                         {/* Collaboration Readiness Indicator */}
-                        <div className="pt-2 md:pt-3">
+                        {collaborationReadiness && (
+                            <div className="pt-2 md:pt-3">
                                 <Badge
                                     variant="outline"
                                     className={cn(
                                         "text-xs md:text-sm px-4 py-1.5 inline-flex items-center font-medium",
-                                    collaborationReadiness === "available" && "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30",
-                                    collaborationReadiness === "open" && "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/30",
-                                    collaborationReadiness === "not-available" && "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30"
-                                )}
-                            >
-                                <span className={cn(
-                                    "inline-block w-2.5 h-2.5 rounded-full mr-2.5 shrink-0 shadow-sm",
-                                    collaborationReadiness === "available" && "bg-green-500 shadow-green-500/50",
-                                    collaborationReadiness === "open" && "bg-yellow-500 shadow-yellow-500/50",
-                                    collaborationReadiness === "not-available" && "bg-red-500 shadow-red-500/50"
-                                )} />
-                                <span className="whitespace-nowrap">
-                                    {collaborationReadiness === "available" && "Available for collaboration"}
-                                    {collaborationReadiness === "open" && "Open to part-time / mentorship"}
-                                    {collaborationReadiness === "not-available" && "Not available"}
-                                </span>
-                            </Badge>
-                        </div>
+                                        collaborationReadiness === "available" && "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/30",
+                                        collaborationReadiness === "open" && "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/30",
+                                        collaborationReadiness === "not-available" && "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30"
+                                    )}
+                                >
+                                    <span className={cn(
+                                        "inline-block w-2.5 h-2.5 rounded-full mr-2.5 shrink-0 shadow-sm",
+                                        collaborationReadiness === "available" && "bg-green-500 shadow-green-500/50",
+                                        collaborationReadiness === "open" && "bg-yellow-500 shadow-yellow-500/50",
+                                        collaborationReadiness === "not-available" && "bg-red-500 shadow-red-500/50"
+                                    )} />
+                                    <span className="whitespace-nowrap">
+                                        {collaborationReadiness === "available" && "Available for collaboration"}
+                                        {collaborationReadiness === "open" && "Open to part-time / mentorship"}
+                                        {collaborationReadiness === "not-available" && "Not available"}
+                                    </span>
+                                </Badge>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

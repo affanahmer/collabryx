@@ -5,10 +5,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { motion } from "framer-motion"
-import { Brain, Sprout, GraduationCap, Briefcase, Rocket, Lock, Plus, Sparkles, TerminalSquare, BriefcaseBusiness, FolderGit2 } from "lucide-react"
+import { Brain, Sprout, GraduationCap, Briefcase, Rocket, Lock, Plus, Sparkles, TerminalSquare, BriefcaseBusiness, FolderGit2, ExternalLink } from "lucide-react"
 import { GlassCard } from "@/components/shared/glass-card"
+import { formatDateRange } from "@/lib/utils/format-date"
 
-const intentIcons = {
+const intentIcons: Record<string, { icon: React.ComponentType<{ className?: string }>, color: string }> = {
     "Technical Co-founder": { icon: Brain, color: "text-purple-600 dark:text-purple-400 bg-purple-500/10 border-purple-500/30" },
     "Open Source": { icon: Sprout, color: "text-green-600 dark:text-green-400 bg-green-500/10 border-green-500/30" },
     "Mentorship": { icon: GraduationCap, color: "text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/30" },
@@ -19,21 +20,30 @@ const intentIcons = {
 interface Experience {
     id: string
     title: string
-    company: string
-    description: string
-    startDate: string
+    company?: string | null
+    description?: string | null
+    startDate?: string | null
     endDate?: string | null
     isCurrent?: boolean
 }
 
-// Represents mapped properties from expected-objects schemas (01, 02, 04, 05)
+interface Project {
+    id: string
+    title: string
+    description?: string | null
+    url?: string | null
+    imageUrl?: string | null
+    techStack?: string[]
+    isPublic?: boolean
+}
+
 interface ProfileTabsProps {
     isOwnProfile?: boolean
-    bio?: string
-    lookingFor?: string[]
-    skills?: { skillName: string, proficiency: string, isPrimary: boolean }[] // from 02-user-skills
-    experiences?: Experience[] // from 04-user-experiences
-    projects?: unknown[] // from 05-user-projects
+    bio?: string | null
+    lookingFor?: string[] | null
+    skills?: { skillName: string, proficiency?: string | null, isPrimary?: boolean }[]
+    experiences?: Experience[]
+    projects?: Project[]
 }
 
 export function ProfileTabs({
@@ -42,6 +52,7 @@ export function ProfileTabs({
     lookingFor,
     skills,
     experiences,
+    projects,
 }: ProfileTabsProps) {
     const [bioExpanded, setBioExpanded] = useState(false)
 
@@ -49,6 +60,7 @@ export function ProfileTabs({
     const safeLookingFor = lookingFor ?? []
     const safeSkills = skills ?? []
     const safeExperiences = experiences ?? []
+    const safeProjects = projects ?? []
 
     // Calculate dynamic preview for bio
     const bioSentences = bio ? bio.split(". ") : []
@@ -201,7 +213,7 @@ export function ProfileTabs({
 
                                         <h4 className="font-bold text-base sm:text-lg text-foreground tracking-tight">{exp.title}</h4>
                                         <p className="text-sm text-emerald-500/90 dark:text-emerald-400 font-medium mt-0.5">
-                                            {exp.company} <span className="text-muted-foreground px-1">•</span> <span className="text-muted-foreground">{exp.startDate} - {exp.isCurrent ? "Present" : exp.endDate}</span>
+                                            {exp.company} <span className="text-muted-foreground px-1">•</span> <span className="text-muted-foreground">{formatDateRange(exp.startDate, exp.isCurrent ? null : exp.endDate)}</span>
                                         </p>
                                         {exp.description && (
                                             <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
@@ -237,41 +249,83 @@ export function ProfileTabs({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2, ease: "easeOut" }}
                 >
-                    <GlassCard className="bg-card/40 backdrop-blur-xl border border-border/50 shadow-sm" innerClassName="p-0">
-                        <div className="flex flex-col items-center justify-center py-16 px-6">
-                            {isOwnProfile ? (
-                                <>
-                                    <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-primary/10 backdrop-blur-sm flex items-center justify-center mb-5 border border-primary/20 shadow-inner">
-                                        <FolderGit2 className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
-                                    </div>
-                                    <h3 className="font-bold text-lg sm:text-xl mb-2 tracking-tight">Add your first project</h3>
-                                    <p className="text-center text-sm text-muted-foreground max-w-sm mb-6 leading-relaxed">
-                                        Showcase your work and attract collaborators by detailing projects on your profile.
-                                    </p>
-
-                                    <div className="flex items-start gap-2 p-3.5 rounded-xl bg-primary/10 border border-primary/20 mb-6 max-w-md">
-                                        <Sparkles className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                                        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                                            <span className="font-semibold text-foreground">AI Tip:</span> Adding your thesis or side projects increases match accuracy by <span className="text-primary font-bold">20%</span>. We use project specifics to find teammates with complementary skills.
-                                        </p>
-                                    </div>
-                                    <Button size="default" className="shadow-md">
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Add Project
-                                    </Button>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-muted/50 backdrop-blur-sm flex items-center justify-center mb-5 border border-border/50">
-                                        <Lock className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground/70" />
-                                    </div>
-                                    <h3 className="font-bold text-lg sm:text-xl mb-2 tracking-tight">Projects are private</h3>
-                                    <p className="text-center text-sm text-muted-foreground max-w-sm leading-relaxed">
-                                        This user prefers to explicitly share their portfolio stack after connecting.
-                                    </p>
-                                </>
-                            )}
+                    <GlassCard className="bg-card/40 backdrop-blur-xl border border-border/50 shadow-sm" innerClassName="p-5 sm:p-6 lg:p-7">
+                        <div className="flex items-center gap-2 mb-6">
+                            <FolderGit2 className="h-5 w-5 text-primary" />
+                            <h3 className="text-lg sm:text-xl font-bold tracking-tight">Projects</h3>
                         </div>
+
+                        {safeProjects.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {safeProjects.map((project) => (
+                                    <div
+                                        key={project.id}
+                                        className="p-4 rounded-xl bg-card/60 border border-border/40 hover:border-primary/30 transition-all group"
+                                    >
+                                        <div className="flex items-start justify-between gap-2 mb-2">
+                                            <h4 className="font-bold text-base text-foreground group-hover:text-primary transition-colors">
+                                                {project.title}
+                                            </h4>
+                                            {project.url && (
+                                                <a
+                                                    href={project.url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="shrink-0 text-muted-foreground hover:text-primary transition-colors"
+                                                >
+                                                    <ExternalLink className="h-4 w-4" />
+                                                </a>
+                                            )}
+                                        </div>
+                                        {project.description && (
+                                            <p className="text-sm text-muted-foreground leading-relaxed mb-3 line-clamp-3">
+                                                {project.description}
+                                            </p>
+                                        )}
+                                        {project.techStack && project.techStack.length > 0 && (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {project.techStack.map((tech) => (
+                                                    <Badge key={tech} variant="secondary" className="px-2 py-0.5 text-[10px] border border-border/40">
+                                                        {tech}
+                                                    </Badge>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : isOwnProfile ? (
+                            <div className="flex flex-col items-center justify-center py-12 px-6">
+                                <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-primary/10 backdrop-blur-sm flex items-center justify-center mb-5 border border-primary/20 shadow-inner">
+                                    <FolderGit2 className="h-8 w-8 sm:h-10 sm:w-10 text-primary" />
+                                </div>
+                                <h3 className="font-bold text-lg sm:text-xl mb-2 tracking-tight">Add your first project</h3>
+                                <p className="text-center text-sm text-muted-foreground max-w-sm mb-6 leading-relaxed">
+                                    Showcase your work and attract collaborators by detailing projects on your profile.
+                                </p>
+
+                                <div className="flex items-start gap-2 p-3.5 rounded-xl bg-primary/10 border border-primary/20 mb-6 max-w-md">
+                                    <Sparkles className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                                        <span className="font-semibold text-foreground">AI Tip:</span> Adding your thesis or side projects increases match accuracy by <span className="text-primary font-bold">20%</span>. We use project specifics to find teammates with complementary skills.
+                                    </p>
+                                </div>
+                                <Button size="default" className="shadow-md">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Add Project
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center justify-center py-16 px-6">
+                                <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full bg-muted/50 backdrop-blur-sm flex items-center justify-center mb-5 border border-border/50">
+                                    <Lock className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground/70" />
+                                </div>
+                                <h3 className="font-bold text-lg sm:text-xl mb-2 tracking-tight">No projects yet</h3>
+                                <p className="text-center text-sm text-muted-foreground max-w-sm leading-relaxed">
+                                    This user hasn't added any projects yet.
+                                </p>
+                            </div>
+                        )}
                     </GlassCard>
                 </motion.div>
             </TabsContent>
