@@ -58,6 +58,7 @@ type RawPost = {
   reaction_count: number
   comment_count: number
   share_count: number
+  bookmark_count: number
   version: number
   created_at: string
   updated_at: string
@@ -98,7 +99,7 @@ export async function fetchPosts(options: PostsQueryOptions = {}): Promise<{
       .from("posts")
       .select(`
         id, author_id, content, post_type, intent, link_url,
-        is_pinned, is_archived, reaction_count, comment_count, share_count,
+        is_pinned, is_archived, reaction_count, comment_count, share_count, bookmark_count,
         version, created_at, updated_at,
         author:profiles (
           full_name,
@@ -164,6 +165,7 @@ export async function fetchPosts(options: PostsQueryOptions = {}): Promise<{
       reaction_count: post.reaction_count,
       comment_count: post.comment_count,
       share_count: post.share_count,
+      bookmark_count: post.bookmark_count,
       version: post.version,
       created_at: post.created_at,
       updated_at: post.updated_at,
@@ -241,7 +243,7 @@ export async function fetchPersonalizedFeed(options: PostsQueryOptions = {}): Pr
       .from("posts")
       .select(`
         id, author_id, content, post_type, intent, link_url,
-        is_pinned, is_archived, reaction_count, comment_count, share_count,
+        is_pinned, is_archived, reaction_count, comment_count, share_count, bookmark_count,
         created_at, updated_at, version,
         author:profiles (id, full_name, display_name, avatar_url, role)
       `)
@@ -260,7 +262,7 @@ export async function fetchPersonalizedFeed(options: PostsQueryOptions = {}): Pr
       id: string; author_id: string; content: string;
       post_type: string; intent?: string; link_url?: string;
       is_pinned: boolean; is_archived: boolean;
-      reaction_count: number; comment_count: number; share_count: number;
+      reaction_count: number; comment_count: number; share_count: number; bookmark_count: number;
       created_at: string; updated_at: string; version: number;
       author?: { id: string; full_name?: string; display_name?: string; avatar_url?: string; role?: string }
     }>
@@ -378,6 +380,7 @@ export async function fetchPersonalizedFeed(options: PostsQueryOptions = {}): Pr
       reaction_count: raw.reaction_count,
       comment_count: raw.comment_count,
       share_count: raw.share_count,
+      bookmark_count: raw.bookmark_count,
       version: raw.version,
       created_at: raw.created_at,
       updated_at: raw.updated_at,
@@ -427,7 +430,7 @@ export async function fetchPostById(postId: string): Promise<{
       .from("posts")
       .select(`
         id, author_id, content, post_type, intent, link_url,
-        is_pinned, is_archived, reaction_count, comment_count, share_count,
+        is_pinned, is_archived, reaction_count, comment_count, share_count, bookmark_count,
         version, created_at, updated_at,
         author:profiles (
           full_name,
@@ -455,6 +458,7 @@ export async function fetchPostById(postId: string): Promise<{
       reaction_count: data.reaction_count,
       comment_count: data.comment_count,
       share_count: data.share_count,
+      bookmark_count: data.bookmark_count,
       version: data.version,
       created_at: data.created_at,
       updated_at: data.updated_at,
@@ -501,7 +505,7 @@ export async function createPost(input: CreatePostInput): Promise<{
         link_url: input.link_url,
         is_pinned: input.is_pinned || false,
       })
-      .select('id, author_id, content, post_type, intent, link_url, is_pinned, is_archived, reaction_count, comment_count, share_count, version, created_at, updated_at')
+      .select('id, author_id, content, post_type, intent, link_url, is_pinned, is_archived, reaction_count, comment_count, share_count, bookmark_count, version, created_at, updated_at')
       .single()
 
     if (error) throw error
@@ -583,7 +587,7 @@ export async function updatePostWithLock(
         .eq("id", postId)
         .eq("author_id", user.id)
         .eq("version", updates.version)
-        .select('id, author_id, content, post_type, intent, link_url, is_pinned, is_archived, reaction_count, comment_count, share_count, version, created_at, updated_at')
+        .select('id, author_id, content, post_type, intent, link_url, is_pinned, is_archived, reaction_count, comment_count, share_count, bookmark_count, version, created_at, updated_at')
         .single()
 
       if (error) {
@@ -622,13 +626,13 @@ export async function updatePostWithLock(
 }
 
 /**
- * Atomically increment post counter fields (reaction_count, comment_count, share_count)
+ * Atomically increment post counter fields (reaction_count, comment_count, share_count, bookmark_count)
  * Uses Supabase RPC atomic increment, falling back to optimistic locking with version
  * retry when the RPC function is unavailable.
  */
 export async function incrementPostCounter(
   postId: string,
-  field: "reaction_count" | "comment_count" | "share_count",
+  field: "reaction_count" | "comment_count" | "share_count" | "bookmark_count",
   delta: number = 1
 ): Promise<{ error: Error | null }> {
   try {
@@ -686,7 +690,7 @@ export async function incrementPostCounter(
  */
 export async function updatePostCounterWithLock(
   postId: string,
-  field: "reaction_count" | "comment_count" | "share_count",
+  field: "reaction_count" | "comment_count" | "share_count" | "bookmark_count",
   value: number,
   expectedVersion: number,
   options: UpdatePostOptions = {}

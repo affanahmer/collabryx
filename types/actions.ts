@@ -33,4 +33,6 @@ export type CommentReactionType = 'like' | 'love' | 'insightful' | 'celebrate' |
 
 export type PostReactionType = 'like' | 'love' | 'insightful' | 'celebrate' | 'curious'
 
+export type BookmarkAction = 'bookmark' | 'unbookmark'
+
 export type ReactionType = PostReactionType | CommentReactionType

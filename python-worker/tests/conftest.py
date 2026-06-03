@@ -37,7 +37,6 @@ def embedding_generator() -> EmbeddingGenerator:
 def sample_profile() -> dict:
     """Sample user profile data for testing."""
     return {
-        'role': 'Student',
         'headline': 'React Developer',
         'bio': 'Passionate about building web applications',
         'looking_for': ['cofounder', 'teammate'],

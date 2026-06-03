@@ -2,17 +2,19 @@
 
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { ThumbsUp, Heart, Laugh, Flame, Frown, Angry, MessageCircle, Share2 } from "lucide-react"
+import { ThumbsUp, Heart, Laugh, Flame, Frown, Angry, MessageCircle, Share2, Bookmark } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { ReactionPicker } from "../comments/reaction-picker"
 
 interface PostActionsProps {
     postId: string
     myReaction?: string | null
+    isBookmarked?: boolean
     onLike: (postId: string) => void
     onReaction: (postId: string, reaction: string) => void
     onCommentClick: (postId: string) => void
     onShareClick: (postId: string) => void
+    onBookmark?: (postId: string) => void
 }
 
 const REACTION_MAP: Record<string, { label: string, icon: typeof ThumbsUp, color: string }> = {
@@ -24,7 +26,7 @@ const REACTION_MAP: Record<string, { label: string, icon: typeof ThumbsUp, color
     "angry": { label: "Angry", icon: Angry, color: "text-red-600" },
 }
 
-export function PostActions({ postId, myReaction, onLike, onReaction, onCommentClick, onShareClick }: PostActionsProps) {
+export function PostActions({ postId, myReaction, isBookmarked, onLike, onReaction, onCommentClick, onShareClick, onBookmark }: PostActionsProps) {
     const [reactionPickerOpen, setReactionPickerOpen] = useState(false)
     const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
@@ -96,6 +98,21 @@ export function PostActions({ postId, myReaction, onLike, onReaction, onCommentC
                 >
                     <MessageCircle className="h-4 w-4 stroke-[1.5px]" />
                     <span className="font-medium text-sm">Comment</span>
+                </Button>
+
+                <Button
+                    variant="ghost"
+                    aria-label={isBookmarked ? "Remove bookmark" : "Bookmark this post"}
+                    className={cn(
+                        "rounded-lg transition-all gap-2 h-9 px-4",
+                        isBookmarked
+                            ? "text-amber-500 hover:text-amber-600 hover:!bg-amber-500/10"
+                            : "text-muted-foreground hover:text-amber-500 hover:!bg-amber-500/10"
+                    )}
+                    onClick={() => onBookmark?.(postId)}
+                >
+                    <Bookmark className={cn("h-4 w-4 stroke-[1.5px]", isBookmarked && "fill-current")} />
+                    <span className="font-medium text-sm">{isBookmarked ? "Saved" : "Save"}</span>
                 </Button>
 
                 <Button

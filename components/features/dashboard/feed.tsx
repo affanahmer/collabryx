@@ -37,6 +37,7 @@ import { getInitials } from "@/lib/utils/format-initials"
 import { getCache, setCache, CACHE_KEYS } from "@/lib/dashboard-cache"
 import { sortPostsByPriority, getPostTypeBadge } from "@/lib/utils/post-helpers"
 import { fetchPosts, fetchPersonalizedFeed } from "@/lib/services/posts"
+import { reactToPost, toggleBookmark } from "@/lib/actions/posts.server"
 import type { PostWithAuthor } from "@/types/database.types"
 import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
@@ -68,6 +69,7 @@ interface PostUI extends PostWithAuthor {
     hasLink: boolean
     linkUrl?: string
     myReaction: string | null
+    isBookmarked: boolean
 }
 
 export function Feed() {
@@ -94,6 +96,7 @@ export function Feed() {
         hasLink: Boolean(post.link_url),
         linkUrl: post.link_url,
         myReaction: null,
+        isBookmarked: false,
     }), [])
 
     // Fetch initial posts
@@ -176,6 +179,40 @@ export function Feed() {
         checkEmbeddingStatus()
     }, [])
 
+    // Fetch bookmark status for current user when posts are loaded
+    useEffect(() => {
+        if (posts.length === 0) return
+
+        const fetchBookmarks = async () => {
+            try {
+                const supabase = createClient()
+                const { data: { user } } = await supabase.auth.getUser()
+                if (!user) return
+
+                const postIds = posts.map(p => p.id)
+                const { data: bookmarks } = await supabase
+                    .from("user_bookmarks")
+                    .select("post_id")
+                    .eq("user_id", user.id)
+                    .in("post_id", postIds)
+
+                if (bookmarks) {
+                    const ids = new Set(bookmarks.map(b => b.post_id))
+                    setBookmarkedPostIds(ids)
+                    // Update posts with bookmark status
+                    setPosts(prev => prev.map(p => ({
+                        ...p,
+                        isBookmarked: ids.has(p.id)
+                    })))
+                }
+            } catch (err) {
+                console.error("Error fetching bookmarks:", err)
+            }
+        }
+
+        fetchBookmarks()
+    }, [posts.length])
+
     // â”€â”€ Ecosystem States â”€â”€
     const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
     const [newPostsCount, setNewPostsCount] = useState(0)
@@ -184,6 +221,7 @@ export function Feed() {
     const [hasMore, setHasMore] = useState(true)
     const [shareDialogState, setShareDialogState] = useState<{ isOpen: boolean; url: string }>({ isOpen: false, url: "" })
     const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
+    const [bookmarkedPostIds, setBookmarkedPostIds] = useState<Set<string>>(new Set())
     const latestCreatedAtRef = useRef<string | null>(null)
     const hasCheckedNewPosts = useRef(false)
 
@@ -280,21 +318,99 @@ export function Feed() {
         }
     }
 
-    const handleReaction = (postId: string, emoji: string) => {
-        // Optimistic update - in production, this would call a mutation
-        const postElement = document.querySelector(`[data-post-id="${postId}"]`)
-        if (postElement) {
-            postElement.setAttribute('data-reaction', emoji)
+    const handleReaction = async (postId: string, emoji: string) => {
+        // Optimistic update
+        setPosts(prev => prev.map(p =>
+            p.id === postId ? { ...p, myReaction: p.myReaction === emoji ? null : emoji } : p
+        ))
+
+        try {
+            const result = await reactToPost(postId, emoji)
+            if (result.error) {
+                // Revert on failure
+                setPosts(prev => prev.map(p =>
+                    p.id === postId ? { ...p, myReaction: null } : p
+                ))
+                toast.error(result.error)
+            }
+        } catch {
+            setPosts(prev => prev.map(p =>
+                p.id === postId ? { ...p, myReaction: null } : p
+            ))
+            toast.error("Failed to add reaction")
         }
-        toast.success(`Reaction added: ${emoji}`)
     }
 
-    const handleMainLike = (postId: string) => {
-        // Optimistic update - in production, this would call a mutation
-        const postElement = document.querySelector(`[data-post-id="${postId}"]`)
-        if (postElement) {
-            const currentReaction = postElement.getAttribute('data-reaction')
-            postElement.setAttribute('data-reaction', currentReaction ? '' : 'ðŸ‘')
+    const handleMainLike = async (postId: string) => {
+        const post = posts.find(p => p.id === postId)
+        const currentReaction = post?.myReaction
+        const newEmoji = currentReaction === 'like' ? null : 'like'
+
+        // Optimistic update
+        setPosts(prev => prev.map(p =>
+            p.id === postId ? { ...p, myReaction: newEmoji } : p
+        ))
+
+        try {
+            const result = await reactToPost(postId, 'like')
+            if (result.error) {
+                // Revert on failure
+                setPosts(prev => prev.map(p =>
+                    p.id === postId ? { ...p, myReaction: currentReaction } : p
+                ))
+                toast.error(result.error)
+            }
+        } catch {
+            setPosts(prev => prev.map(p =>
+                p.id === postId ? { ...p, myReaction: currentReaction } : p
+            ))
+            toast.error("Failed to like post")
+        }
+    }
+
+    const handleBookmark = async (postId: string) => {
+        const wasBookmarked = bookmarkedPostIds.has(postId)
+
+        // Optimistic update
+        setBookmarkedPostIds(prev => {
+            const next = new Set(prev)
+            if (wasBookmarked) next.delete(postId)
+            else next.add(postId)
+            return next
+        })
+        setPosts(prev => prev.map(p =>
+            p.id === postId ? { ...p, isBookmarked: !wasBookmarked } : p
+        ))
+
+        try {
+            const result = await toggleBookmark(postId)
+            if (result.error) {
+                // Revert on failure
+                setBookmarkedPostIds(prev => {
+                    const next = new Set(prev)
+                    if (wasBookmarked) next.add(postId)
+                    else next.delete(postId)
+                    return next
+                })
+                setPosts(prev => prev.map(p =>
+                    p.id === postId ? { ...p, isBookmarked: wasBookmarked } : p
+                ))
+                toast.error(result.error)
+            } else {
+                toast.success(result.bookmarked ? "Post saved" : "Bookmark removed")
+            }
+        } catch {
+            // Revert on failure
+            setBookmarkedPostIds(prev => {
+                const next = new Set(prev)
+                if (wasBookmarked) next.add(postId)
+                else next.delete(postId)
+                return next
+            })
+            setPosts(prev => prev.map(p =>
+                p.id === postId ? { ...p, isBookmarked: wasBookmarked } : p
+            ))
+            toast.error("Failed to update bookmark")
         }
     }
 
@@ -441,9 +557,11 @@ export function Feed() {
                                         <PostActions
                                             postId={post.id}
                                             myReaction={post.myReaction}
+                                            isBookmarked={post.isBookmarked}
                                             onLike={handleMainLike}
                                             onReaction={handleReaction}
                                             onCommentClick={toggleComments}
+                                            onBookmark={handleBookmark}
                                             onShareClick={() =>
                                                 setShareDialogState({
                                                     isOpen: true,
@@ -487,6 +605,7 @@ export function Feed() {
                 post={sortedPosts.find(p => p.id === selectedPostId) || null}
                 onLike={handleMainLike}
                 onReaction={handleReaction}
+                onBookmark={handleBookmark}
                 onShare={() => {
                     setShareDialogState({
                         isOpen: true,

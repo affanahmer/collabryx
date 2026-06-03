@@ -21,6 +21,7 @@ interface PostUI extends PostWithAuthor {
     hasLink: boolean
     linkUrl?: string
     myReaction: string | null
+    isBookmarked?: boolean
 }
 
 import { PostHeader } from "./post-header"
@@ -38,6 +39,7 @@ interface PostDetailDialogProps {
     post: PostUI | null
     onLike?: (postId: string) => void
     onReaction?: (postId: string, emoji: string) => void
+    onBookmark?: (postId: string) => void
     onShare?: () => void
 }
 
@@ -47,6 +49,7 @@ export function PostDetailDialog({
     post,
     onLike,
     onReaction,
+    onBookmark,
     onShare,
 }: PostDetailDialogProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -219,9 +222,11 @@ export function PostDetailDialog({
                                 <PostActions
                                     postId={post.id}
                                     myReaction={post.myReaction}
+                                    isBookmarked={post.isBookmarked}
                                     onLike={(id) => onLike?.(id)}
                                     onReaction={(id, emoji) => onReaction?.(id, emoji)}
                                     onCommentClick={() => { }}
+                                    onBookmark={(id) => onBookmark?.(id)}
                                     onShareClick={() => onShare?.()}
                                 />
                             </div>
@@ -277,9 +282,11 @@ export function PostDetailDialog({
                                     <PostActions
                                         postId={post.id}
                                         myReaction={post.myReaction}
+                                        isBookmarked={post.isBookmarked}
                                         onLike={(id) => onLike?.(id)}
                                         onReaction={(id, emoji) => onReaction?.(id, emoji)}
                                         onCommentClick={() => { }}
+                                        onBookmark={(id) => onBookmark?.(id)}
                                         onShareClick={() => onShare?.()}
                                     />
                                 </div>

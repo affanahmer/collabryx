@@ -210,6 +210,75 @@ export async function deletePost(postId: string) {
 }
 
 // ===========================================
+// TOGGLE BOOKMARK
+// ===========================================
+export async function toggleBookmark(postId: string) {
+  const supabase = await createClient()
+
+  // Validate input
+  const inputValidated = z.string().uuid('Invalid post ID').safeParse(postId)
+  if (!inputValidated.success) {
+    return { error: 'Invalid input', details: inputValidated.error.issues }
+  }
+
+  const validPostId = inputValidated.data
+
+  // Get current user
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return { error: 'Unauthorized' }
+  }
+
+  // Check if bookmark already exists
+  const { data: existingBookmark, error: fetchError } = await supabase
+    .from('user_bookmarks')
+    .select('id')
+    .eq('post_id', validPostId)
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (fetchError) {
+    return { error: 'Failed to check bookmark status' }
+  }
+
+  if (existingBookmark) {
+    // Remove bookmark
+    const { error: deleteError } = await supabase
+      .from('user_bookmarks')
+      .delete()
+      .eq('id', existingBookmark.id)
+
+    if (deleteError) {
+      return { error: 'Failed to remove bookmark' }
+    }
+
+    revalidatePath('/dashboard')
+    revalidatePath('/bookmarks')
+    revalidatePath(`/post/${validPostId}`)
+
+    return { bookmarked: false }
+  } else {
+    // Add bookmark
+    const { error: insertError } = await supabase
+      .from('user_bookmarks')
+      .insert({
+        post_id: validPostId,
+        user_id: user.id,
+      })
+
+    if (insertError) {
+      return { error: 'Failed to add bookmark' }
+    }
+
+    revalidatePath('/dashboard')
+    revalidatePath('/bookmarks')
+    revalidatePath(`/post/${validPostId}`)
+
+    return { bookmarked: true }
+  }
+}
+
+// ===========================================
 // REACT TO POST
 // ===========================================
 export async function reactToPost(postId: string, reactionType: string) {

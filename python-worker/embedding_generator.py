@@ -199,8 +199,10 @@ def get_generator() -> EmbeddingGenerator:
 
 def construct_semantic_text(profile: dict, skills: list, interests: list) -> str:
     """
-    Construct semantic text string from user profile data
-    Handles None values and malformed data gracefully
+    Construct semantic text string from user profile data for embedding generation.
+    Uses headline, bio, skills, interests, goals (looking_for), and location.
+    Does NOT include PII (name, email) or hallucinated fields.
+    Handles None values and malformed data gracefully.
 
     Args:
         profile: User profile dictionary
@@ -238,7 +240,6 @@ def construct_semantic_text(profile: dict, skills: list, interests: list) -> str
     )
 
     semantic_text = f"""
-Role: {profile.get("role", "User") or "User"}.
 Headline: {profile.get("headline", "") or ""}.
 Bio: {profile.get("bio", "") or ""}.
 Skills: {skills_text}.

@@ -80,7 +80,6 @@ class TestConstructSemanticText:
         """Test semantic text construction with complete data"""
         text = construct_semantic_text(sample_profile, sample_skills, sample_interests)
 
-        assert "Role: Student" in text
         assert "Headline: React Developer" in text
         assert "React" in text
         assert "Fintech" in text
@@ -91,8 +90,10 @@ class TestConstructSemanticText:
         """Test handling of empty profile data"""
         text = construct_semantic_text({}, [], [])
 
-        assert "Role: User" in text
         assert len(text) > 0
+        # All fields should contain "None" since profile is empty
+        assert "Headline:" in text
+        assert "Skills: None" in text
 
     def test_missing_looking_for(self, sample_profile, sample_skills, sample_interests):
         """Test profile without looking_for field"""
@@ -105,7 +106,6 @@ class TestConstructSemanticText:
     def test_truncation(self):
         """Test that very long profiles are truncated"""
         profile = {
-            "role": "Student",
             "headline": "Developer",
             "bio": "a" * 3000,
             "looking_for": ["collaboration"],
@@ -118,7 +118,6 @@ class TestConstructSemanticText:
     def test_special_characters(self):
         """Test handling of special characters"""
         profile = {
-            "role": "Student & Developer",
             "headline": "Full-Stack <Engineer>",
             "bio": 'Passionate about "AI/ML" & data science',
             "looking_for": ["collaboration"],
@@ -155,7 +154,7 @@ class TestConcurrentProcessing:
     def test_construct_semantic_text_with_none_values(self):
         """Test that None values in lists don't cause AttributeError"""
         # Test with None in skills list
-        profile = {"role": "Developer", "headline": "Test"}
+        profile = {"headline": "Test"}
         skills = [{"skill_name": "Python"}, None, {"skill_name": "JS"}]
         interests = [None, {"interest": "AI"}]
 
@@ -168,7 +167,7 @@ class TestConcurrentProcessing:
 
     def test_construct_semantic_text_with_empty_dicts(self):
         """Test handling of empty dicts in lists"""
-        profile = {"role": "Developer"}
+        profile = {"headline": "Developer"}
         skills = [{}, {"skill_name": "Python"}]
         interests = []
 

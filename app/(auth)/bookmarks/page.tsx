@@ -1,11 +1,14 @@
-import { createClient } from "@/lib/supabase/server"
+"use client"
+
+import { useState, useEffect, useCallback } from "react"
 import { GlassCard } from "@/components/shared/glass-card"
 import { Button } from "@/components/ui/button"
-import { Bookmark, MessageCircle, Heart, Share2, ExternalLink, Filter } from "lucide-react"
+import { Bookmark, MessageCircle, Heart, Share2, ExternalLink, Filter, Loader2, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { redirect } from "next/navigation"
-
-export const dynamic = "force-dynamic"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
+import { createClient } from "@/lib/supabase/client"
+import { toggleBookmark } from "@/lib/actions/posts.server"
 
 interface BookmarkedPost {
   id: string
@@ -14,6 +17,7 @@ interface BookmarkedPost {
   reaction_count: number
   comment_count: number
   share_count: number
+  bookmark_created_at: string
   profiles: {
     full_name: string | null
     headline: string | null
@@ -31,43 +35,88 @@ function getInitials(name: string | null): string {
     .slice(0, 2)
 }
 
-export default async function BookmarksPage() {
-  const supabase = await createClient()
+export default function BookmarksPage() {
+  const router = useRouter()
+  const [bookmarks, setBookmarks] = useState<BookmarkedPost[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isUnauthenticated, setIsUnauthenticated] = useState(false)
 
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser()
+  const fetchBookmarks = useCallback(async () => {
+    setIsLoading(true)
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
 
-  if (authError || !user) {
-    redirect("/login")
+      if (!user) {
+        setIsUnauthenticated(true)
+        return
+      }
+
+      const { data: bookmarkData } = await supabase
+        .from("user_bookmarks")
+        .select(`
+          created_at,
+          posts!inner (
+            id,
+            content,
+            created_at,
+            reaction_count,
+            comment_count,
+            share_count,
+            profiles:user_id (
+              full_name,
+              headline,
+              avatar_url
+            )
+          )
+        `)
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+
+      const mapped: BookmarkedPost[] = ((bookmarkData ?? []) as unknown as Array<{
+        created_at: string
+        posts: BookmarkedPost
+      }>).flatMap((item) => {
+        const post = item.posts
+        return post ? [{ ...post, bookmark_created_at: item.created_at } as BookmarkedPost] : []
+      })
+
+      setBookmarks(mapped)
+    } catch (err) {
+      console.error("Error fetching bookmarks:", err)
+      toast.error("Failed to load bookmarks")
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchBookmarks()
+  }, [fetchBookmarks])
+
+  const handleRemoveBookmark = async (postId: string) => {
+    // Optimistic update
+    setBookmarks(prev => prev.filter(b => b.id !== postId))
+
+    try {
+      const result = await toggleBookmark(postId)
+      if (result.error) {
+        // Revert on failure
+        fetchBookmarks()
+        toast.error(result.error)
+      } else {
+        toast.success("Bookmark removed")
+      }
+    } catch {
+      fetchBookmarks()
+      toast.error("Failed to remove bookmark")
+    }
   }
 
-  // Fetch posts that have been bookmarked (reactions with bookmark emoji by this user)
-  const { data: bookmarkedPosts } = await supabase
-    .from("post_reactions")
-    .select(`
-      post_id,
-      posts!inner (
-        id,
-        content,
-        created_at,
-        reaction_count,
-        comment_count,
-        share_count,
-        profiles:user_id (
-          full_name,
-          headline,
-          avatar_url
-        )
-      )
-    `)
-    .eq("user_id", user.id)
-    .eq("emoji", "🔖")
-    .order("created_at", { ascending: false })
-
-  const bookmarks: BookmarkedPost[] = ((bookmarkedPosts ?? []) as unknown as Array<{ posts: BookmarkedPost[] }>)
-    .flatMap((item) => item.posts ?? [])
+  if (isUnauthenticated) {
+    router.push("/login")
+    return null
+  }
 
   return (
     <div className="container max-w-4xl mx-auto py-8 px-4 md:px-6">
@@ -79,14 +128,20 @@ export default async function BookmarksPage() {
               Save and organize content you want to reference later
             </p>
           </div>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Filter className="h-4 w-4" />
-            Filter
-          </Button>
+          {bookmarks.length > 0 && (
+            <Button variant="outline" size="sm" className="gap-2">
+              <Filter className="h-4 w-4" />
+              Filter
+            </Button>
+          )}
         </div>
       </div>
 
-      {bookmarks.length === 0 ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : bookmarks.length === 0 ? (
         <GlassCard>
           <div className="text-center py-12">
             <Bookmark className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
@@ -124,7 +179,13 @@ export default async function BookmarksPage() {
                         })}
                       </p>
                     </div>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-9 w-9 shrink-0 text-amber-500 hover:text-amber-600 hover:!bg-amber-500/10"
+                      onClick={() => handleRemoveBookmark(bookmark.id)}
+                      title="Remove bookmark"
+                    >
                       <Bookmark className="h-4 w-4 fill-current" />
                     </Button>
                   </div>

@@ -57,6 +57,7 @@ import { notFound } from 'next/navigation'
 import { ConnectionButton } from '@/components/features/connections/connection-button'
 import { MatchScore } from '@/components/shared/match-score'
 import { GlassCard } from '@/components/shared/glass-card'
+import { ProfileVisitTracker } from '@/components/features/profile/profile-visit-tracker'
 import type { Profile, UserSkill, UserExperience, UserProject, UserInterest } from '@/types/database.types'
 
 export const dynamic = "force-dynamic"
@@ -234,7 +235,7 @@ export default async function ProfilePage({
 
   const visibleProjects = tabProjects.filter(p => isOwnProfile || p.isPublic)
 
-  const p = profile as Profile
+  const p = profile as unknown as Profile
 
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 max-w-5xl">
@@ -285,6 +286,7 @@ export default async function ProfilePage({
         experiences={tabExperiences}
         projects={visibleProjects}
       />
+      {!isOwnProfile && <ProfileVisitTracker viewedId={profileId} />}
     </div>
   )
 }

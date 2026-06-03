@@ -100,6 +100,7 @@ export interface Post {
   reaction_count: number;
   comment_count: number;
   share_count: number;
+  bookmark_count: number;
   version: number; // Optimistic locking version
   created_at: string; // TIMESTAMPTZ
   updated_at: string; // TIMESTAMPTZ
@@ -130,6 +131,16 @@ export interface PostReaction {
   post_id: string; // UUID
   user_id: string; // UUID
   emoji: string;
+  created_at: string; // TIMESTAMPTZ
+}
+
+// ===========================================
+// TABLE: user_bookmarks
+// ===========================================
+export interface UserBookmark {
+  id: string; // UUID
+  post_id: string; // UUID
+  user_id: string; // UUID
   created_at: string; // TIMESTAMPTZ
 }
 
@@ -262,7 +273,9 @@ export interface Message {
   is_read: boolean;
   read_at?: string | null; // TIMESTAMPTZ
   attachment_url?: string;
-  attachment_type?: 'image' | 'file';
+  attachment_type?: 'image' | 'pdf' | 'document' | 'file';
+  file_name?: string;
+  file_size?: number;
   created_at: string; // TIMESTAMPTZ
 }
 
@@ -468,6 +481,19 @@ export interface AnalyticsActivityData {
   matches: number;
   connections: number;
   posts: number;
+}
+
+// ===========================================
+// TABLE: profile_visits
+// ===========================================
+export interface ProfileVisit {
+  id: string; // UUID
+  viewer_id: string; // UUID
+  viewed_id: string; // UUID
+  viewed_at: string; // TIMESTAMPTZ
+  expires_at: string; // TIMESTAMPTZ
+  created_at: string; // TIMESTAMPTZ
+  updated_at: string; // TIMESTAMPTZ
 }
 
 // ===========================================
@@ -852,6 +878,12 @@ export type Database = {
         Row: ProfileEmbedding;
         Insert: Partial<ProfileEmbedding>;
         Update: Partial<ProfileEmbedding>;
+        Relationships: [];
+      };
+      profile_visits: {
+        Row: ProfileVisit;
+        Insert: Partial<ProfileVisit>;
+        Update: Partial<ProfileVisit>;
         Relationships: [];
       };
       feed_scores: {
