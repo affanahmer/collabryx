@@ -1,13 +1,59 @@
+/**
+ * ProfileTabs — About, Experience, Projects tabs for the profile view
+ *
+ * ENHANCEMENTS OVER ORIGINAL (Phase 1-3):
+ *
+ * 1. INTERESTS SECTION (user_interests):
+ *    Problem: The user_interests table stored hobbies/topics (e.g. "Machine Learning",
+ *    "Open Source", "UI Design") but the profile never displayed them. This is a
+ *    valuable matching signal — shared interests drive collaboration quality.
+ *    Solution: Added an "Interests" card in the About tab with rose-colored badges.
+ *    The grid layout is now lg:grid-cols-3 (was md:grid-cols-2) to accommodate
+ *    all three sections (Skills, Interests, Looking For) side by side on desktop.
+ *
+ * 2. PROJECT IMAGE THUMBNAILS (image_url):
+ *    Problem: user_projects has an image_url field for project screenshots/hero
+ *    images but it was never rendered. Project cards were text-only, making them
+ *    less engaging and harder to scan.
+ *    Solution: Hero image at the top of each project card with hover zoom effect
+ *    (scale-105, 300ms). Images are lazy-loaded. Cards that lack image_url render
+ *    as before (no layout shift due to conditional render).
+ *
+ * 3. EXPERIENCE DURATION (formatDuration):
+ *    Problem: The timeline showed "Jan 2020 - Present" but never calculated the
+ *    actual duration ("5 yrs 2 mos"). This is a standard LinkedIn-like signal
+ *    that helps viewers quickly assess career depth.
+ *    Solution: Added inline duration tag using new formatDuration() utility,
+ *    e.g. "Jan 2020 - Present • 5 yrs 2 mos".
+ *
+ * 4. INLINE BIO EDITING:
+ *    Problem: Editing bio required navigating to Settings page. High friction
+ *    for the most important profile field (bio completion is 5% of score, drives
+ *    AI match quality and viewer engagement).
+ *    Solution: Click-to-edit Textarea with Save/Cancel, character counter (1000
+ *    max), and loading state. Uses useUpdateProfile mutation for optimistic
+ *    updates. Pencil icon appears on hover for own profile. Empty state shows
+ *    an "Add bio" button instead of the generic AI tip.
+ *
+ * 5. WHITESPACE PRESERVATION:
+ *    Problem: Bio text lost paragraph breaks because React collapses whitespace.
+ *    Multi-paragraph bios displayed as one giant block of text.
+ *    Solution: Added whitespace-pre-line to the bio paragraph so line breaks
+ *    from the textarea are preserved in the display.
+ */
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
 import { motion } from "framer-motion"
-import { Brain, Sprout, GraduationCap, Briefcase, Rocket, Lock, Plus, Sparkles, TerminalSquare, BriefcaseBusiness, FolderGit2, ExternalLink } from "lucide-react"
+import { Brain, Sprout, GraduationCap, Briefcase, Rocket, Lock, Plus, Sparkles, TerminalSquare, BriefcaseBusiness, FolderGit2, ExternalLink, Heart, Pencil, Check, X, Loader2 } from "lucide-react"
 import { GlassCard } from "@/components/shared/glass-card"
-import { formatDateRange } from "@/lib/utils/format-date"
+import { formatDateRange, formatDuration } from "@/lib/utils/format-date"
+import { useUpdateProfile } from "@/hooks/use-profile"
+import { toast } from "sonner"
 
 const intentIcons: Record<string, { icon: React.ComponentType<{ className?: string }>, color: string }> = {
     "Technical Co-founder": { icon: Brain, color: "text-purple-600 dark:text-purple-400 bg-purple-500/10 border-purple-500/30" },
@@ -41,6 +87,7 @@ interface ProfileTabsProps {
     isOwnProfile?: boolean
     bio?: string | null
     lookingFor?: string[] | null
+    interests?: string[] | null
     skills?: { skillName: string, proficiency?: string | null, isPrimary?: boolean }[]
     experiences?: Experience[]
     projects?: Project[]
@@ -50,14 +97,21 @@ export function ProfileTabs({
     isOwnProfile = false,
     bio,
     lookingFor,
+    interests,
     skills,
     experiences,
     projects,
 }: ProfileTabsProps) {
     const [bioExpanded, setBioExpanded] = useState(false)
+    const [isEditingBio, setIsEditingBio] = useState(false)
+    const [bioDraft, setBioDraft] = useState("")
+    const [isSavingBio, setIsSavingBio] = useState(false)
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
+    const { mutateAsync: updateProfile } = useUpdateProfile()
 
     // Normalize optional props with safe defaults for rendering
     const safeLookingFor = lookingFor ?? []
+    const safeInterests = interests ?? []
     const safeSkills = skills ?? []
     const safeExperiences = experiences ?? []
     const safeProjects = projects ?? []
@@ -67,6 +121,35 @@ export function ProfileTabs({
     const bioPreview = bioSentences.length > 2 && !bioExpanded
         ? bioSentences.slice(0, 2).join(". ") + "..."
         : bio
+
+    const handleBioEdit = () => {
+        setBioDraft(bio ?? "")
+        setIsEditingBio(true)
+        setTimeout(() => textareaRef.current?.focus(), 50)
+    }
+
+    const handleBioSave = async () => {
+        const trimmed = bioDraft.trim()
+        if (trimmed === (bio ?? "")) {
+            setIsEditingBio(false)
+            return
+        }
+        setIsSavingBio(true)
+        try {
+            await updateProfile({ bio: trimmed || null })
+            setIsEditingBio(false)
+            toast.success("Bio updated")
+        } catch {
+            toast.error("Failed to update bio")
+        } finally {
+            setIsSavingBio(false)
+        }
+    }
+
+    const handleBioCancel = () => {
+        setBioDraft("")
+        setIsEditingBio(false)
+    }
 
     return (
         <Tabs defaultValue="about" className="w-full">
@@ -84,13 +167,63 @@ export function ProfileTabs({
                     className="grid gap-6"
                 >
                     <GlassCard className="bg-card/40 backdrop-blur-xl border border-border/50 shadow-sm" innerClassName="p-5 sm:p-6 lg:p-7">
-                        <div className="flex items-center gap-2 mb-4">
-                            <TerminalSquare className="h-5 w-5 text-primary" />
-                            <h3 className="text-lg sm:text-xl font-bold tracking-tight">Bio</h3>
+                        <div className="flex items-center justify-between gap-2 mb-4">
+                            <div className="flex items-center gap-2">
+                                <TerminalSquare className="h-5 w-5 text-primary" />
+                                <h3 className="text-lg sm:text-xl font-bold tracking-tight">Bio</h3>
+                            </div>
+                            {isOwnProfile && !isEditingBio && (
+                                <button
+                                    type="button"
+                                    onClick={handleBioEdit}
+                                    className="text-muted-foreground hover:text-primary transition-colors"
+                                    title="Edit bio"
+                                >
+                                    <Pencil className="h-4 w-4" />
+                                </button>
+                            )}
                         </div>
-                        {bio ? (
+
+                        {isEditingBio ? (
                             <div className="space-y-3">
-                                <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">
+                                <Textarea
+                                    ref={textareaRef}
+                                    value={bioDraft}
+                                    onChange={(e) => setBioDraft(e.target.value)}
+                                    placeholder="Tell others about yourself, your skills, and what you're working on..."
+                                    className="min-h-[120px] resize-y text-sm"
+                                    maxLength={1000}
+                                />
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs text-muted-foreground">{bioDraft.length}/1000</span>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={handleBioCancel}
+                                            disabled={isSavingBio}
+                                        >
+                                            <X className="h-3.5 w-3.5 mr-1.5" />
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            onClick={handleBioSave}
+                                            disabled={isSavingBio}
+                                        >
+                                            {isSavingBio ? (
+                                                <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                                            ) : (
+                                                <Check className="h-3.5 w-3.5 mr-1.5" />
+                                            )}
+                                            Save
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : bio ? (
+                            <div className="space-y-3">
+                                <p className="text-sm sm:text-base text-muted-foreground leading-relaxed whitespace-pre-line">
                                     {bioPreview}
                                 </p>
                                 {bioSentences.length > 2 && (
@@ -106,19 +239,26 @@ export function ProfileTabs({
                         ) : (
                             <div className="text-center py-6">
                                 <p className="text-sm text-muted-foreground mb-4">No bio added yet.</p>
-                                <div className="flex items-start gap-2 p-3 rounded-xl bg-primary/10 border border-primary/20 text-left max-w-lg mx-auto">
-                                    <Sparkles className="h-5 w-5 text-primary mt-0.5 shrink-0" />
-                                    <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                                        <span className="font-semibold text-foreground">AI Tip:</span> A detailed bio increases profile views by 3x and helps us match you with the right collaborators.
-                                    </p>
-                                </div>
+                                {isOwnProfile ? (
+                                    <Button variant="outline" size="sm" onClick={handleBioEdit}>
+                                        <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                                        Add bio
+                                    </Button>
+                                ) : (
+                                    <div className="flex items-start gap-2 p-3 rounded-xl bg-primary/10 border border-primary/20 text-left max-w-lg mx-auto">
+                                        <Sparkles className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                                        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                                            <span className="font-semibold text-foreground">AI Tip:</span> A detailed bio increases profile views by 3x and helps us match you with the right collaborators.
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </GlassCard>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {/* Skills Block */}
-                        <GlassCard className="bg-card/40 backdrop-blur-xl border border-border/50 shadow-sm" innerClassName="p-5 sm:p-6 lg:p-7">
+                        <GlassCard className="bg-card/40 backdrop-blur-xl border border-border/50 shadow-sm h-fit" innerClassName="p-5 sm:p-6 lg:p-7">
                             <div className="flex items-center gap-2 mb-4">
                                 <Brain className="h-5 w-5 text-primary" />
                                 <h3 className="text-lg sm:text-xl font-bold tracking-tight">Technical Arsenal</h3>
@@ -156,8 +296,32 @@ export function ProfileTabs({
                             )}
                         </GlassCard>
 
+                        {/* Interests Block — NEW */}
+                        <GlassCard className="bg-card/40 backdrop-blur-xl border border-border/50 shadow-sm h-fit" innerClassName="p-5 sm:p-6 lg:p-7">
+                            <div className="flex items-center gap-2 mb-4">
+                                <Heart className="h-5 w-5 text-rose-500" />
+                                <h3 className="text-lg sm:text-xl font-bold tracking-tight">Interests</h3>
+                            </div>
+
+                            {safeInterests.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                    {safeInterests.map((interest) => (
+                                        <Badge
+                                            key={interest}
+                                            variant="outline"
+                                            className="px-2.5 py-1 text-xs sm:text-sm font-medium border-rose-500/20 bg-rose-500/5 text-rose-600 dark:text-rose-400 shadow-sm"
+                                        >
+                                            {interest}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">No interests added yet.</p>
+                            )}
+                        </GlassCard>
+
                         {/* Intents Block */}
-                        <GlassCard className="bg-card/40 backdrop-blur-xl border border-border/50 shadow-sm" innerClassName="p-5 sm:p-6 lg:p-7">
+                        <GlassCard className="bg-card/40 backdrop-blur-xl border border-border/50 shadow-sm h-fit" innerClassName="p-5 sm:p-6 lg:p-7">
                             <div className="flex items-center gap-2 mb-4">
                                 <Rocket className="h-5 w-5 text-primary" />
                                 <h3 className="text-lg sm:text-xl font-bold tracking-tight">Looking For</h3>
@@ -214,6 +378,12 @@ export function ProfileTabs({
                                         <h4 className="font-bold text-base sm:text-lg text-foreground tracking-tight">{exp.title}</h4>
                                         <p className="text-sm text-emerald-500/90 dark:text-emerald-400 font-medium mt-0.5">
                                             {exp.company} <span className="text-muted-foreground px-1">•</span> <span className="text-muted-foreground">{formatDateRange(exp.startDate, exp.isCurrent ? null : exp.endDate)}</span>
+                                            {exp.startDate && (
+                                                <>
+                                                    <span className="text-muted-foreground px-1">•</span>
+                                                    <span className="text-xs text-muted-foreground/70">{formatDuration(exp.startDate, exp.isCurrent ? null : exp.endDate)}</span>
+                                                </>
+                                            )}
                                         </p>
                                         {exp.description && (
                                             <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
@@ -260,8 +430,20 @@ export function ProfileTabs({
                                 {safeProjects.map((project) => (
                                     <div
                                         key={project.id}
-                                        className="p-4 rounded-xl bg-card/60 border border-border/40 hover:border-primary/30 transition-all group"
+                                        className="rounded-xl bg-card/60 border border-border/40 hover:border-primary/30 transition-all group overflow-hidden"
                                     >
+                                        {/* Project Image */}
+                                        {project.imageUrl && (
+                                            <div className="relative h-36 sm:h-40 w-full bg-muted/30 overflow-hidden">
+                                                <img
+                                                    src={project.imageUrl}
+                                                    alt={project.title}
+                                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                                                    loading="lazy"
+                                                />
+                                            </div>
+                                        )}
+                                        <div className="p-4">
                                         <div className="flex items-start justify-between gap-2 mb-2">
                                             <h4 className="font-bold text-base text-foreground group-hover:text-primary transition-colors">
                                                 {project.title}
@@ -291,6 +473,7 @@ export function ProfileTabs({
                                                 ))}
                                             </div>
                                         )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -332,4 +515,3 @@ export function ProfileTabs({
         </Tabs>
     )
 }
-

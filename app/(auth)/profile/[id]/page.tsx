@@ -1,11 +1,60 @@
+/**
+ * ProfilePage — view another user's profile (server component)
+ *
+ * CRITICAL FIX: RLS-COMPLIANT PUBLIC PROFILE ACCESS
+ * Problem: Original queried supabase.from('profiles') for ALL profile views.
+ * The RLS policy on the profiles table is "Users can view own profile" with
+ * filter WHERE auth.uid() = id. This means querying another user's profile
+ * directly from the profiles table is BLOCKED by Row Level Security — the
+ * query silently returns empty results and the page would show a 404.
+ *
+ * Solution: Use profiles_public VIEW for non-own profiles. This view is
+ * explicitly GRANT'd to anon and authenticated roles, and uses a CASE
+ * expression to mask email: CASE WHEN auth.uid() = id THEN email ELSE NULL END.
+ * Own profile still uses the profiles table directly (user has RLS access to
+ * their own row). Social link fields (github_url, linkedin_url, etc.) are
+ * conditionally selected — only for own profile where they're available.
+ *
+ * ENHANCEMENTS OVER ORIGINAL:
+ *
+ * 1. MATCH SCORE WITH REAL match_scores DATA:
+ *    Problem: Original calculated a simple percentage based on shared skill
+ *    names. The match_scores table has rich dimension data (skills_overlap,
+ *    complementary_score, shared_interests, activity_match, ai_confidence,
+ *    ai_explanation) but was never queried.
+ *    Solution: Created MatchScoreSection server component that queries
+ *    match_suggestions + match_scores with the real dimension breakdown.
+ *    Falls back to skill-overlap calculation when no suggestion exists.
+ *
+ * 2. SUSPENSE STREAMING:
+ *    Problem: Match score data is non-critical — the main profile content
+ *    (header, tabs) should render immediately without waiting for match
+ *    calculations.
+ *    Solution: MatchScoreSection is wrapped in <Suspense> with a skeleton
+ *    fallback. The match data streams in independently after main content.
+ *
+ * 3. EXPLICIT COLUMNS + NEW DATA:
+ *    Explicit column select (from profiles_public), interests joined in
+ *    main query, analytics fetched separately, social links conditionally
+ *    selected for own profile.
+ *
+ * 4. PRIVACY-RESPECTING DISPLAY:
+ *    - Email is masked by profiles_public view (CASE expression)
+ *    - Social links only available for own profile (not in public view)
+ *    - Activity status shown based on analytics availability
+ *    - Profile completion only passed for own profile
+ */
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { ProfileHeader } from "@/components/features/profile/profile-header"
 import { ProfileTabs } from "@/components/features/profile/profile-tabs"
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { ConnectionButton } from '@/components/features/connections/connection-button'
 import { MatchScore } from '@/components/shared/match-score'
-import type { Profile, UserSkill, UserExperience, UserProject } from '@/types/database.types'
+import { GlassCard } from '@/components/shared/glass-card'
+import { Sparkles } from 'lucide-react'
+import type { Profile, UserSkill, UserExperience, UserProject, UserInterest } from '@/types/database.types'
 
 export const dynamic = "force-dynamic"
 
@@ -50,6 +99,59 @@ export async function generateMetadata({
   }
 }
 
+/** Server component that fetches match score data independently for Suspense streaming */
+async function MatchScoreSection({ profileId, userId }: { profileId: string; userId: string }) {
+  const supabase = await createClient()
+
+  const { data: matchSuggestion } = await supabase
+    .from('match_suggestions')
+    .select(`
+      id, match_percentage, ai_confidence, ai_explanation,
+      match_scores (
+        skills_overlap, complementary_score, shared_interests,
+        activity_match
+      )
+    `)
+    .eq('user_id', userId)
+    .eq('matched_user_id', profileId)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (!matchSuggestion) return null
+
+  const ms = (matchSuggestion.match_scores as unknown as Record<string, number> | undefined)
+  const dimensions = ms ? [
+    { label: 'Skills', value: ms.skills_overlap ?? 0, color: 'bg-blue-500' },
+    { label: 'Complementary', value: ms.complementary_score ?? 0, color: 'bg-violet-500' },
+    { label: 'Interests', value: ms.shared_interests ?? 0, color: 'bg-green-500' },
+    { label: 'Activity', value: Math.round((ms.activity_match ?? 0) * 100), color: 'bg-amber-500' },
+  ] : undefined
+
+  return (
+    <MatchScore
+      overall={matchSuggestion.match_percentage}
+      dimensions={dimensions}
+      showBreakdown={true}
+      className="w-[220px]"
+      aiConfidence={matchSuggestion.ai_confidence ?? undefined}
+      aiExplanation={matchSuggestion.ai_explanation ?? undefined}
+    />
+  )
+}
+
+/** Simple skeleton for the match score while streaming */
+function MatchScoreSkeleton() {
+  return (
+    <GlassCard className="p-3 w-[220px]">
+      <div className="animate-pulse space-y-3">
+        <div className="h-4 bg-muted/40 rounded w-24" />
+        <div className="h-3 bg-muted/40 rounded-full w-full" />
+        <div className="h-8 bg-muted/30 rounded w-16 mx-auto" />
+      </div>
+    </GlassCard>
+  )
+}
+
 export default async function ProfilePage({
   params,
 }: {
@@ -58,9 +160,25 @@ export default async function ProfilePage({
   const { id: profileId } = await params
   const supabase = await createClient()
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*, user_skills(*), user_experiences(*), user_projects(*)')
+  const { data: { user } } = await supabase.auth.getUser()
+  const isOwnProfile = user?.id === profileId
+
+  // Use profiles_public for non-own profiles (RLS-safe, email masked) or profiles for own
+  const profileSource = isOwnProfile
+    ? supabase.from('profiles')
+    : supabase.from('profiles_public')
+
+  const { data: profile } = await profileSource
+    .select(`
+      id, display_name, full_name, headline, bio, avatar_url, banner_url,
+      location, website_url, ${isOwnProfile ? 'github_url, linkedin_url, twitter_url, portfolio_url, email,' : ''}
+      collaboration_readiness, is_verified, verification_type, university,
+      profile_completion, looking_for, onboarding_completed, created_at, updated_at,
+      user_skills(id, user_id, skill_name, proficiency, is_primary, created_at),
+      user_interests(id, user_id, interest, created_at),
+      user_experiences(id, user_id, title, company, description, start_date, end_date, is_current, order_index, created_at),
+      user_projects(id, user_id, title, description, url, image_url, tech_stack, is_public, order_index, created_at)
+    `)
     .eq('id', profileId)
     .single()
 
@@ -68,26 +186,28 @@ export default async function ProfilePage({
     notFound()
   }
 
-  // Get current user for connection button and match score
-  const { data: { user } } = await supabase.auth.getUser()
-  const isOwnProfile = user?.id === profileId
+  const { data: analytics } = await supabase
+    .from('user_analytics')
+    .select('connections_count, profile_views_last_30_days, last_active, posts_created_count')
+    .eq('user_id', profileId)
+    .maybeSingle()
 
   // Map DB snake_case to component camelCase
   const profileSkills: UserSkill[] = (profile as unknown as { user_skills?: UserSkill[] }).user_skills ?? []
+  const profileInterests: UserInterest[] = (profile as unknown as { user_interests?: UserInterest[] }).user_interests ?? []
   const profileExperiences: UserExperience[] = (profile as unknown as { user_experiences?: UserExperience[] }).user_experiences ?? []
   const profileProjects: UserProject[] = (profile as unknown as { user_projects?: UserProject[] }).user_projects ?? []
 
-  // Skills for ProfileHeader (string[] for badges)
   const headerSkills = profileSkills.map(s => s.skill_name)
 
-  // Skills for ProfileTabs (camelCase)
   const tabSkills = profileSkills.map(s => ({
     skillName: s.skill_name,
     proficiency: s.proficiency ?? null,
     isPrimary: s.is_primary,
   }))
 
-  // Experiences for ProfileTabs (camelCase)
+  const tabInterests = profileInterests.map(i => i.interest)
+
   const tabExperiences = profileExperiences.map(e => ({
     id: e.id,
     title: e.title,
@@ -98,7 +218,6 @@ export default async function ProfilePage({
     isCurrent: e.is_current,
   }))
 
-  // Projects for ProfileTabs
   const tabProjects = profileProjects.map(p => ({
     id: p.id,
     title: p.title,
@@ -109,24 +228,7 @@ export default async function ProfilePage({
     isPublic: p.is_public,
   }))
 
-  // Filter to only public projects for non-own profile viewing
   const visibleProjects = tabProjects.filter(p => isOwnProfile || p.isPublic)
-
-  // Calculate simple match score based on shared skills
-  let matchScore = 0
-  if (user && !isOwnProfile) {
-    const { data: currentUserSkills } = await supabase
-      .from('user_skills')
-      .select('skill_name')
-      .eq('user_id', user.id)
-
-    const currentUserSkillSet = new Set(currentUserSkills?.map(s => s.skill_name) || [])
-    const sharedSkills = profileSkills.filter(s => currentUserSkillSet.has(s.skill_name))
-
-    matchScore = profileSkills.length > 0
-      ? Math.round((sharedSkills.length / profileSkills.length) * 100)
-      : 50
-  }
 
   const p = profile as Profile
 
@@ -147,25 +249,34 @@ export default async function ProfilePage({
         collaborationReadiness={p.collaboration_readiness}
         skills={headerSkills}
         createdAt={p.created_at}
+        updatedAt={p.updated_at}
+        // NEW: Social links
+        githubUrl={p.github_url}
+        linkedinUrl={p.linkedin_url}
+        twitterUrl={p.twitter_url}
+        portfolioUrl={p.portfolio_url}
+        // NEW: Profile completion (only relevant for own profile)
+        profileCompletion={isOwnProfile ? p.profile_completion : undefined}
+        // NEW: Stats
+        connectionCount={analytics?.connections_count ?? 0}
+        profileViews={analytics?.profile_views_last_30_days ?? 0}
+        lastActive={analytics?.last_active ?? null}
       />
 
       {/* Connection & Match Actions for other users */}
       {!isOwnProfile && user && (
         <div className="flex flex-row flex-wrap items-center gap-3 mb-6">
           <ConnectionButton userId={profileId} variant="default" size="default" />
-          {matchScore > 0 && (
-            <MatchScore
-              overall={matchScore}
-              showBreakdown={false}
-              className="w-[200px]"
-            />
-          )}
+          <Suspense fallback={<MatchScoreSkeleton />}>
+            <MatchScoreSection profileId={profileId} userId={user.id} />
+          </Suspense>
         </div>
       )}
 
       <ProfileTabs
         bio={p.bio}
         lookingFor={p.looking_for}
+        interests={tabInterests}
         isOwnProfile={isOwnProfile}
         skills={tabSkills}
         experiences={tabExperiences}

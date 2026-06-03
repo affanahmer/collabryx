@@ -1,5 +1,33 @@
 "use client"
 
+/**
+ * BUILD BUG FIX — Template literal backtick collision
+ *
+ * ROOT CAUSE:
+ * The .select() call contained a multi-line SQL query string defined as a
+ * template literal (backtick-delimited). Inside this template literal, there
+ * were comments (//) explaining PostgREST foreign key constraint naming. These
+ * comments contained BACKTICK characters — `participant_1`, `profiles!inner`,
+ * etc. — which the JavaScript/TypeScript parser interpreted as template literal
+ * delimiters (closing/reopening the string), NOT as literal backticks.
+ *
+ * The result: the parser saw the first ` before `participant_1` as the END of
+ * the template literal, then encountered `participant_1` as a standalone
+ * identifier token where the parser expected a comma or closing parenthesis.
+ * Error: "Expected ',', got 'ident'" at line 41.
+ *
+ * FIX:
+ * Moved the explanatory comments OUTSIDE the template literal (after the
+ * .select() call) and removed the backtick-wrapped terms from the comment
+ * text. Comments are C-style (//), not SQL comments, so they're harmless
+ * outside the template literal. The SQL itself is unchanged and still uses
+ * the correct explicit FK constraint names for the join disambiguation.
+ *
+ * LESSON:
+ * Never use backtick characters (`) inside a template literal (backtick-
+ * delimited string) unless they are escaped with backslash (\`).
+ * Template literals cannot nest — the first unescaped backtick ends the string.
+ */
 import { useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -27,6 +55,11 @@ async function fetchConversations(): Promise<Conversation[]> {
         return []
     }
 
+    // NOTE: PostgREST (PGRST201) requires explicit FK constraint names when a table has
+    // multiple FK relationships to the same target. Both participant_1 and participant_2
+    // reference profiles(id), so profiles!inner is ambiguous. Using the exact constraint
+    // names (conversations_participant_1_fkey, conversations_participant_2_fkey) tells
+    // PostgREST exactly which column to join on.
     const { data: conversations, error: conversationsError } = await supabase
         .from("conversations")
         .select(`
@@ -37,12 +70,6 @@ async function fetchConversations(): Promise<Conversation[]> {
             last_message_at,
             unread_count_1,
             unread_count_2,
-            // NOTE: PostgREST (PGRST201) requires explicit foreign key constraint names when a
-            // table has multiple FK relationships to the same target table. Both `participant_1`
-            // and `participant_2` reference `profiles(id)`, so `profiles!inner` is ambiguous —
-            // PostgREST cannot determine which FK to use for embedding. Using the exact
-            // constraint names (`conversations_participant_1_fkey`, `conversations_participant_2_fkey`)
-            // disambiguates the join, telling PostgREST exactly which column to match.
             requester:profiles!conversations_participant_1_fkey!inner (
                 id,
                 display_name,
@@ -56,6 +83,10 @@ async function fetchConversations(): Promise<Conversation[]> {
                 avatar_url
             )
         `)
+        // NOTE: PostgREST (PGRST201) requires explicit FK constraint names when a
+        // table has multiple FK relationships to the same target table. Both
+        // participant_1 and participant_2 reference profiles(id), so profiles!inner
+        // is ambiguous. Using exact constraint names disambiguates the join.
         .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .order("created_at", { ascending: false })
