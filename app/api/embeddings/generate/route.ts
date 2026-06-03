@@ -23,15 +23,6 @@ interface ProfileData {
   location?: string;
 }
 
-interface SkillData {
-  skill_name: string;
-  proficiency?: string;
-}
-
-interface InterestData {
-  interest: string;
-}
-
 // Helper function to update embedding status in database
 async function updateEmbeddingStatus(
   supabase: SupabaseClient,

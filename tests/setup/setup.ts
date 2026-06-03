@@ -54,6 +54,14 @@ global.MutationObserver = class MutationObserver {
   }
 } as unknown as typeof MutationObserver
 
+// Mock ResizeObserver (needed by ScrollArea, Dialog, etc.)
+global.ResizeObserver = class ResizeObserver {
+  constructor(_callback: ResizeObserverCallback) {}
+  disconnect() {}
+  observe(_target: Element, _options?: ResizeObserverOptions) {}
+  unobserve(_target: Element) {}
+} as unknown as typeof ResizeObserver
+
 // Mock next/navigation
 vi.mock('next/navigation', () => ({
   useRouter() {
@@ -66,7 +74,7 @@ vi.mock('next/navigation', () => ({
     }
   },
   usePathname() {
-    return '/mock-path'
+    return '/dashboard'
   },
   useSearchParams() {
     return new URLSearchParams()

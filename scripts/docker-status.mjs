@@ -14,7 +14,6 @@ import { execSync } from 'child_process';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import net from 'net';
-import http from 'http';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -62,7 +61,7 @@ function getContainerStatus() {
   }
 }
 
-function getImageInfo() {
+function _getImageInfo() {
   try {
     const info = exec(`docker images ${CONFIG.imageName} --format "{{.Repository}}:{{.Tag}} - Created: {{.CreatedAt}} - Size: {{.Size}}"`);
     return info.trim();
@@ -71,7 +70,7 @@ function getImageInfo() {
   }
 }
 
-function getContainerStats() {
+function _getContainerStats() {
   try {
     const stats = exec(`docker stats ${CONFIG.serviceName} --no-stream --format "CPU: {{.CPUPerc}}, Memory: {{.MemUsage}}, Network I/O: {{.NetIO}}"`);
     return stats.trim();
@@ -89,7 +88,7 @@ function _getNetworkInfo() {
   }
 }
 
-function getVolumeInfo() {
+function _getVolumeInfo() {
   try {
     const volumes = exec('docker volume ls --format "{{.Name}}"');
     return volumes.trim().split('\n').filter(v => v.includes('collabryx') || v.includes('python-worker'));
@@ -98,7 +97,7 @@ function getVolumeInfo() {
   }
 }
 
-function checkPort() {
+function _checkPort() {
   return new Promise((resolve) => {
     const socket = new net.Socket();
     

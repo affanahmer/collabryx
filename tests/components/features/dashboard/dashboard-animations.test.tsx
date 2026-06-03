@@ -9,7 +9,7 @@
  * imports), we test the animation patterns used by the ScrollReveal and
  * ScrollFloat components which are imported into dashboard features.
  * The dashboard page itself delegates rendering to dynamically imported
- * children (Feed, SuggestionsSidebar, ActivityFeed), so we verify that:
+ * children (Feed, ActivityFeed), so we verify that:
  *   1. GSAP is importable and its core functions exist
  *   2. GSAP.from / GSAP.to / GSAP.timeline can be mocked and verified
  *   3. GSAP.fromTo with ScrollTrigger can be verified

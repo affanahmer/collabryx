@@ -58,8 +58,8 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "font-src 'self' https://fonts.gstatic.com",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com",
+              "font-src 'self' https://fonts.gstatic.com https://cdn.fontshare.com",
               // Tightened image remote domains to Supabase, Unsplash, and Amazon CDN only
               "img-src 'self' data: blob: https://images.unsplash.com https://*.supabase.co https://*.amazonaws.com",
               "connect-src 'self' https://*.supabase.co",
