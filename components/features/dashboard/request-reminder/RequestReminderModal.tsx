@@ -54,35 +54,6 @@ interface PendingRequest {
     userId?: string
 }
 
-// ─── Fallback Data ───────────────────────────────────────────────────────────
-
-const DEFAULT_REQUESTS: PendingRequest[] = [
-    {
-        id: "1",
-        name: "Alex Rivera",
-        role: "UI/UX Designer",
-        avatar: "/avatars/07.png",
-        initials: "AR",
-        message: "I'd love to join your fintech project! I have 5+ years of experience in designing mobile apps and web platforms.",
-        timestamp: "2h ago",
-        projectTitle: "Fintech Team",
-        matchPercentage: 92,
-        userId: "user-1"
-    },
-    {
-        id: "2",
-        name: "Sarah Chen",
-        role: "Marketing Lead",
-        avatar: "/avatars/08.png",
-        initials: "SC",
-        message: "I saw your project and think I can help with go-to-market strategy. Happy to discuss!",
-        timestamp: "1d ago",
-        projectTitle: "Fintech Team",
-        matchPercentage: 85,
-        userId: "user-2"
-    }
-]
-
 const CACHE_KEY = "collabryx_pending_requests"
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -116,12 +87,12 @@ interface RequestReminderModalProps {
 
 export function RequestReminderModal({ className }: RequestReminderModalProps) {
     const [open, setOpen] = useState(false)
-    const [localRequests, setLocalRequests] = useState<PendingRequest[]>(DEFAULT_REQUESTS)
+    const [localRequests, setLocalRequests] = useState<PendingRequest[]>([])
     const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set())
     const [confirmDeclineId, setConfirmDeclineId] = useState<string | null>(null)
     const [isFetching, setIsFetching] = useState(false)
 
-    // ── Fetch from Supabase → cache → hardcoded fallback ──
+    // ── Fetch from Supabase → cache fallback ──
     const fetchRequests = useCallback(async () => {
         setIsFetching(true)
         try {
@@ -172,7 +143,7 @@ export function RequestReminderModal({ className }: RequestReminderModalProps) {
         } catch (error) {
             logger.app.error('Failed to fetch requests', { error })
             const cached = getCachedRequests()
-            setLocalRequests(cached ?? DEFAULT_REQUESTS)
+            setLocalRequests(cached ?? [])
         } finally {
             setIsFetching(false)
         }
