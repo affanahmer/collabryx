@@ -41,6 +41,7 @@ interface MatchCardProps {
         reasons?: string[]
     }
     index?: number
+    isNew?: boolean
 }
 
 const availabilityLabels: Record<string, string> = {
@@ -64,7 +65,7 @@ const collaborationLabels: Record<string, { label: string; className: string }> 
     }
 }
 
-export const MatchCard = React.memo(function MatchCard({ match, index = 0 }: MatchCardProps) {
+export const MatchCard = React.memo(function MatchCard({ match, index = 0, isNew = false }: MatchCardProps) {
     const router = useRouter()
     const [whyModalOpen, setWhyModalOpen] = useState(false)
     const [requestSent, setRequestSent] = useState(false)
@@ -116,7 +117,16 @@ export const MatchCard = React.memo(function MatchCard({ match, index = 0 }: Mat
                 >
                     <div className="flex flex-col h-full">
                         {/* Banner - subtle gradient cover */}
-                        <div className="h-[100px] bg-gradient-to-b from-primary/10 via-primary/[0.04] to-transparent rounded-t-xl shrink-0" />
+                        <div className="relative h-[100px] bg-gradient-to-b from-primary/10 via-primary/[0.04] to-transparent rounded-t-xl shrink-0">
+                            {isNew && (
+                                <Badge
+                                    variant="default"
+                                    className="absolute top-2 right-2 bg-primary text-primary-foreground text-[10px] px-2 py-0.5 font-semibold shadow-sm z-10"
+                                >
+                                    New
+                                </Badge>
+                            )}
+                        </div>
 
                         {/* Avatar - centered, overlapping banner */}
                         <div className="flex justify-center -mt-10 mb-1 shrink-0">

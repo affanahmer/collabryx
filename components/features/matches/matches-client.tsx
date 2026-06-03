@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef } from "react"
 import * as React from "react"
 import { MatchCard } from "@/components/features/matches/match-card"
 import { MatchCardListView } from "@/components/features/matches/match-card-list-view"
@@ -74,10 +74,10 @@ function MatchCardErrorBoundary({ children, matchId }: MatchCardErrorBoundaryPro
     return <>{children}</>
 }
 
-function renderMatchCard(match: UIMatch, index: number, viewMode: ViewMode) {
+function renderMatchCard(match: UIMatch, index: number, viewMode: ViewMode, isNew: boolean) {
     try {
         const card = viewMode === "grid" 
-            ? <MatchCard match={match} index={index} />
+            ? <MatchCard match={match} index={index} isNew={isNew} />
             : <MatchCardListView match={match} index={index} />
         return (
             <div
@@ -182,6 +182,8 @@ export function MatchesClient() {
     const [selectedSkill, setSelectedSkill] = useState("")
     const [sortBy, setSortBy] = useState<SortOption>("compatibility")
     const [viewMode, setViewMode] = useState<ViewMode>("grid")
+    const [newProfileIds, setNewProfileIds] = useState<Set<string>>(new Set())
+    const preGenProfileIds = useRef<Set<string>>(new Set())
 
     // Filter + sort matches
     const filteredMatches = useMemo(() => {
@@ -215,11 +217,28 @@ export function MatchesClient() {
             })
             return
         }
+
+        // Snapshot current profile IDs so we can detect new matches
+        preGenProfileIds.current = new Set(matches.map((m) => m.profileId))
+
         try {
-            await generateMatchesMutation.mutateAsync({
+            const result = await generateMatchesMutation.mutateAsync({
                 userId: user.id,
                 limit: 20,
             })
+
+            // Mark newly generated matches using the API response
+            if (result?.data?.matches) {
+                const newIds = new Set<string>()
+                for (const m of result.data.matches) {
+                    if (!preGenProfileIds.current.has(m.matched_user_id)) {
+                        newIds.add(m.matched_user_id)
+                    }
+                }
+                if (newIds.size > 0) {
+                    setNewProfileIds(newIds)
+                }
+            }
         } catch (error) {
             console.error("Match generation failed:", error)
         }
@@ -310,15 +329,15 @@ export function MatchesClient() {
                     </GlassCard>
                 ) : viewMode === "grid" ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5 pb-20">
-                        {filteredMatches.map((match, index) => renderMatchCard(match, index, viewMode))}
+                        {filteredMatches.map((match, index) => renderMatchCard(match, index, viewMode, newProfileIds.has(match.profileId)))}
                     </div>
                 ) : viewMode === "list" ? (
                     <div className="flex flex-col gap-4 md:gap-6 pb-20">
-                        {filteredMatches.map((match, index) => renderMatchCard(match, index, viewMode))}
+                        {filteredMatches.map((match, index) => renderMatchCard(match, index, viewMode, newProfileIds.has(match.profileId)))}
                     </div>
                 ) : (
                     <div className="flex flex-col gap-4 pb-20">
-                        {filteredMatches.map((match, index) => renderMatchCard(match, index, viewMode))}
+                        {filteredMatches.map((match, index) => renderMatchCard(match, index, viewMode, newProfileIds.has(match.profileId)))}
                     </div>
                 )}
             </div>
