@@ -4,6 +4,8 @@ import { ChatSidebar } from "./chat-sidebar"
 import { ChatWindow } from "./chat-window"
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { cn } from "@/lib/utils"
+import { glass } from "@/lib/utils/glass-variants"
 
 interface MessagesClientProps {
     initialChatId?: string | null
@@ -71,7 +73,7 @@ export function MessagesClient({ initialChatId = null }: MessagesClientProps) {
     }
 
     return (
-        <div className="flex h-[calc(100vh-2rem)] md:h-[calc(100vh-4rem)] border rounded-lg overflow-hidden bg-background">
+        <div className={cn("flex h-[calc(100vh-2rem)] md:h-[calc(100vh-4rem)] rounded-lg overflow-hidden", glass("subtle"))}>
             <div className={`${showSidebar ? 'flex' : 'hidden'} md:flex w-full sm:w-80 md:w-96 flex-col`}>
                 <ChatSidebar selectedId={selectedChatId || undefined} onSelectChat={handleSelectChat} />
             </div>

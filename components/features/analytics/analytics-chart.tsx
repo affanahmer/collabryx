@@ -7,7 +7,7 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { GlassCard } from "@/components/shared/glass-card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -109,43 +109,41 @@ export function AnalyticsChart({
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
+      <GlassCard>
+        <div className="p-6 space-y-3">
           <div className="flex items-center justify-between">
             <div>
-              <Skeleton className="h-6 w-32 mb-2" />
-              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="h-4 w-48 mt-2" />
             </div>
             <Skeleton className="h-9 w-32" />
           </div>
-        </CardHeader>
-        <CardContent>
           <Skeleton className="h-48 w-full" />
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     )
   }
 
   if (!activity || activity.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Activity Chart</CardTitle>
-          <CardDescription>No activity data available yet</CardDescription>
-        </CardHeader>
-      </Card>
+      <GlassCard>
+        <div className="p-6 space-y-2">
+          <h3 className="text-lg font-semibold">Activity Chart</h3>
+          <p className="text-sm text-muted-foreground">No activity data available yet</p>
+        </div>
+      </GlassCard>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
+    <GlassCard>
+      <div className="p-6 space-y-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <CardTitle>Activity Over Time</CardTitle>
-            <CardDescription>
+            <h3 className="text-lg font-semibold">Activity Over Time</h3>
+            <p className="text-sm text-muted-foreground">
               Track your engagement across the platform
-            </CardDescription>
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Tabs
@@ -176,10 +174,8 @@ export function AnalyticsChart({
             </Select>
           </div>
         </div>
-      </CardHeader>
-      <CardContent>
         <BarChart data={activity} metric={selectedMetric} />
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   )
 }

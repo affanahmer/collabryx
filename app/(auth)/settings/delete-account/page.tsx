@@ -1,5 +1,6 @@
 import { AuthLayout } from "@/components/features/auth/auth-layout"
 import { DeleteAccountForm } from "@/components/features/settings/delete-account-dialog"
+import { GlassCard } from "@/components/shared/glass-card"
 
 export const dynamic = "force-dynamic"
 
@@ -15,7 +16,7 @@ export default function DeleteAccountPage() {
                 </div>
 
                 <div className="space-y-6">
-                    <div className="bg-muted/50 border border-muted rounded-lg p-6 space-y-4">
+                    <GlassCard className="p-6 space-y-4">
                         <h2 className="text-xl font-semibold">Account Deletion</h2>
                         <p className="text-muted-foreground">
                             This action is permanent and cannot be undone. Once you delete your account,
@@ -28,7 +29,7 @@ export default function DeleteAccountPage() {
                             <li>All your messages and conversations</li>
                             <li>All your AI mentor session history</li>
                         </ul>
-                    </div>
+                    </GlassCard>
 
                     <DeleteAccountForm />
                 </div>

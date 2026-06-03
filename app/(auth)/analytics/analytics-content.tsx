@@ -11,7 +11,7 @@ import { ProfileAnalytics } from "@/components/features/analytics/profile-analyt
 import { AnalyticsChart } from "@/components/features/analytics/analytics-chart"
 import { useAnalyticsDashboard, useExportAnalytics } from "@/hooks/use-analytics"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { GlassCard } from "@/components/shared/glass-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Download, RefreshCw, BarChart3 } from "lucide-react"
 import { toast } from "sonner"
@@ -78,19 +78,19 @@ export default function AnalyticsPage() {
 
       {/* Error State */}
       {error && (
-        <Card className="border-destructive">
-          <CardHeader>
-            <CardTitle className="text-destructive">Error Loading Analytics</CardTitle>
-            <CardDescription>
-              {error instanceof Error ? error.message : "An unknown error occurred"}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+        <GlassCard glow className="border-destructive">
+          <div className="p-6 space-y-4">
+            <div>
+              <h3 className="text-lg font-semibold text-destructive">Error Loading Analytics</h3>
+              <p className="text-sm text-muted-foreground">
+                {error instanceof Error ? error.message : "An unknown error occurred"}
+              </p>
+            </div>
             <Button onClick={() => refetch()} variant="outline">
               Try Again
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </GlassCard>
       )}
 
       {/* Loading State */}
@@ -98,26 +98,22 @@ export default function AnalyticsPage() {
         <div className="space-y-6">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[...Array(6)].map((_, i) => (
-              <Card key={i}>
-                <CardHeader>
+              <GlassCard key={i}>
+                <div className="p-6 space-y-3">
                   <Skeleton className="h-4 w-24" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-8 w-16 mb-2" />
+                  <Skeleton className="h-8 w-16" />
                   <Skeleton className="h-3 w-32" />
-                </CardContent>
-              </Card>
+                </div>
+              </GlassCard>
             ))}
           </div>
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-32 mb-2" />
+          <GlassCard>
+            <div className="p-6 space-y-3">
+              <Skeleton className="h-6 w-32" />
               <Skeleton className="h-4 w-48" />
-            </CardHeader>
-            <CardContent>
               <Skeleton className="h-48 w-full" />
-            </CardContent>
-          </Card>
+            </div>
+          </GlassCard>
         </div>
       )}
 
@@ -143,55 +139,59 @@ export default function AnalyticsPage() {
           {/* Additional Insights */}
           {!isLoading && analytics && (
             <section className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Content Performance</CardTitle>
-                  <CardDescription>Your content impact</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Posts Created</span>
-                    <span className="font-medium">{analytics.posts_created_count || 0}</span>
+              <GlassCard glow>
+                <div className="p-6 space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">Content Performance</h3>
+                    <p className="text-sm text-muted-foreground">Your content impact</p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Post Impressions</span>
-                    <span className="font-medium">{analytics.post_impressions_count || 0}</span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Posts Created</span>
+                      <span className="font-medium">{analytics.posts_created_count || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Post Impressions</span>
+                      <span className="font-medium">{analytics.post_impressions_count || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Reactions Received</span>
+                      <span className="font-medium">{analytics.post_reactions_received || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Comments Received</span>
+                      <span className="font-medium">{analytics.post_comments_received || 0}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Reactions Received</span>
-                    <span className="font-medium">{analytics.post_reactions_received || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Comments Received</span>
-                    <span className="font-medium">{analytics.post_comments_received || 0}</span>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              </GlassCard>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Network Activity</CardTitle>
-                  <CardDescription>Your connections and messaging</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Total Connections</span>
-                    <span className="font-medium">{analytics.connections_count || 0}</span>
+              <GlassCard glow>
+                <div className="p-6 space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold">Network Activity</h3>
+                    <p className="text-sm text-muted-foreground">Your connections and messaging</p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Conversations</span>
-                    <span className="font-medium">{analytics.conversations_count || 0}</span>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total Connections</span>
+                      <span className="font-medium">{analytics.connections_count || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Conversations</span>
+                      <span className="font-medium">{analytics.conversations_count || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Messages Sent</span>
+                      <span className="font-medium">{analytics.messages_sent_count || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Messages Received</span>
+                      <span className="font-medium">{analytics.messages_received_count || 0}</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Messages Sent</span>
-                    <span className="font-medium">{analytics.messages_sent_count || 0}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Messages Received</span>
-                    <span className="font-medium">{analytics.messages_received_count || 0}</span>
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+              </GlassCard>
             </section>
           )}
         </div>

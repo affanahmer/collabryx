@@ -11,10 +11,10 @@ function PostSkeletonBase({ children }: { children: React.ReactNode }) {
         <PostCard>
             {/* Header */}
             <div className="flex items-center gap-4 mb-4">
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div className="space-y-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-12 w-12 rounded-full shrink-0" />
+                <div className="space-y-2 flex-1 min-w-0">
+                    <Skeleton className="h-4 w-32 max-w-full" />
+                    <Skeleton className="h-3 w-24 max-w-full" />
                 </div>
             </div>
             
@@ -22,7 +22,7 @@ function PostSkeletonBase({ children }: { children: React.ReactNode }) {
             {children}
             
             {/* Actions */}
-            <div className="flex justify-between pt-4 mt-4">
+            <div className="flex gap-2 pt-4 mt-4 border-t border-border/40">
                 <Skeleton className="h-10 w-24 rounded-lg" />
                 <Skeleton className="h-10 w-24 rounded-lg" />
                 <Skeleton className="h-10 w-24 rounded-lg" />
@@ -35,7 +35,7 @@ export function PostSkeleton({ variant = "withMedia" }: PostSkeletonProps) {
     if (variant === "withoutMedia") {
         return (
             <PostSkeletonBase>
-                <div className="space-y-2">
+                <div className="space-y-2 min-h-[72px]">
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-[90%]" />
                     <Skeleton className="h-4 w-[75%]" />
@@ -47,14 +47,14 @@ export function PostSkeleton({ variant = "withMedia" }: PostSkeletonProps) {
     if (variant === "withLink") {
         return (
             <PostSkeletonBase>
-                <div className="space-y-2 mb-4">
+                <div className="space-y-2 mb-4 min-h-[40px]">
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-[90%]" />
                 </div>
                 {/* Link Preview */}
-                <div className="rounded-lg border overflow-hidden">
-                    <Skeleton className="h-32 w-full" />
-                    <div className="p-3 space-y-2">
+                <div className="rounded-xl border border-border/40 overflow-hidden min-h-[200px]">
+                    <Skeleton className="h-32 w-full !rounded-none" />
+                    <div className="p-3 sm:p-4 space-y-2">
                         <Skeleton className="h-4 w-[80%]" />
                         <Skeleton className="h-3 w-[60%]" />
                     </div>
@@ -66,12 +66,12 @@ export function PostSkeleton({ variant = "withMedia" }: PostSkeletonProps) {
     // Default: withMedia variant
     return (
         <PostSkeletonBase>
-            <div className="space-y-2 mb-4">
+            <div className="space-y-2 mb-4 min-h-[40px]">
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-[90%]" />
             </div>
             {/* Media Placeholder */}
-            <Skeleton className="h-64 w-full rounded-xl" />
+            <Skeleton className="h-48 sm:h-56 w-full rounded-xl" />
         </PostSkeletonBase>
     )
 }
@@ -91,14 +91,13 @@ export function PostSkeletonList({ count = 5 }: PostSkeletonListProps) {
     ]
 
     return (
-        <>
+        <div className="space-y-4 md:space-y-6" role="status" aria-label="Posts loading">
             {Array.from({ length: count }).map((_, i) => (
                 <PostSkeleton 
                     key={i} 
                     variant={variants[i % variants.length]} 
                 />
             ))}
-        </>
+        </div>
     )
 }
-

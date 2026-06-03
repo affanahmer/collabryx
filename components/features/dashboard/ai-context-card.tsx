@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Settings2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { glass } from "@/lib/utils/glass-variants"
 import { GlassCard } from "@/components/shared/glass-card"
 
 interface AIContextCardProps {
@@ -25,20 +24,14 @@ export function AIContextCard({
     className
 }: AIContextCardProps) {
     return (
-        <GlassCard className={cn("px-1 py-1 sm:py-2", className)} innerClassName="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-                
-                <span className="text-sm font-medium text-muted-foreground">Matching on</span>
-            </div>
-            <div className="flex items-center gap-1.5 flex-wrap">
+        <GlassCard className={cn(className)} innerClassName="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 flex-wrap p-4 sm:p-6">
+            <span className="text-sm font-medium text-muted-foreground">Matching on</span>
+            <div className="flex items-center gap-2 flex-wrap">
                 {contexts.map((context, index) => (
                     <Badge
                         key={context?.toLowerCase().replace(/\s+/g, '-') || index}
                         variant="secondary"
-                        className={cn(
-                            "px-2.5 py-1.5 text-xs font-medium rounded-full",
-                            glass("badge")
-                        )}
+                        className="px-2.5 py-1 text-xs font-medium rounded-md"
                     >
                         {context}
                     </Badge>
@@ -47,13 +40,10 @@ export function AIContextCard({
             <Button
                 variant="ghost"
                 size="sm"
-                className={cn(
-                    "h-8 px-3 text-sm text-muted-foreground rounded-full ml-auto",
-                    glass("buttonGhost")
-                )}
+                className="h-8 px-3 text-sm text-muted-foreground ml-auto"
                 onClick={onEditContext}
             >
-                <Settings2 className="h-3 w-3 mr-1" />
+                <Settings2 className="h-3 w-3 mr-1.5" />
                 Edit
             </Button>
         </GlassCard>

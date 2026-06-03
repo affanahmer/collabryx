@@ -109,7 +109,7 @@ export default function EmbeddingQueueAdminContent() {
     } else {
       fetchQueueItems()
     }
-  }, [tab])
+  }, [tab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="container max-w-7xl mx-auto py-6 px-6">

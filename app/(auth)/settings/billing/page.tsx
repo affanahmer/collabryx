@@ -1,4 +1,4 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { GlassCard } from "@/components/shared/glass-card"
 import { Button } from "@/components/ui/button"
 import { CreditCard, FileText, Building2 } from "lucide-react"
 import Link from "next/link"
@@ -17,17 +17,17 @@ export default function BillingPage() {
 
 			<div className="grid gap-6">
 				{/* Current Plan */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<CreditCard className="h-5 w-5" />
-							Current Plan
-						</CardTitle>
-						<CardDescription>
-							Your current subscription and billing cycle.
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
+				<GlassCard glow>
+					<div className="p-6 space-y-4">
+						<div>
+							<h3 className="text-lg font-semibold flex items-center gap-2">
+								<CreditCard className="h-5 w-5" />
+								Current Plan
+							</h3>
+							<p className="text-sm text-muted-foreground">
+								Your current subscription and billing cycle.
+							</p>
+						</div>
 						<div className="flex items-center justify-between">
 							<div>
 								<p className="font-medium">Free Plan</p>
@@ -37,59 +37,59 @@ export default function BillingPage() {
 							</div>
 							<Button>Upgrade to Pro</Button>
 						</div>
-					</CardContent>
-				</Card>
+					</div>
+				</GlassCard>
 
 				{/* Payment Methods */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<Building2 className="h-5 w-5" />
-							Payment Methods
-						</CardTitle>
-						<CardDescription>
-							Manage your saved payment methods.
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
+				<GlassCard>
+					<div className="p-6 space-y-4">
+						<div>
+							<h3 className="text-lg font-semibold flex items-center gap-2">
+								<Building2 className="h-5 w-5" />
+								Payment Methods
+							</h3>
+							<p className="text-sm text-muted-foreground">
+								Manage your saved payment methods.
+							</p>
+						</div>
 						<p className="text-muted-foreground text-sm">
 							No payment methods saved. Add a payment method when you upgrade to a paid plan.
 						</p>
-					</CardContent>
-				</Card>
+					</div>
+				</GlassCard>
 
 				{/* Invoices */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<FileText className="h-5 w-5" />
-							Invoices
-						</CardTitle>
-						<CardDescription>
-							View and download your past invoices.
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
+				<GlassCard>
+					<div className="p-6 space-y-4">
+						<div>
+							<h3 className="text-lg font-semibold flex items-center gap-2">
+								<FileText className="h-5 w-5" />
+								Invoices
+							</h3>
+							<p className="text-sm text-muted-foreground">
+								View and download your past invoices.
+							</p>
+						</div>
 						<p className="text-muted-foreground text-sm">
 							No invoices available. Invoices will appear here after your first payment.
 						</p>
-					</CardContent>
-				</Card>
+					</div>
+				</GlassCard>
 
 				{/* Billing Contact */}
-				<Card>
-					<CardHeader>
-						<CardTitle>Billing Contact</CardTitle>
-						<CardDescription>
-							Update your billing contact information.
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
+				<GlassCard>
+					<div className="p-6 space-y-4">
+						<div>
+							<h3 className="text-lg font-semibold">Billing Contact</h3>
+							<p className="text-sm text-muted-foreground">
+								Update your billing contact information.
+							</p>
+						</div>
 						<p className="text-muted-foreground text-sm">
 							Billing contact features coming soon.
 						</p>
-					</CardContent>
-				</Card>
+					</div>
+				</GlassCard>
 
 				<div className="flex justify-center pt-4">
 					<Button variant="outline" asChild>

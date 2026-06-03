@@ -6,7 +6,7 @@
 
 "use client"
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { GlassCard } from "@/components/shared/glass-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, Users, Eye, Target, Activity, Zap } from "lucide-react"
@@ -36,31 +36,29 @@ function MetricCard({
 }: MetricCardProps) {
   if (isLoading) {
     return (
-      <Card className="relative overflow-hidden">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-4 w-4" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-8 w-16 mb-2" />
+      <GlassCard>
+        <div className="p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-4 w-4" />
+          </div>
+          <Skeleton className="h-8 w-16" />
           <Skeleton className="h-3 w-32" />
-        </CardContent>
-      </Card>
+        </div>
+      </GlassCard>
     )
   }
 
   return (
-    <Card className="relative overflow-hidden transition-all hover:shadow-md">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-        <div className="text-muted-foreground">{icon}</div>
-      </CardHeader>
-      <CardContent>
+    <GlassCard className="transition-all hover:shadow-md">
+      <div className="p-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-muted-foreground">{title}</span>
+          <span className="text-muted-foreground">{icon}</span>
+        </div>
         <div className="text-2xl font-bold">{value}</div>
         {description && (
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground">
             {description}
             {trend && (
               <span
@@ -77,22 +75,22 @@ function MetricCard({
             )}
           </p>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </GlassCard>
   )
 }
 
 export function ProfileAnalytics({ analytics, isLoading }: ProfileAnalyticsProps) {
   if (!analytics && !isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>No Analytics Data</CardTitle>
-          <CardDescription>
+      <GlassCard>
+        <div className="p-6 space-y-2">
+          <h3 className="text-lg font-semibold">No Analytics Data</h3>
+          <p className="text-sm text-muted-foreground">
             Start engaging with the platform to see your profile performance metrics
-          </CardDescription>
-        </CardHeader>
-      </Card>
+          </p>
+        </div>
+      </GlassCard>
     )
   }
 

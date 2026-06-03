@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
+import { glass } from "@/lib/utils/glass-variants"
 import {
   Bell,
   Trash2,
@@ -188,11 +189,11 @@ function NotificationList({
     overscan: 3,
   })
 
-  const handleAccept = useCallback((id: string) => {
+  const handleAccept = useCallback((_id: string) => {
     toast.success("Connection accepted")
   }, [])
 
-  const handleIgnore = useCallback((id: string) => {
+  const handleIgnore = useCallback((_id: string) => {
     toast.success("Connection request ignored")
   }, [])
 
@@ -434,7 +435,10 @@ export function NotificationsWidget({
         sideOffset={12}
         collisionPadding={16}
         avoidCollisions
-        className="w-full min-w-[380px] max-w-[420px] max-h-[600px] p-0 bg-card/95 backdrop-blur-xl border border-border/60 shadow-2xl overflow-hidden rounded-xl z-[100]"
+        className={cn(
+          "w-full min-w-[380px] max-w-[420px] max-h-[600px] p-0 shadow-2xl overflow-hidden rounded-xl z-[100]",
+          glass("overlay")
+        )}
         onCloseAutoFocus={(e) => e.preventDefault()}
         onWheel={(e) => {
           // Prevent scroll from bubbling to page when popover is open

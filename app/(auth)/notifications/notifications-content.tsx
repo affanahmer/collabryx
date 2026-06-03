@@ -373,7 +373,7 @@ export default function NotificationsPage() {
 
       {/* Batch Actions Toolbar (when items selected) */}
       {selectedIds.size > 0 && (
-        <div className="mb-4 p-3 bg-muted/50 border border-border rounded-lg flex items-center justify-between">
+        <GlassCard className="mb-4 p-3 flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             {selectedIds.size} notification{selectedIds.size > 1 ? "s" : ""} selected
           </p>
@@ -402,7 +402,7 @@ export default function NotificationsPage() {
               Delete
             </Button>
           </div>
-        </div>
+        </GlassCard>
       )}
 
       {/* Notification List */}

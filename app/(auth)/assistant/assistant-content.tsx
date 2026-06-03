@@ -3,8 +3,10 @@
 import { ChatInput } from "@/components/features/assistant/chat-input"
 import { ChatList } from "@/components/features/assistant/chat-list"
 import { AIOutputWorkspace } from "@/components/features/assistant/ai-output-workspace"
-import { Card } from "@/components/ui/card"
+import { GlassCard } from "@/components/shared/glass-card"
 import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
+import { glass } from "@/lib/utils/glass-variants"
 import { Sparkles, Target, Zap, FileText, Loader2 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
@@ -108,7 +110,7 @@ export default function AssistantContent() {
 
     return (
         <div className="flex flex-col h-[calc(100vh-2rem)] md:h-[calc(100vh-2rem)] max-w-5xl mx-auto w-full">
-            <div className="flex items-center justify-between px-3 py-3 md:p-4 border-b">
+            <div className={cn("flex items-center justify-between px-3 py-3 md:p-4", glass("divider"))}>
                 <div className="flex items-center gap-2">
                     <Sparkles className="h-5 w-5 text-primary shrink-0" />
                     <h1 className="font-bold text-base md:text-lg">AI Mentor</h1>
@@ -130,7 +132,7 @@ export default function AssistantContent() {
             <div className="p-3 md:p-4 space-y-3 md:space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 md:gap-3 max-w-3xl mx-auto">
                     {STARTERS.map((s) => (
-                        <Card key={s.title} className="p-3 md:p-3 cursor-pointer hover:bg-muted/50 active:bg-muted/70 transition-colors text-xs">
+                        <GlassCard key={s.title} className="cursor-pointer p-3 hover:shadow-md active:scale-[0.98] transition-all">
                             <div className="flex items-center gap-2 mb-1.5 font-semibold text-primary">
                                 <s.icon className="h-3 w-3 shrink-0" />
                                 <span className="text-xs md:text-xs">{s.title}</span>
@@ -138,7 +140,7 @@ export default function AssistantContent() {
                             <p className="text-muted-foreground line-clamp-2 text-[11px] md:text-xs">
                                 {s.desc}
                             </p>
-                        </Card>
+                        </GlassCard>
                     ))}
                 </div>
 

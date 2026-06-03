@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback, useEffect } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 import { Button } from "@/components/ui/button"
@@ -78,8 +78,10 @@ export function Feed() {
                 ? await fetchPersonalizedFeed({ limit: 20 })
                 : await fetchPosts({ limit: 20, random: false })
 
-            
-            if (result.error) throw result.error
+            // Personalized feed gracefully falls back to chronological on error
+            if (result.error) {
+                console.warn("Feed: using fallback feed, personalization not ready:", result.error.message)
+            }
             
             const data = result.data
             if (data && data.length > 0) {
@@ -150,12 +152,56 @@ export function Feed() {
 
     // â”€â”€ Ecosystem States â”€â”€
     const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
-    const [newPostsCount, setNewPostsCount] = useState(3)
+    const [newPostsCount, setNewPostsCount] = useState(0)
     const [isLoadingMore, setIsLoadingMore] = useState(false)
     const [offset, setOffset] = useState(0)
     const [hasMore, setHasMore] = useState(true)
     const [shareDialogState, setShareDialogState] = useState<{ isOpen: boolean; url: string }>({ isOpen: false, url: "" })
     const [selectedPostId, setSelectedPostId] = useState<string | null>(null)
+    const latestCreatedAtRef = useRef<string | null>(null)
+    const hasCheckedNewPosts = useRef(false)
+
+    useEffect(() => {
+        const handleScroll = async () => {
+            if (hasCheckedNewPosts.current || !latestCreatedAtRef.current) return
+
+            const scrollY = window.scrollY
+            const threshold = window.innerHeight * 0.8
+            if (scrollY < threshold) return
+
+            hasCheckedNewPosts.current = true
+
+            try {
+                const supabase = createClient()
+                const { count, error } = await supabase
+                    .from("posts")
+                    .select("id", { count: "exact", head: true })
+                    .gt("created_at", latestCreatedAtRef.current)
+                    .is("is_archived", false)
+
+                if (!error && count && count > 0) {
+                    setNewPostsCount(count)
+                }
+            } catch {
+                // Silently fail - no auto-refresh, only manual
+            }
+        }
+
+        window.addEventListener("scroll", handleScroll, { passive: true })
+        return () => window.removeEventListener("scroll", handleScroll)
+    }, [])
+
+    // Record latest post timestamp when posts load
+    useEffect(() => {
+        if (posts.length > 0 && !latestCreatedAtRef.current) {
+            const withDates = posts.filter(p => p.created_at)
+            if (withDates.length > 0) {
+                latestCreatedAtRef.current = withDates.sort(
+                    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                )[0].created_at
+            }
+        }
+    }, [posts])
 
     const toggleComments = (postId: string) => {
         const newSet = new Set(expandedComments)
@@ -175,15 +221,15 @@ export function Feed() {
                 ? await fetchPersonalizedFeed({ limit: 20, offset: newOffset })
                 : await fetchPosts({ limit: 20, offset: newOffset, random: false })
 
-
-            
-            if (error) throw error
+            if (error) {
+                console.warn("Feed: loadMore fallback, personalization not ready:", error.message)
+            }
             
             if (data && data.length > 0) {
                 const mapped = data.map(mapPostToUI)
                 setPosts(prev => [...prev, ...mapped])
                 setOffset(newOffset)
-                setHasMore(data.length === 20) // If we got less than 20, no more posts
+                setHasMore(data.length === 20)
             } else {
                 setHasMore(false)
             }
@@ -194,9 +240,18 @@ export function Feed() {
         }
     }
 
-    const handleScrollTop = () => {
+    const handleNewPostsClick = () => {
         window.scrollTo({ top: 0, behavior: "smooth" })
         setNewPostsCount(0)
+        hasCheckedNewPosts.current = false
+        if (posts.length > 0) {
+            const withDates = posts.filter(p => p.created_at)
+            if (withDates.length > 0) {
+                latestCreatedAtRef.current = withDates.sort(
+                    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                )[0].created_at
+            }
+        }
     }
 
     const handleReaction = (postId: string, emoji: string) => {
@@ -218,30 +273,32 @@ export function Feed() {
     }
 
     return (
-        <div className="space-y-4 md:space-y-6 lg:space-y-8 pb-6 md:pb-8">
+        <div className="mx-auto max-w-2xl space-y-4 md:space-y-6 lg:space-y-8 pb-6 md:pb-8">
             <NewPostsIndicator
                 count={newPostsCount}
                 visible={newPostsCount > 0}
-                onClick={handleScrollTop}
+                onClick={handleNewPostsClick}
             />
 
             <CreatePostModal />
 
             {/* Embedding Status Banner */}
             {hasEmbedding === false && (
-                <GlassCard innerClassName="p-4">
+                <GlassCard innerClassName="p-4 sm:p-6">
                     <div className="flex items-start gap-3">
-                        <Sparkles className="w-5 h-5 text-muted-foreground mt-0.5" />
-                        <div className="flex-1">
+                        <div className="h-8 w-8 rounded-lg bg-muted flex items-center justify-center shrink-0 text-muted-foreground">
+                            <Sparkles className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
                             <h3 className="text-sm font-semibold text-foreground">
                                 Personalizing your feed
                             </h3>
-                            <p className="text-xs text-muted-foreground mt-1">
-                                We&apos;re analyzing your profile to show you relevant content. 
+                            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                                We&apos;re analyzing your profile to show you relevant content.
                                 Meanwhile, here are some popular posts from the community.
                             </p>
                         </div>
-                        <Loader2 className="w-4 h-4 text-muted-foreground animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0 mt-1" />
                     </div>
                 </GlassCard>
             )}
@@ -253,16 +310,16 @@ export function Feed() {
             <RequestReminderModal />
 
             {/* AI Mentor Micro-Entry Point */}
-            <GlassCard innerClassName="p-4 md:p-6 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:justify-between">
+            <GlassCard innerClassName="p-4 sm:p-6 lg:p-8 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:justify-between">
                 <div className="flex items-start sm:items-center gap-3">
-                    <div className="h-8 w-8 bg-muted rounded-lg flex items-center justify-center shrink-0">
-                        <Bot className="h-5 w-5 text-muted-foreground" />
+                    <div className="h-9 w-9 rounded-lg bg-muted flex items-center justify-center shrink-0 text-muted-foreground">
+                        <Bot className="h-5 w-5" />
                     </div>
-                    <div>
-                        <h3 className="text-base font-semibold text-foreground">
+                    <div className="space-y-0.5">
+                        <h3 className="text-sm font-semibold text-foreground leading-tight">
                             Need help structuring your idea?
                         </h3>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground leading-snug">
                             Get personalized guidance from the AI Mentor
                         </p>
                     </div>
@@ -270,19 +327,11 @@ export function Feed() {
                 <Button
                     variant="outline"
                     size="sm"
-                    className="h-8 px-4 text-sm font-medium border-white/[0.08] hover:bg-white/[0.04] w-full sm:w-auto shrink-0"
+                    className="h-8 px-4 text-sm font-medium w-full sm:w-auto shrink-0"
                 >
-                    Ask AI Mentor â†’
+                    Ask AI Mentor
                 </Button>
             </GlassCard>
-
-            <div className="flex items-center justify-between px-2 md:px-4">
-                <div className="h-px bg-border flex-1" />
-                <span className="px-4 md:px-6 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                    Recent Activity
-                </span>
-                <div className="h-px bg-border flex-1" />
-            </div>
 
             {/* Feed Posts */}
             <div className="space-y-4 md:space-y-6" role="feed" aria-label="Posts feed">
@@ -290,7 +339,7 @@ export function Feed() {
                     <PostSkeletonList count={5} />
                 ) : fetchError && sortedPosts.length === 0 ? (
                     /* Error State - Fallback to Cache */
-                    <GlassCard innerClassName="py-16 px-6 text-center">
+                    <GlassCard innerClassName="py-16 sm:py-20 px-6 sm:px-8 text-center">
                         <div className="h-16 w-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Inbox className="h-8 w-8 text-red-400" />
                         </div>
@@ -303,7 +352,7 @@ export function Feed() {
                     </GlassCard>
                 ) : sortedPosts.length === 0 ? (
                     /* Empty State */
-                    <GlassCard innerClassName="py-16 px-6 text-center">
+                    <GlassCard innerClassName="py-16 sm:py-20 px-6 sm:px-8 text-center">
                         <div className="h-16 w-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
                             <Inbox className="h-8 w-8 text-muted-foreground" />
                         </div>
@@ -382,7 +431,7 @@ export function Feed() {
 
 {/* Collapsible Comments */}
 {expandedComments.has(post.id) && (
-    <div className="animate-in slide-in-from-top-2 duration-200 px-4">
+    <div className="animate-in slide-in-from-top-2 duration-200 px-4 max-h-[500px] overflow-y-auto overscroll-contain">
         <CommentSection postId={post.id} />
     </div>
 )}

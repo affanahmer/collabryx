@@ -98,7 +98,7 @@ export function ChatWindow({ chatId, onBackToList, isConnected }: ChatWindowProp
         }, 500)
 
         return () => clearTimeout(timer)
-    }, [chatId, currentUserId])
+    }, [chatId, currentUserId]) // eslint-disable-line react-hooks/exhaustive-deps
 
     if (!chatId) {
         return (
