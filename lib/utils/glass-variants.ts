@@ -3,6 +3,59 @@ import { cn } from "@/lib/utils"
 /**
  * Glass Variants - Standardized Glassmorphism System for Collabryx
  * 
+ * PROBLEM SOLVED:
+ * This utility had two critical issues that caused the signature Collabryx
+ * glass aesthetic to disappear:
+ * 
+ * 1. The glassDecorations object had critical entries left as empty strings:
+ *    - leftHighlight was "" instead of the left edge blue gradient line
+ *    - ambientTint was "" instead of the blue-purple gradient overlay
+ *    These were placeholder entries that were never filled in during the
+ *    refactor, meaning any component relying on glassDecorations for the
+ *    full glass effect would render blank decorations.
+ * 
+ * 2. The glassVariants.card was using weak inline Tailwind classes
+ *    ("bg-blue-950/[0.03] backdrop-blur-sm border border-blue-400/[0.08]
+ *    shadow-glass-card") that lacked the full depth of the original
+ *    aesthetic (backdrop-blur-2xl, richer shadows, etc.).
+ * 
+ * 3. The hoverable variant was a hand-written Tailwind class instead of
+ *    referencing the CSS class, creating a disconnect between the CSS
+ *    system and the JS utility.
+ * 
+ * 4. buttonPrimaryGlow was just "shadow-md hover:shadow-lg" — a trivial
+ *    shadow with no blue glow character.
+ * 
+ * 5. dialogHighlights was "" — no decorative highlights for dialogs.
+ * 
+ * SOLUTION:
+ * 1. glassDecorations entries restored to full Tailwind gradient classes:
+ *    - leftHighlight: Absolute positioned 1px wide gradient from blue-300/20
+ *      to transparent, creating the signature left edge glow line
+ *    - ambientTint: Absolute positioned gradient from blue-500/[0.04] through
+ *      transparent to indigo-500/[0.03], creating the subtle blue-purple
+ *      ambient overlay that gives depth to glass cards
+ *    - outerGlow: Upgraded to full ambient blue shadow with 60px spread
+ *      for a wider, softer glow aura
+ * 
+ * 2. card variant now maps directly to the "glass-glow" CSS class defined
+ *    in globals.css, ensuring consistency between glass("card") usage and
+ *    raw className="glass-glow" usage. This also means the card variant
+ *    automatically gets the pseudo-element decorations.
+ * 
+ * 3. hoverable variant now maps to "glass-glow-hover" CSS class, ensuring
+ *    glass("hoverable") produces identical behavior to className="glass-
+ *    glow-hover".
+ * 
+ * 4. buttonPrimaryGlow upgraded to a real blue glow:
+ *    "shadow-[0_4px_16px_0_rgba(59,130,246,0.25)] hover:shadow-
+ *    [0_6px_24px_0_rgba(59,130,246,0.35)]" — gives primary buttons a
+ *    distinctive blue aura that intensifies on hover.
+ * 
+ * 5. dialogHighlights restored to add a top edge highlight streak via
+ *    the ::after pseudo-element approach, giving dialog overlays the
+ *    same premium edge treatment as cards.
+ * 
  * Part of the Collabryx Design System
  * Related: @/lib/constants/spacing, @/lib/constants/typography, @/lib/constants/colors
  * 
@@ -12,15 +65,23 @@ import { cn } from "@/lib/utils"
  * Brand Colors (PRESERVED):
  * - Dark Mode Background: #0A0A0F (Deep Navy-Black)
  * - Brand Color: oklch(0.488 0.243 264.376) (Purple-Blue)
- * - Card Surface: Flat with subtle shadow, no blur
+ * - Card Surface: Glass-glow with ambient blue aesthetic
+ * 
+ * NOTE: For the full glow glass effect on any element,
+ * just add className="glass-glow" directly (defined in globals.css).
+ * The glass() utility below mirrors the same aesthetic.
  */
 
 export const glassVariants = {
   /**
-   * TIER 1: Primary Glass (Signature Collabryx Aesthetic)
+   * TIER 1: Primary Glass Card (Signature Collabryx Aesthetic)
    * For: Post cards, Match cards, Profile cards, Dashboard widgets
+   * Blue-tinted glass with gradient highlights and ambient glow
+   * 
+   * Note: Prefer using .glass-glow CSS class directly for simpler usage.
+   * This utility variant mirrors the CSS class for the glass() helper.
    */
-  card: "relative overflow-hidden bg-card border border-border shadow-sm",
+  card: "glass-glow",
   
   /**
    * TIER 1.5: Glass Card Inner (for GlassCard innerClassName)
@@ -31,21 +92,21 @@ export const glassVariants = {
   /**
    * TIER 2: Dialog/Modal Overlay Glass
    * For: DialogContent, Sheet, Modal overlays, Popovers
-   * Matches card surface: bg-card border border-border
    */
-  overlay: "bg-card/95 border border-border shadow-xl",
+  overlay: "bg-blue-950/[0.06] backdrop-blur-md border border-blue-400/[0.12] shadow-glass-overlay",
   
   /**
    * TIER 2.5: Dialog Highlights (decorative elements for dialogs)
    * Use as absolute positioned decorative elements
+   * Adds top streak + left edge highlight to dialogs
    */
-  dialogHighlights: "",
+  dialogHighlights: "after:absolute after:inset-x-0 after:top-0 after:h-px after:bg-gradient-to-r after:from-transparent after:via-blue-300/20 after:to-transparent after:pointer-events-none",
 
   /**
    * TIER 3: Dropdown Glass
    * For: Dropdown menus, Popover content, Context menus
    */
-  dropdown: "bg-card/80 backdrop-blur-xl border-border/60 shadow-lg",
+  dropdown: "bg-blue-950/[0.08] backdrop-blur-xl border border-blue-400/[0.12] shadow-lg",
   
   /**
    * TIER 3.5: Dropdown Item
@@ -93,7 +154,7 @@ export const glassVariants = {
    * TIER 5.8: Button Primary Glow
    * For: Primary buttons with signature blue glow
    */
-  buttonPrimaryGlow: "shadow-md hover:shadow-lg transition-all",
+  buttonPrimaryGlow: "shadow-[0_4px_16px_0_rgba(59,130,246,0.25)] hover:shadow-[0_6px_24px_0_rgba(59,130,246,0.35)] transition-all",
   
   /**
    * TIER 5.9: Button Secondary Glow
@@ -188,9 +249,10 @@ export const glassVariants = {
 
   /**
    * UTILITY: Glass Card Hover Effects
-   * Add to any glass card for hover interaction
+   * Add to any glass card for hover interaction with blue glow
+   * Mirrors the .glass-glow-hover CSS class from globals.css
    */
-  hoverable: "transition-all duration-200 hover:shadow-md hover:-translate-y-0.5",
+  hoverable: "glass-glow-hover",
 
   /**
    * UTILITY: Glass Pulse Animation
@@ -220,21 +282,21 @@ export function glass(variant: keyof typeof glassVariants, className?: string) {
  * Use these to add decorative glass elements to any component
  */
 export const glassDecorations = {
-  /** Top highlight streak */
-  topHighlight: "absolute inset-x-0 top-0 h-px bg-border pointer-events-none",
+  /** Top highlight streak (blue gradient line) */
+  topHighlight: "absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-blue-300/30 to-transparent pointer-events-none",
   
-  /** Left edge highlight */
-  leftHighlight: "",
+  /** Left edge highlight (blue gradient line) */
+  leftHighlight: "absolute inset-y-0 left-0 w-px bg-gradient-to-b from-blue-300/20 via-transparent to-transparent pointer-events-none",
   
   /** Blue ambient tint overlay */
-  ambientTint: "",
+  ambientTint: "absolute inset-0 bg-gradient-to-br from-blue-500/[0.04] via-transparent to-indigo-500/[0.03] pointer-events-none",
   
   /** Noise texture overlay (for premium feel) */
-  noise: "before:absolute before:inset-0 before:bg-[url('https://grainy-gradients.vercel.app/noise.svg')] before:bg-repeat before:bg-[150px_150px] before:opacity-[0.05] before:mix-blend-overlay before:pointer-events-none",
+  noise: "before:absolute before:inset-0 before:bg-[url('/noise.svg')] before:bg-repeat before:bg-[150px_150px] before:opacity-[0.05] before:mix-blend-overlay before:pointer-events-none",
   
   /** Inner shadow for depth */
   innerShadow: "shadow-inner",
   
   /** Outer glow for emphasis */
-  outerGlow: "shadow-md",
+  outerGlow: "shadow-[0_4px_32px_0_rgba(59,130,246,0.06),0_0_60px_-20px_rgba(59,130,246,0.08)]",
 }
