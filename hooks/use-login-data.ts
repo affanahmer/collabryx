@@ -58,7 +58,7 @@ async function retry<T>(
 
 export function useLoginData() {
   const [isReady, setIsReady] = useState(false)
-  const [hasSession, setHasSession] = useState<boolean | null>(null)
+  const [_hasSession, setHasSession] = useState<boolean | null>(null)
   const retryCountRef = useRef(0)
   const supabase = useMemo(() => createClient(), [])
 
@@ -190,7 +190,7 @@ export function useLoginData() {
     }
 
     fetchAllData()
-  }, [postsQuery, matchesQuery, profileQuery, notificationsQuery])
+  }, [postsQuery, matchesQuery, profileQuery, notificationsQuery]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return {
     isReady,

@@ -21,18 +21,13 @@ export function useAuth(): UseAuthReturn {
     const supabase = createClient()
     const queryClient = useQueryClient()
 
-    // Extract stable method references to avoid re-renders from object identity changes
-    const getSession = supabase.auth.getSession
-    const onAuthStateChange = supabase.auth.onAuthStateChange
-    const authSignOut = supabase.auth.signOut
-
     useEffect(() => {
         // Get initial session
         const getInitialSession = async () => {
             try {
                 const {
                     data: { session: currentSession },
-                } = await getSession()
+                } = await supabase.auth.getSession()
                 setSession(currentSession)
                 setUser(currentSession?.user ?? null)
             } catch (error) {
@@ -49,7 +44,7 @@ export function useAuth(): UseAuthReturn {
         // Listen for auth state changes
         const {
             data: { subscription },
-        } = onAuthStateChange((_event, newSession) => {
+        } = supabase.auth.onAuthStateChange((_event, newSession) => {
             setSession(newSession)
             setUser(newSession?.user ?? null)
             setIsLoading(false)
@@ -58,11 +53,11 @@ export function useAuth(): UseAuthReturn {
         return () => {
             subscription.unsubscribe()
         }
-    }, [getSession, onAuthStateChange])
+    }, [supabase.auth])
 
     const signOut = useCallback(async () => {
         try {
-            await authSignOut()
+            await supabase.auth.signOut()
             
             // CRITICAL: Clear React Query cache to prevent data leakage between users
             queryClient.clear()
@@ -75,7 +70,7 @@ export function useAuth(): UseAuthReturn {
             queryClient.clear()
             router.push("/login")
         }
-    }, [authSignOut, router, queryClient])
+    }, [supabase.auth, router, queryClient])
 
     return { user, session, isLoading, signOut }
 }

@@ -322,7 +322,7 @@ export function ProfileTabs({
                                 </div>
                                 <h3 className="font-bold text-lg sm:text-xl mb-2 tracking-tight">No projects yet</h3>
                                 <p className="text-center text-sm text-muted-foreground max-w-sm leading-relaxed">
-                                    This user hasn't added any projects yet.
+                                    This user hasn&apos;t added any projects yet.
                                 </p>
                             </div>
                         )}

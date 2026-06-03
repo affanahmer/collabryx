@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 import { checkBot, shouldBlockBot } from "@/lib/bot-detection"
+import { setCSRFToken } from "@/lib/csrf"
 
 /**
  * Normalize DEVELOPMENT_MODE to handle different config formats.
@@ -170,6 +171,16 @@ export async function proxy(request: NextRequest) {
         })
         return redirectResponse
     }
+
+    // Set CSRF token cookie for double-submit pattern (httpOnly: false so client JS can read it)
+    const csrfToken = await setCSRFToken()
+    supabaseResponse.cookies.set("csrf_token", csrfToken, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        path: "/",
+        maxAge: 60 * 60 * 24, // 24 hours
+    })
 
     return supabaseResponse
 }

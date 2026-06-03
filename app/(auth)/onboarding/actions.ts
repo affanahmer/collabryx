@@ -9,6 +9,10 @@ interface OnboardingData {
     displayName?: string;
     headline: string;
     location?: string;
+    university?: string;
+    avatarUrl?: string;
+    bio?: string;
+    collaborationReadiness?: "available" | "open" | "not-available";
     skills: Array<{
         id: string;
         label: string;
@@ -112,8 +116,6 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
             // Check if it's an email confirmation issue
             if (errorMessage.includes("Email not confirmed") || errorMessage.includes("not confirmed")) {
                 console.log('📧 Email not verified - this should have been handled by getSession()');
-                // getSession() should work even with unverified email
-                // If we're here, there's truly no session
             }
             
             // Provide actionable error
@@ -180,11 +182,16 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
         }
     }
     
+    // 2. Extract social links from links array
+    const links = data.links || []
+    const githubLink = links.find(l => l.platform === "github")
+    const linkedinLink = links.find(l => l.platform === "linkedin")
+    const twitterLink = links.find(l => l.platform === "twitter" || l.platform === "instagram")
+    const portfolioLink = links.find(l => l.platform === "portfolio")
+
     // 2. Update Profile
-    
     let profileError = null
     try {
-        const validLinks = data.links?.filter(l => l.url && l.url.trim()) || []
         const result = await supabase
             .from("profiles")
             .upsert({
@@ -193,8 +200,16 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
                 full_name: data.fullName,
                 display_name: data.displayName || null,
                 headline: data.headline,
+                bio: data.bio || null,
                 location: data.location || null,
-                website_url: validLinks.length > 0 ? JSON.stringify(validLinks) : null,
+                university: data.university || null,
+                avatar_url: data.avatarUrl || null,
+                collaboration_readiness: data.collaborationReadiness || 'available',
+                github_url: githubLink?.url || null,
+                linkedin_url: linkedinLink?.url || null,
+                twitter_url: twitterLink?.url || null,
+                portfolio_url: portfolioLink?.url || null,
+                website_url: portfolioLink?.url || null,
                 looking_for: data.goals || [],
                 profile_completion: completionPercentage,
                 updated_at: new Date().toISOString()
@@ -215,7 +230,7 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
         throw new Error(`Failed to save profile: ${profileError.message || profileError.details || "Unknown error"}. Please try again or contact support if the problem persists.`)
     }
 
-    // 2. Insert/Update Skills
+    // 3. Insert/Update Skills
     if (data.skills && data.skills.length > 0) {
         const skillsToInsert = data.skills.map((skill, index: number) => ({
             user_id: userId,
@@ -233,7 +248,7 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
         }
     }
 
-    // 3. Insert/Update Interests
+    // 4. Insert/Update Interests
     if (data.interests && data.interests.length > 0) {
         const interestsToInsert = data.interests.map((interest) => ({
             user_id: userId,
@@ -249,7 +264,7 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
         }
     }
 
-    // 4. Insert Experience
+    // 5. Insert Experience
     if (data.experiences && data.experiences.length > 0) {
         const expsToInsert = data.experiences
             .filter((exp) => exp.title || exp.company)
@@ -272,7 +287,7 @@ export async function completeOnboarding(data: OnboardingData, completionPercent
         }
     }
 
-    // 5. Mark onboarding as completed (deferred after all inserts succeed)
+    // 6. Mark onboarding as completed (deferred after all inserts succeed)
     const { error: flagError } = await supabase
         .from("profiles")
         .update({ onboarding_completed: true, updated_at: new Date().toISOString() })

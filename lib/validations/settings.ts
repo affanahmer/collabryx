@@ -4,6 +4,16 @@ import { z } from "zod"
 // SETTINGS VALIDATION SCHEMAS
 // ===========================================
 
+// Social URL helper - auto-prepend https:// if missing
+const socialUrlSchema = z.preprocess(
+  (val) => {
+    if (!val || val === "") return ""
+    const str = String(val)
+    return str.startsWith("http") ? str : `https://${str}`
+  },
+  z.string().url("Please enter a valid URL.").optional().or(z.literal(""))
+)
+
 export const profileSettingsSchema = z.object({
   displayName: z
     .string()
@@ -11,34 +21,50 @@ export const profileSettingsSchema = z.object({
     .max(50, "Display name must be less than 50 characters.")
     .optional()
     .or(z.literal("")),
-  
+
   fullName: z
     .string()
     .min(2, "Full name must be at least 2 characters.")
     .max(100, "Full name must be less than 100 characters."),
-  
+
   headline: z
     .string()
     .min(2, "Headline must be at least 2 characters.")
     .max(200, "Headline must be less than 200 characters."),
-  
+
   bio: z
     .string()
     .max(2000, "Bio must be less than 2000 characters.")
     .optional()
     .or(z.literal("")),
-  
+
   location: z
     .string()
     .max(100, "Location must be less than 100 characters.")
     .optional()
     .or(z.literal("")),
-  
+
   websiteUrl: z
     .string()
     .url("Please enter a valid URL.")
     .optional()
     .or(z.literal("")),
+
+  // NEW FIELDS
+  university: z
+    .string()
+    .max(200, "University name must be less than 200 characters.")
+    .optional()
+    .or(z.literal("")),
+
+  collaborationReadiness: z
+    .enum(["available", "open", "not-available"])
+    .optional(),
+
+  githubUrl: socialUrlSchema,
+  linkedinUrl: socialUrlSchema,
+  twitterUrl: socialUrlSchema,
+  portfolioUrl: socialUrlSchema,
 })
 
 export const skillSchema = z.object({
@@ -53,7 +79,7 @@ export const skillsSettingsSchema = z.object({
     .array(skillSchema)
     .min(1, "At least one skill is required.")
     .max(20, "Maximum 20 skills allowed."),
-  
+
   interests: z
     .array(z.object({
       interest: z
@@ -71,24 +97,24 @@ export const experienceSchema = z.object({
     .max(100, "Title must be less than 100 characters.")
     .optional()
     .or(z.literal("")),
-  
+
   company: z
     .string()
     .max(100, "Company must be less than 100 characters.")
     .optional()
     .or(z.literal("")),
-  
+
   description: z
     .string()
     .max(2000, "Description must be less than 2000 characters.")
     .optional()
     .or(z.literal("")),
-  
+
   start_date: z
     .string()
     .optional()
     .or(z.literal("")),
-  
+
   is_current: z.boolean().optional(),
 })
 
@@ -98,19 +124,19 @@ export const projectSchema = z.object({
     .string()
     .min(1, "Project title is required.")
     .max(100, "Title must be less than 100 characters."),
-  
+
   url: z
     .string()
     .url("Please enter a valid URL.")
     .optional()
     .or(z.literal("")),
-  
+
   description: z
     .string()
     .max(2000, "Description must be less than 2000 characters.")
     .optional()
     .or(z.literal("")),
-  
+
   is_public: z.boolean().optional(),
 })
 
@@ -118,7 +144,7 @@ export const experienceProjectsSettingsSchema = z.object({
   experiences: z
     .array(experienceSchema)
     .max(10, "Maximum 10 experiences allowed."),
-  
+
   projects: z
     .array(projectSchema)
     .max(20, "Maximum 20 projects allowed."),

@@ -22,6 +22,11 @@ export interface Profile {
   profile_completion: number; // 0-100
   looking_for: string[];
   onboarding_completed: boolean;
+  // Social links
+  github_url?: string;
+  linkedin_url?: string;
+  twitter_url?: string;
+  portfolio_url?: string;
   created_at: string; // TIMESTAMPTZ
   updated_at: string; // TIMESTAMPTZ
 }

@@ -21,44 +21,66 @@ export const onboardingDataSchema = z.object({
     .min(2, "Full name must be at least 2 characters")
     .max(100, "Full name must be less than 100 characters")
     .regex(/^[a-zA-Z\s'-]+$/, "Full name can only contain letters, spaces, hyphens, and apostrophes"),
-  
+
   displayName: z
     .string()
     .min(2, "Display name must be at least 2 characters")
     .max(50, "Display name must be less than 50 characters")
     .optional(),
-  
+
   headline: z
     .string()
     .min(5, "Headline must be at least 5 characters")
     .max(200, "Headline must be less than 200 characters"),
-  
+
   location: z
     .string()
     .max(100, "Location must be less than 100 characters")
     .optional(),
-  
+
+  university: z
+    .string()
+    .max(200, "University name must be less than 200 characters")
+    .optional()
+    .or(z.literal("")),
+
+  avatarUrl: z
+    .string()
+    .url("Invalid avatar URL")
+    .optional()
+    .or(z.literal("")),
+
+  bio: z
+    .string()
+    .max(2000, "Bio must be less than 2000 characters")
+    .optional()
+    .or(z.literal("")),
+
+  collaborationReadiness: z
+    .enum(["available", "open", "not-available"])
+    .optional(),
+
   skills: z.array(z.object({
     id: z.string(),
     label: z.string(),
     proficiency: z.enum(["beginner", "intermediate", "advanced", "expert"])
   })).min(1, "At least one skill is required").max(20, "Maximum 20 skills allowed"),
-  
+
   interests: z
     .array(z.string().min(1).max(50))
     .min(1, "At least one interest is required")
     .max(30, "Maximum 30 interests allowed"),
-  
+
   goals: z
     .array(z.string().min(1).max(100))
     .max(10, "Maximum 10 goals allowed")
     .optional(),
-  
+
   experiences: z
     .array(onboardingExperienceSchema)
     .max(10, "Maximum 10 experiences allowed")
     .optional(),
-  
+
   links: z
     .array(onboardingLinkSchema)
     .max(5, "Maximum 5 links allowed")
@@ -90,7 +112,7 @@ export function validateOnboardingData(
   rawData: unknown
 ): { success: true; data: OnboardingData } | { success: false; errors: string[] } {
   const result = onboardingDataSchema.safeParse(rawData)
-  
+
   if (!result.success) {
     const errors = result.error.issues.map((err) => {
       const path = err.path.join(".")
@@ -99,6 +121,6 @@ export function validateOnboardingData(
     })
     return { success: false, errors }
   }
-  
+
   return { success: true, data: result.data }
 }

@@ -159,20 +159,31 @@ function calculateProfileCompletion(profile: ProfileWithRelations | null): numbe
 
   let score = 0
   
-  // Basic profile (25%)
+  // Identity (25%)
   if (profile.full_name || profile.display_name) score += 10
   if (profile.headline) score += 10
   if (profile.bio) score += 5
 
-  // Skills (25%)
-  if (profile.user_skills && profile.user_skills.length > 0) score += 25
+  // Visual (15%) - NEW
+  if (profile.avatar_url) score += 10
+  if (profile.banner_url) score += 5
 
-  // Interests & Goals (25%)
-  if (profile.user_interests && profile.user_interests.length > 0) score += 15
-  if (profile.looking_for && profile.looking_for.length > 0) score += 10
+  // Education & Availability (15%) - NEW
+  if (profile.university) score += 10
+  if (profile.collaboration_readiness && profile.collaboration_readiness !== 'not-available') score += 5
 
-  // Experience (25%)
-  if (profile.user_experiences && profile.user_experiences.length > 0) score += 25
+  // Social Links (5%) - NEW
+  if (profile.github_url || profile.linkedin_url || profile.website_url) score += 5
+
+  // Skills (20%)
+  if (profile.user_skills && profile.user_skills.length > 0) score += 20
+
+  // Interests & Goals (10%)
+  if (profile.user_interests && profile.user_interests.length > 0) score += 5
+  if (profile.looking_for && profile.looking_for.length > 0) score += 5
+
+  // Experience (10%)
+  if (profile.user_experiences && profile.user_experiences.length > 0) score += 10
 
   return Math.min(score, 100)
 }
@@ -182,9 +193,23 @@ function getMissingFields(profile: ProfileWithRelations | null): string[] {
 
   if (!profile) return ['profile']
 
+  // Identity
   if (!profile.full_name && !profile.display_name) missing.push('name')
   if (!profile.headline) missing.push('headline')
   if (!profile.bio) missing.push('bio')
+
+  // Visual
+  if (!profile.avatar_url) missing.push('profile photo')
+  if (!profile.banner_url) missing.push('banner')
+
+  // Education & Availability
+  if (!profile.university) missing.push('university')
+  if (!profile.collaboration_readiness) missing.push('availability status')
+
+  // Social
+  if (!profile.github_url && !profile.linkedin_url && !profile.website_url) missing.push('social links')
+
+  // Content
   if (!profile.user_skills?.length) missing.push('skills')
   if (!profile.user_interests?.length) missing.push('interests')
   if (!profile.looking_for?.length) missing.push('goals')

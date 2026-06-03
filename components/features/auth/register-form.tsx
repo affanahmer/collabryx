@@ -23,6 +23,7 @@ import { devLog, logRedirectDecision, isDevelopmentMode } from "@/lib/services/d
 
 import { toast } from "sonner"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { glass } from "@/lib/utils/glass-variants"
 
@@ -65,6 +66,7 @@ const calculatePasswordStrength = (password: string): number => {
 }
 
 export function RegisterForm() {
+    const router = useRouter()
     const [isLoading, setIsLoading] = React.useState(false)
     const [showProviderDialog, setShowProviderDialog] = React.useState(false)
     const [providerToShow, setProviderToShow] = React.useState<"google" | "github" | "apple" | null>(null)
@@ -102,7 +104,7 @@ export function RegisterForm() {
             setIsLoading(false)
             // Redirect to home page with error
             setTimeout(() => {
-                window.location.assign("/")
+                router.push("/")
             }, 2000)
             return
         }
@@ -186,11 +188,16 @@ export function RegisterForm() {
                 })
                 logRedirectDecision("/register", "/verify-email", "Auto sign-in failed, redirecting to verify-email")
                 toast.success("Account created! Check your email to verify.")
-                window.location.assign("/verify-email")
+                // Wait for cookies to flush before navigating
+                await new Promise(resolve => setTimeout(resolve, 1000))
+                router.push("/verify-email")
             } else {
                 logRedirectDecision("/register", "/auth-sync", "Auto sign-in succeeded, routing via auth-sync")
                 toast.success("Account created! Welcome to Collabryx.")
-                window.location.assign("/auth-sync")
+                // Wait for cookies to be persisted before navigating
+                // (matches LoginForm pattern — prevents "Auth session missing!")
+                await new Promise(resolve => setTimeout(resolve, 1000))
+                router.push("/auth-sync")
             }
         } catch (error) {
             console.error('Signup error:', error)
