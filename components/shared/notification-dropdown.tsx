@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Check, Trash2, Bell, UserPlus, MessageSquare, Heart, Star } from "lucide-react"
+import { Check, Trash2, Bell, UserPlus, MessageSquare, Heart, Star, AtSign, Award } from "lucide-react"
 import {
   useNotifications,
   useMarkAllNotificationsAsRead,
@@ -19,20 +19,30 @@ interface NotificationDropdownProps {
   onOpenChange?: (open: boolean) => void
 }
 
-const NOTIFICATION_ICONS = {
+const NOTIFICATION_ICONS: Record<string, React.ElementType> = {
   connect: UserPlus,
+  connect_accepted: UserPlus,
   message: MessageSquare,
   like: Heart,
   comment: MessageSquare,
+  comment_like: Heart,
   match: Star,
+  mention: AtSign,
+  system: Bell,
+  achievement: Award,
 }
 
-const NOTIFICATION_COLORS = {
-  connect: 'text-primary',
+const NOTIFICATION_COLORS: Record<string, string> = {
+  connect: 'text-blue-500 dark:text-blue-400',
+  connect_accepted: 'text-blue-500 dark:text-blue-400',
   message: 'text-emerald-500 dark:text-emerald-400',
   like: 'text-red-500 dark:text-red-400',
-  comment: 'text-muted-foreground',
-  match: 'text-muted-foreground',
+  comment: 'text-amber-500 dark:text-amber-400',
+  comment_like: 'text-red-500 dark:text-red-400',
+  match: 'text-purple-500 dark:text-purple-400',
+  mention: 'text-cyan-500 dark:text-cyan-400',
+  system: 'text-muted-foreground',
+  achievement: 'text-yellow-500 dark:text-yellow-400',
 }
 
 export function NotificationDropdown({ onOpenChange }: NotificationDropdownProps) {

@@ -15,12 +15,12 @@ const log = logger.app;
 
 export const NotificationSchema = z.object({
   userId: z.string().uuid(),
-  type: z.enum(["connect", "message", "like", "comment", "system", "match"]),
+  type: z.enum(["connect", "connect_accepted", "message", "like", "comment", "comment_like", "match", "mention", "system", "achievement"]),
   content: z.string().min(1).max(500),
   actorId: z.string().uuid().optional(),
   actorName: z.string().max(100).optional(),
   actorAvatar: z.string().url().optional(),
-  resourceType: z.enum(["post", "profile", "conversation", "match"]).optional(),
+  resourceType: z.enum(["post", "profile", "conversation", "match", "comment"]).optional(),
   resourceId: z.string().uuid().optional(),
 });
 
@@ -82,12 +82,16 @@ function verifyCallerAuthorization(
 }
 
 const TYPE_TO_PREF: Record<string, keyof NotificationPreference> = {
-  connect: "email_new_connections",
-  message: "email_messages",
-  match: "ai_smart_match_alerts",
-  like: "email_post_likes",
-  comment: "email_comments",
-  system: "push_enabled",
+  connect: "push_new_connections",
+  connect_accepted: "push_connect_accepted",
+  message: "push_messages",
+  match: "push_match_alerts",
+  like: "push_post_likes",
+  comment: "push_comments",
+  comment_like: "push_comment_likes",
+  mention: "push_mentions",
+  achievement: "push_achievements",
+  system: "in_app_notifications",
 };
 
 export interface SendNotificationOptions {

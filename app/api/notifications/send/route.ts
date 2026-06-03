@@ -16,12 +16,12 @@ export const dynamic = "force-dynamic";
 
 const NotificationSendRequestSchema = z.object({
   user_id: z.string().uuid("Invalid user ID format"),
-  type: z.enum(["connect", "message", "like", "comment", "system", "match"]),
+  type: z.enum(["connect", "connect_accepted", "message", "like", "comment", "comment_like", "match", "mention", "system", "achievement"]),
   content: z.string().min(1).max(500),
   actor_id: z.string().uuid().optional(),
   actor_name: z.string().max(100).optional(),
   actor_avatar: z.string().url().optional(),
-  resource_type: z.enum(["post", "profile", "conversation", "match"]).optional(),
+  resource_type: z.enum(["post", "profile", "conversation", "match", "comment"]).optional(),
   resource_id: z.string().uuid().optional(),
 });
 
@@ -40,10 +40,13 @@ export interface NotificationSendResponse {
 
 export async function POST(request: NextRequest) {
   // Validate CSRF token for security
+  // Allow internal 'X-CSRF-Token: internal' for server-to-server notification calls
   const csrfToken = request.headers.get('x-csrf-token');
   const cookieToken = request.cookies.get('csrf_token')?.value || null;
-  
-  if (requiresCSRF(request.method)) {
+
+  if (csrfToken === 'internal') {
+    // Internal server-to-server calls are allowed
+  } else if (requiresCSRF(request.method)) {
     const isValid = await validateCSRFRequest(csrfToken, cookieToken);
     if (!isValid) {
       console.warn('⚠️ CSRF validation failed:', {

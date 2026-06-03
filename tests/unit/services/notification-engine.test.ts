@@ -734,7 +734,7 @@ describe("Notification Engine Service", () => {
     it("returns true when preferences allow notification", async () => {
       // Arrange
       mockSupabaseClient.single.mockResolvedValue({
-        data: { ai_smart_match_alerts: true },
+        data: { push_match_alerts: true },
         error: null,
       });
 
@@ -752,7 +752,7 @@ describe("Notification Engine Service", () => {
     it("returns false when preferences disable notification", async () => {
       // Arrange
       mockSupabaseClient.single.mockResolvedValue({
-        data: { ai_smart_match_alerts: false },
+        data: { push_match_alerts: false },
         error: null,
       });
 
@@ -807,7 +807,7 @@ describe("Notification Engine Service", () => {
     it("returns true when preference value is null/undefined (default allow)", async () => {
       // Arrange
       mockSupabaseClient.single.mockResolvedValue({
-        data: { ai_smart_match_alerts: null },
+        data: { push_match_alerts: null },
         error: null,
       });
 
@@ -818,10 +818,10 @@ describe("Notification Engine Service", () => {
       expect(result).toBe(true);
     });
 
-    it("maps connect type to email_new_connections preference", async () => {
+    it("maps connect type to push_new_connections preference", async () => {
       // Arrange
       mockSupabaseClient.single.mockResolvedValue({
-        data: { email_new_connections: false },
+        data: { push_new_connections: false },
         error: null,
       });
 
@@ -831,14 +831,14 @@ describe("Notification Engine Service", () => {
       // Assert
       expect(result).toBe(false);
       expect(mockSupabaseClient.select).toHaveBeenCalledWith(
-        "email_new_connections",
+        "push_new_connections",
       );
     });
 
-    it("maps message type to email_messages preference", async () => {
+    it("maps message type to push_messages preference", async () => {
       // Arrange
       mockSupabaseClient.single.mockResolvedValue({
-        data: { email_messages: false },
+        data: { push_messages: false },
         error: null,
       });
 
@@ -847,13 +847,13 @@ describe("Notification Engine Service", () => {
 
       // Assert
       expect(result).toBe(false);
-      expect(mockSupabaseClient.select).toHaveBeenCalledWith("email_messages");
+      expect(mockSupabaseClient.select).toHaveBeenCalledWith("push_messages");
     });
 
-    it("maps like type to email_post_likes preference", async () => {
+    it("maps like type to push_post_likes preference", async () => {
       // Arrange
       mockSupabaseClient.single.mockResolvedValue({
-        data: { email_post_likes: false },
+        data: { push_post_likes: false },
         error: null,
       });
 
@@ -863,14 +863,14 @@ describe("Notification Engine Service", () => {
       // Assert
       expect(result).toBe(false);
       expect(mockSupabaseClient.select).toHaveBeenCalledWith(
-        "email_post_likes",
+        "push_post_likes",
       );
     });
 
-    it("maps comment type to email_comments preference", async () => {
+    it("maps comment type to push_comments preference", async () => {
       // Arrange
       mockSupabaseClient.single.mockResolvedValue({
-        data: { email_comments: false },
+        data: { push_comments: false },
         error: null,
       });
 
@@ -879,13 +879,13 @@ describe("Notification Engine Service", () => {
 
       // Assert
       expect(result).toBe(false);
-      expect(mockSupabaseClient.select).toHaveBeenCalledWith("email_comments");
+      expect(mockSupabaseClient.select).toHaveBeenCalledWith("push_comments");
     });
 
-    it("maps system type to push_enabled preference", async () => {
+    it("maps system type to in_app_notifications preference", async () => {
       // Arrange
       mockSupabaseClient.single.mockResolvedValue({
-        data: { push_enabled: false },
+        data: { in_app_notifications: false },
         error: null,
       });
 
@@ -894,7 +894,9 @@ describe("Notification Engine Service", () => {
 
       // Assert
       expect(result).toBe(false);
-      expect(mockSupabaseClient.select).toHaveBeenCalledWith("push_enabled");
+      expect(mockSupabaseClient.select).toHaveBeenCalledWith(
+        "in_app_notifications",
+      );
     });
   });
 });

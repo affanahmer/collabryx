@@ -5,7 +5,7 @@
  * Follows 4-point grid, standardized typography, and brand colors
  */
 
-import { Bell, Heart, MessageSquare, UserPlus, Users, Star, TrendingUp, Award } from "lucide-react"
+import { Bell, Heart, MessageSquare, UserPlus, Users, Star, TrendingUp, Award, AtSign, ThumbsUp, BellRing } from "lucide-react"
 
 /**
  * Spacing system (4-point grid)
@@ -166,7 +166,7 @@ export const NOTIFICATION_ICONS = {
   comment: MessageSquare,
   comment_like: Heart,
   match: Star,
-  mention: Users,
+  mention: AtSign,
   system: Bell,
   achievement: Award,
 } as const

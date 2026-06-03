@@ -24,7 +24,7 @@ export interface SendNotificationRequest {
   actor_id?: string
   actor_name?: string
   actor_avatar?: string
-  resource_type?: 'post' | 'profile' | 'conversation' | 'match'
+  resource_type?: 'post' | 'profile' | 'conversation' | 'match' | 'comment'
   resource_id?: string
 }
 

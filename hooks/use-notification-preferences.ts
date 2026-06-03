@@ -5,13 +5,29 @@ import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import type { NotificationPreference } from "@/types/database.types"
 
-interface NotificationPreferencesForm {
-    email_new_connections: boolean
-    email_messages: boolean
-    email_post_likes: boolean
-    email_comments: boolean
-    push_enabled: boolean
-    ai_smart_match_alerts: boolean
+export interface NotificationPreferencesForm {
+  notifications_enabled: boolean
+  push_new_connections: boolean
+  push_connect_accepted: boolean
+  push_messages: boolean
+  push_post_likes: boolean
+  push_comments: boolean
+  push_comment_likes: boolean
+  push_mentions: boolean
+  push_match_alerts: boolean
+  push_achievements: boolean
+  push_enabled: boolean
+  email_new_connections: boolean
+  email_messages: boolean
+  email_post_likes: boolean
+  email_comments: boolean
+  email_connect_accepted: boolean
+  email_mentions: boolean
+  email_achievements: boolean
+  email_digest: boolean
+  ai_smart_match_alerts: boolean
+  in_app_notifications: boolean
+  quiet_hours_enabled: boolean
 }
 
 export function useNotificationPreferences(userId: string | null) {

@@ -64,6 +64,47 @@ export async function createComment(formData: FormData) {
     user.id
   )
 
+  // Send notification to the post author (if not self-comment)
+  try {
+    const { data: post } = await supabase
+      .from('posts')
+      .select('author_id, content')
+      .eq('id', validated.data.post_id)
+      .single();
+
+    if (post && post.author_id !== user.id) {
+      // Get commenter's display name
+      const { data: commenterProfile } = await supabase
+        .from('profiles')
+        .select('display_name, full_name')
+        .eq('id', user.id)
+        .single();
+
+      const commenterName = commenterProfile?.display_name || commenterProfile?.full_name || 'Someone';
+      const postExcerpt = post.content?.slice(0, 50).replace(/\s+\S*$/, '') || '';
+
+      // Fire-and-forget notification
+      fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/notifications/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': 'internal',
+        },
+        body: JSON.stringify({
+          user_id: post.author_id,
+          type: 'comment',
+          content: `${commenterName} commented on your post${postExcerpt ? `: "${postExcerpt}"` : ''}`,
+          actor_id: user.id,
+          actor_name: commenterName,
+          resource_type: 'post',
+          resource_id: validated.data.post_id,
+        }),
+      }).catch(() => {});
+    }
+  } catch {
+    // Best-effort notification delivery
+  }
+
   revalidatePath(`/post/${validated.data.post_id}`)
 
   return { data: comment }
@@ -224,6 +265,46 @@ export async function reactToComment(commentId: string, reactionType: string) {
     if (error) {
       return { error: 'Failed to add like' }
     }
+  }
+
+  // Send notification to comment author (if not self-like)
+  try {
+    const { data: comment } = await supabase
+      .from('comments')
+      .select('author_id, post_id')
+      .eq('id', validCommentId)
+      .single();
+
+    if (comment && comment.author_id !== user.id) {
+      // Get liker's display name
+      const { data: likerProfile } = await supabase
+        .from('profiles')
+        .select('display_name, full_name')
+        .eq('id', user.id)
+        .single();
+
+      const likerName = likerProfile?.display_name || likerProfile?.full_name || 'Someone';
+
+      // Fire-and-forget notification
+      fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/notifications/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': 'internal',
+        },
+        body: JSON.stringify({
+          user_id: comment.author_id,
+          type: 'comment_like',
+          content: `${likerName} liked your comment`,
+          actor_id: user.id,
+          actor_name: likerName,
+          resource_type: 'comment',
+          resource_id: validCommentId,
+        }),
+      }).catch(() => {});
+    }
+  } catch {
+    // Best-effort notification delivery
   }
 
   revalidatePath(`/post/${validCommentId}`)

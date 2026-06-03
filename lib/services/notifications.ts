@@ -20,10 +20,10 @@ const log = logger.app
 
 const CreateNotificationSchema = z.object({
   user_id: z.string().uuid("Invalid user ID format"),
-  type: z.enum(['connect', 'message', 'like', 'comment', 'system', 'match']),
+  type: z.enum(['connect', 'connect_accepted', 'message', 'like', 'comment', 'comment_like', 'match', 'mention', 'system', 'achievement']),
   content: z.string().min(1).max(500),
   actor_id: z.string().uuid().optional(),
-  resource_type: z.enum(['post', 'profile', 'conversation', 'match']).optional(),
+  resource_type: z.enum(['post', 'profile', 'conversation', 'match', 'comment']).optional(),
   resource_id: z.string().uuid().optional(),
 })
 
@@ -377,16 +377,19 @@ export async function createNotification(
  * 
  * @param receiverId - User receiving the notification
  * @param requesterId - User who sent the request
+ * @param requesterName - Display name of requester
  * @returns Error or null
  */
 export async function sendConnectionRequestNotification(
   receiverId: string,
-  requesterId: string
+  requesterId: string,
+  requesterName?: string
 ): Promise<{ error: Error | null }> {
+  const name = requesterName || 'Someone'
   const { error } = await createNotification({
     user_id: receiverId,
     type: 'connect',
-    content: 'You have a new connection request',
+    content: `${name} wants to connect with you`,
     actor_id: requesterId,
     resource_type: 'profile',
     resource_id: requesterId,
@@ -398,18 +401,21 @@ export async function sendConnectionRequestNotification(
 /**
  * Send connection accepted notification (helper)
  * 
- * @param receiverId - User receiving the notification
+ * @param originalRequesterId - User who originally sent the request
  * @param accepterId - User who accepted
+ * @param accepterName - Display name of accepter
  * @returns Error or null
  */
 export async function sendConnectionAcceptedNotification(
-  receiverId: string,
-  accepterId: string
+  originalRequesterId: string,
+  accepterId: string,
+  accepterName?: string
 ): Promise<{ error: Error | null }> {
+  const name = accepterName || 'Someone'
   const { error } = await createNotification({
-    user_id: receiverId,
-    type: 'connect',
-    content: 'Your connection request was accepted',
+    user_id: originalRequesterId,
+    type: 'connect_accepted',
+    content: `${name} accepted your connection request`,
     actor_id: accepterId,
     resource_type: 'profile',
     resource_id: accepterId,
@@ -424,17 +430,23 @@ export async function sendConnectionAcceptedNotification(
  * @param postAuthorId - Post author receiving notification
  * @param commenterId - User who commented
  * @param postId - Post ID
+ * @param commenterName - Display name of commenter
+ * @param postExcerpt - Short excerpt of the post
  * @returns Error or null
  */
 export async function sendCommentNotification(
   postAuthorId: string,
   commenterId: string,
-  postId: string
+  postId: string,
+  commenterName?: string,
+  postExcerpt?: string
 ): Promise<{ error: Error | null }> {
+  const name = commenterName || 'Someone'
+  const context = postExcerpt ? ` on "${postExcerpt}"` : ''
   const { error } = await createNotification({
     user_id: postAuthorId,
     type: 'comment',
-    content: 'Someone commented on your post',
+    content: `${name} commented on your post${context}`,
     actor_id: commenterId,
     resource_type: 'post',
     resource_id: postId,
@@ -444,25 +456,94 @@ export async function sendCommentNotification(
 }
 
 /**
- * Send like notification (helper)
+ * Send like notification (helper) - only sends if not self-like
  * 
- * @param receiverId - User receiving the notification
+ * @param postAuthorId - Post author receiving notification
  * @param likerId - User who liked
- * @param postId - Post ID (optional)
+ * @param postId - Post ID
+ * @param likerName - Display name of liker
  * @returns Error or null
  */
 export async function sendLikeNotification(
-  receiverId: string,
+  postAuthorId: string,
   likerId: string,
-  postId?: string
+  postId: string,
+  likerName?: string
 ): Promise<{ error: Error | null }> {
+  // Don't notify if user likes their own post
+  if (postAuthorId === likerId) return { error: null }
+
+  const name = likerName || 'Someone'
   const { error } = await createNotification({
-    user_id: receiverId,
+    user_id: postAuthorId,
     type: 'like',
-    content: 'Someone liked your content',
+    content: `${name} liked your post`,
     actor_id: likerId,
-    resource_type: postId ? 'post' : 'profile',
-    resource_id: postId || likerId,
+    resource_type: 'post',
+    resource_id: postId,
+  })
+
+  return { error }
+}
+
+/**
+ * Send comment like notification (helper)
+ * 
+ * @param commentAuthorId - Comment author receiving notification
+ * @param likerId - User who liked the comment
+ * @param commentId - Comment ID
+ * @param likerName - Display name of liker
+ * @returns Error or null
+ */
+export async function sendCommentLikeNotification(
+  commentAuthorId: string,
+  likerId: string,
+  commentId: string,
+  likerName?: string
+): Promise<{ error: Error | null }> {
+  // Don't notify if user likes their own comment
+  if (commentAuthorId === likerId) return { error: null }
+
+  const name = likerName || 'Someone'
+  const { error } = await createNotification({
+    user_id: commentAuthorId,
+    type: 'comment_like',
+    content: `${name} liked your comment`,
+    actor_id: likerId,
+    resource_type: 'comment',
+    resource_id: commentId,
+  })
+
+  return { error }
+}
+
+/**
+ * Send mention notification (helper)
+ * 
+ * @param mentionedUserId - User being mentioned
+ * @param mentionerId - User who mentioned them
+ * @param mentionerName - Display name of mentioner
+ * @param resourceType - Type of resource (post/comment)
+ * @param resourceId - Resource ID
+ * @returns Error or null
+ */
+export async function sendMentionNotification(
+  mentionedUserId: string,
+  mentionerId: string,
+  mentionerName?: string,
+  resourceType?: 'post' | 'comment',
+  resourceId?: string
+): Promise<{ error: Error | null }> {
+  if (mentionedUserId === mentionerId) return { error: null }
+
+  const name = mentionerName || 'Someone'
+  const { error } = await createNotification({
+    user_id: mentionedUserId,
+    type: 'mention',
+    content: `${name} mentioned you in a ${resourceType || 'post'}`,
+    actor_id: mentionerId,
+    resource_type: resourceType === 'comment' ? 'comment' : 'post',
+    resource_id: resourceId,
   })
 
   return { error }
@@ -484,7 +565,7 @@ export async function sendMatchNotification(
   const { error } = await createNotification({
     user_id: userId,
     type: 'match',
-    content: `You have a ${matchPercentage}% match with someone!`,
+    content: `New ${matchPercentage}% compatibility match found!`,
     actor_id: matchedUserId,
     resource_type: 'match',
     resource_id: matchedUserId,

@@ -321,12 +321,12 @@ CREATE TABLE IF NOT EXISTS public.messages (
 CREATE TABLE IF NOT EXISTS public.notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    type TEXT NOT NULL CHECK (type IN ('connect', 'message', 'like', 'comment', 'system', 'match')),
+    type TEXT NOT NULL CHECK (type IN ('connect', 'connect_accepted', 'message', 'like', 'comment', 'comment_like', 'match', 'mention', 'system', 'achievement')),
     actor_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     actor_name TEXT,
     actor_avatar TEXT,
     content TEXT NOT NULL,
-    resource_type TEXT CHECK (resource_type IN ('post', 'profile', 'conversation', 'match')),
+    resource_type TEXT CHECK (resource_type IN ('post', 'profile', 'conversation', 'match', 'comment')),
     resource_id UUID,
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
     is_actioned BOOLEAN NOT NULL DEFAULT FALSE,
@@ -363,12 +363,36 @@ CREATE TABLE IF NOT EXISTS public.ai_mentor_messages (
 CREATE TABLE IF NOT EXISTS public.notification_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE UNIQUE,
+    -- Global master toggle
+    notifications_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    -- Email preferences
     email_new_connections BOOLEAN NOT NULL DEFAULT TRUE,
     email_messages BOOLEAN NOT NULL DEFAULT TRUE,
-    ai_smart_match_alerts BOOLEAN NOT NULL DEFAULT FALSE,
-    email_post_likes BOOLEAN NOT NULL DEFAULT FALSE,
+    email_post_likes BOOLEAN NOT NULL DEFAULT TRUE,
     email_comments BOOLEAN NOT NULL DEFAULT TRUE,
+    email_connect_accepted BOOLEAN NOT NULL DEFAULT TRUE,
+    email_mentions BOOLEAN NOT NULL DEFAULT TRUE,
+    email_achievements BOOLEAN NOT NULL DEFAULT TRUE,
+    email_digest BOOLEAN NOT NULL DEFAULT FALSE,
+    -- AI match alerts
+    ai_smart_match_alerts BOOLEAN NOT NULL DEFAULT FALSE,
+    -- Push/in-app notifications
     push_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    push_new_connections BOOLEAN NOT NULL DEFAULT TRUE,
+    push_messages BOOLEAN NOT NULL DEFAULT TRUE,
+    push_post_likes BOOLEAN NOT NULL DEFAULT TRUE,
+    push_comments BOOLEAN NOT NULL DEFAULT TRUE,
+    push_comment_likes BOOLEAN NOT NULL DEFAULT TRUE,
+    push_mentions BOOLEAN NOT NULL DEFAULT TRUE,
+    push_connect_accepted BOOLEAN NOT NULL DEFAULT TRUE,
+    push_match_alerts BOOLEAN NOT NULL DEFAULT TRUE,
+    push_achievements BOOLEAN NOT NULL DEFAULT TRUE,
+    -- In-app toggle
+    in_app_notifications BOOLEAN NOT NULL DEFAULT TRUE,
+    -- Quiet hours
+    quiet_hours_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    quiet_hours_start TIME DEFAULT '22:00',
+    quiet_hours_end TIME DEFAULT '08:00',
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -3438,13 +3462,18 @@ CREATE OR REPLACE FUNCTION public.send_connection(p_requester_id UUID, p_receive
 RETURNS UUID AS $$
 DECLARE
   v_connection_id UUID;
+  v_requester_name TEXT;
 BEGIN
+  -- Get requester display name
+  SELECT COALESCE(display_name, full_name, 'Someone') INTO v_requester_name
+  FROM public.profiles WHERE id = p_requester_id;
+
   INSERT INTO public.connections (requester_id, receiver_id, status)
   VALUES (p_requester_id, p_receiver_id, 'pending')
   RETURNING id INTO v_connection_id;
 
-  INSERT INTO public.notifications (user_id, type, content, resource_id)
-  VALUES (p_receiver_id, 'connect', p_requester_id || ' wants to connect with you', v_connection_id);
+  INSERT INTO public.notifications (user_id, type, content, actor_id, actor_name, resource_type, resource_id)
+  VALUES (p_receiver_id, 'connect', v_requester_name || ' wants to connect with you', p_requester_id, v_requester_name, 'profile', p_requester_id);
 
   RETURN v_connection_id;
 END;
@@ -3455,6 +3484,7 @@ CREATE OR REPLACE FUNCTION public.accept_connection(p_request_id UUID, p_receive
 RETURNS void AS $$
 DECLARE
   v_requester_id UUID;
+  v_accepter_name TEXT;
 BEGIN
   UPDATE public.connections 
   SET status = 'accepted'
@@ -3465,8 +3495,13 @@ BEGIN
     RAISE EXCEPTION 'Connection request not found or you are not authorized to accept it';
   END IF;
 
-  INSERT INTO public.notifications (user_id, type, content, resource_id)
-  VALUES (v_requester_id, 'connect', p_receiver_id || ' accepted your connection request', p_request_id);
+  -- Get accepter display name
+  SELECT COALESCE(display_name, full_name, 'Someone') INTO v_accepter_name
+  FROM public.profiles WHERE id = p_receiver_id;
+
+  -- Notify requester that their connection request was accepted
+  INSERT INTO public.notifications (user_id, type, content, actor_id, actor_name, resource_type, resource_id)
+  VALUES (v_requester_id, 'connect_accepted', v_accepter_name || ' accepted your connection request', p_receiver_id, v_accepter_name, 'profile', p_receiver_id);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 

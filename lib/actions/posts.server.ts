@@ -351,6 +351,46 @@ export async function reactToPost(postId: string, reactionType: string) {
     }
   }
 
+  // Send notification to the post author (if not self-reaction)
+  try {
+    const { data: post } = await supabase
+      .from('posts')
+      .select('author_id')
+      .eq('id', validPostId)
+      .single();
+
+    if (post && post.author_id !== user.id) {
+      // Get liker's display name
+      const { data: likerProfile } = await supabase
+        .from('profiles')
+        .select('display_name, full_name')
+        .eq('id', user.id)
+        .single();
+
+      const likerName = likerProfile?.display_name || likerProfile?.full_name || 'Someone';
+
+      // Fire-and-forget notification
+      fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/notifications/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': 'internal',
+        },
+        body: JSON.stringify({
+          user_id: post.author_id,
+          type: 'like',
+          content: `${likerName} reacted to your post`,
+          actor_id: user.id,
+          actor_name: likerName,
+          resource_type: 'post',
+          resource_id: validPostId,
+        }),
+      }).catch(() => {});
+    }
+  } catch {
+    // Best-effort notification delivery
+  }
+
   // Get updated count for response (non-critical if fails)
   const { count } = await supabase
     .from('post_reactions')

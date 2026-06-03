@@ -93,6 +93,46 @@ export async function sendMessageAction(formData: FormData) {
     })
     .eq("id", conversation_id)
 
+  // Send notification to the other participant
+  try {
+    const otherParticipantId =
+      conversation.participant_1 === user.id
+        ? conversation.participant_2
+        : conversation.participant_1;
+
+    // Get sender's display name
+    const { data: senderProfile } = await supabase
+      .from("profiles")
+      .select("display_name, full_name")
+      .eq("id", user.id)
+      .single();
+
+    const senderName = senderProfile?.display_name || senderProfile?.full_name || user.id.slice(0, 8);
+
+    // Fire-and-forget notification via server-side notification engine
+    // Uses fetch to avoid import issues (runs asynchronously)
+    fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/notifications/send`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': 'internal',
+      },
+      body: JSON.stringify({
+        user_id: otherParticipantId,
+        type: 'message' as const,
+        content: `${senderName}: ${text.length > 80 ? text.slice(0, 80) + '...' : text}`,
+        actor_id: user.id,
+        actor_name: senderName,
+        resource_type: 'conversation' as const,
+        resource_id: conversation_id,
+      }),
+    }).catch(() => {
+      // Best-effort - notification is non-critical
+    });
+  } catch {
+    // Best-effort notification delivery
+  }
+
   revalidatePath(`/messages/${conversation_id}`)
   revalidatePath("/messages")
 
