@@ -121,6 +121,33 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# ── Log noise suppression ────────────────────────────────────────────────────
+# Three library-level loggers produce high-volume, low-signal output that
+# defeats the purpose of sanitized logging:
+#
+# 1. httpx (INFO): The Supabase Python client uses httpx under the hood. httpx
+#    logs every single HTTP request and response at INFO level. Each background
+#    queue poll cycle (DLQ check + pending check) generates 2-4 httpx lines.
+#    With Docker HEALTHCHECK every 30s + existing queue traffic, httpx alone
+#    produces hundreds of log lines per hour — none actionable.
+#
+# 2. httpcore (INFO): The underlying HTTP connection pool for httpx. Logs
+#    connection open/close events at INFO level. Only useful when debugging
+#    connection pool issues.
+#
+# 3. uvicorn.access (INFO): Logs every incoming HTTP request as
+#    "127.0.0.1:XXXX - 'GET /health HTTP/1.1' 200 OK". The Docker HEALTHCHECK
+#    hits /health every 30s, and any external monitors hit it more frequently.
+#    Each successful health check generates a log line that provides zero
+#    operational value once the service has confirmed healthy.
+#
+# All three are demoted to WARNING so that only actual errors (connection
+# failures, timeouts, protocol errors) appear in the logs. Our custom log
+# messages (main logger) remain at INFO for lifecycle events.
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
+logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+
 # Environment variables
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
@@ -231,8 +258,13 @@ async def run_embedding_tests():
                 first_lines = result.stderr.strip().split("\n")[:5]
                 for line in first_lines:
                     logger.error(f"  {line}")
-                if len(first_lines) < result.stderr.count("\n"):
-                    logger.error(f"  ... ({result.stderr.count('\n') - 4} more lines)")
+                # NOTE: The backslash-count is computed BEFORE the f-string (not inline)
+                # to maintain Python 3.11 compatibility. The Docker runtime image
+                # uses python:3.11-slim-bookworm, which does not support backslash
+                # escapes inside f-string expression parts (PEP 701 — Python 3.12+).
+                total_stderr_lines = len(result.stderr.strip().split("\n"))
+                if len(first_lines) < total_stderr_lines:
+                    logger.error(f"  ... ({total_stderr_lines - len(first_lines)} more lines)")
             logger.warning("⚠️ Continuing startup despite test failures")
 
     except asyncio.TimeoutError:
