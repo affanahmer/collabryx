@@ -178,7 +178,11 @@ export async function getMatchSuggestions(limit = 20) {
       status,
       created_at,
       expires_at,
-      matched_user:profiles!inner (
+      // NOTE: PostgREST (PGRST201) requires explicit FK constraint names when a table has
+      // multiple FK relationships to the same target. `match_suggestions` has both `user_id`
+      // and `matched_user_id` referencing `profiles(id)`. Using `profiles!inner` is ambiguous,
+      // so we specify `match_suggestions_matched_user_id_fkey` to disambiguate the join.
+      matched_user:profiles!match_suggestions_matched_user_id_fkey!inner (
         id,
         display_name,
         full_name,
