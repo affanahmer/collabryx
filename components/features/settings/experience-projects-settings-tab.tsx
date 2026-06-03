@@ -355,6 +355,24 @@ const [experiences, setExperiences] = useState<Experience[]>([])
                                         placeholder="What did you do?"
                                     />
                                 </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label>Start Date</Label>
+                                        <Input
+                                            type="date"
+                                            value={exp.start_date ? exp.start_date.split('T')[0] : ''}
+                                            onChange={e => updateExperience(exp.id, 'start_date', e.target.value)}
+                                            className={cn("focus:border-primary/50", glass("input"))}
+                                        />
+                                    </div>
+                                    <div className="flex items-end gap-2 pb-2">
+                                        <Switch
+                                            checked={exp.is_current ?? false}
+                                            onCheckedChange={(checked: boolean) => updateExperience(exp.id, 'is_current', checked)}
+                                        />
+                                        <Label>Currently working here</Label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     ))}
