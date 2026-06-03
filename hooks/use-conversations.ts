@@ -37,13 +37,19 @@ async function fetchConversations(): Promise<Conversation[]> {
             last_message_at,
             unread_count_1,
             unread_count_2,
-            requester:profiles!inner (
+            // NOTE: PostgREST (PGRST201) requires explicit foreign key constraint names when a
+            // table has multiple FK relationships to the same target table. Both `participant_1`
+            // and `participant_2` reference `profiles(id)`, so `profiles!inner` is ambiguous —
+            // PostgREST cannot determine which FK to use for embedding. Using the exact
+            // constraint names (`conversations_participant_1_fkey`, `conversations_participant_2_fkey`)
+            // disambiguates the join, telling PostgREST exactly which column to match.
+            requester:profiles!conversations_participant_1_fkey!inner (
                 id,
                 display_name,
                 full_name,
                 avatar_url
             ),
-            receiver:profiles!inner (
+            receiver:profiles!conversations_participant_2_fkey!inner (
                 id,
                 display_name,
                 full_name,
