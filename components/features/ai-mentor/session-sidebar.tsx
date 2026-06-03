@@ -175,12 +175,14 @@ export function SessionSidebar({
         ) : (
           <div className='p-2 space-y-1'>
             {sessions.map((session) => (
-              <button
+              <div
                 key={session.id}
-                type="button"
+                role="button"
+                tabIndex={0}
                 onClick={() => onSessionSelect(session.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSessionSelect(session.id); } }}
                 className={cn(
-                  'w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors',
+                  'w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer',
                   'hover:bg-accent/50 group flex items-start gap-2',
                   activeSessionId === session.id
                     ? 'bg-accent/70 border border-border/60'
@@ -198,14 +200,16 @@ export function SessionSidebar({
                   </div>
                 </div>
                 {session.status !== 'archived' && (
-                  <button
-                    type="button"
-                    onClick={(e) => handleArchive(e, session.id)}
-                    disabled={archivingId === session.id}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); handleArchive(e, session.id); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); handleArchive(e as unknown as React.MouseEvent, session.id); } }}
                     className={cn(
-                      'opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded',
+                      'opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded cursor-pointer',
                       'hover:bg-muted text-muted-foreground hover:text-foreground',
                       'shrink-0 mt-0.5',
+                      archivingId === session.id && 'opacity-100',
                     )}
                     aria-label={`Archive session ${session.title}`}
                   >
@@ -214,9 +218,9 @@ export function SessionSidebar({
                     ) : (
                       <Archive className='h-3.5 w-3.5' />
                     )}
-                  </button>
+                  </div>
                 )}
-              </button>
+              </div>
             ))}
           </div>
         )}
