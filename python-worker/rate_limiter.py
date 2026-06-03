@@ -3,6 +3,14 @@ Rate Limiter Module for Embedding Service
 Implements sliding window rate limiting with database as source of truth
 """
 
+# ── Performance note: asyncio imported at module level ────────────────────
+# Previously imported inside check_rate_limit() method body (line 67).
+# While Python caches imports after first execution, the module lookup and
+# name-binding overhead still occurs on every single rate limit check.
+# At 10K users making embedding requests, this unnecessary lookup is
+# repeated thousands of times. Moved to top-level import where it executes
+# exactly once at module load time.
+import asyncio
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
@@ -64,10 +72,7 @@ class RateLimiter:
         # Always check database - no cache for distributed rate limiting
         # This ensures consistent rate limiting across multiple worker instances
         try:
-            import asyncio
             loop = asyncio.get_event_loop()
-            
-            # Wrap the blocking synchronous Supabase .execute() call in run_in_executor to prevent event loop delays
             query = self.supabase.rpc("check_embedding_rate_limit", {"p_user_id": user_id})
             response = await loop.run_in_executor(None, query.execute)
 
