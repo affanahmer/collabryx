@@ -44,12 +44,6 @@ interface MatchCardProps {
     isNew?: boolean
 }
 
-const availabilityLabels: Record<string, string> = {
-    "full-time": "Full-time",
-    "part-time": "Part-time",
-    "side-project": "Side-project"
-}
-
 const collaborationLabels: Record<string, { label: string; className: string }> = {
     available: {
         label: "Available now",

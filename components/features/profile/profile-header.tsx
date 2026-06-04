@@ -47,6 +47,7 @@ import { formatInitials } from "@/lib/utils/format-initials"
 import { GlassCard } from "@/components/shared/glass-card"
 import { formatJoinDate, formatRelativeTime } from "@/lib/utils/format-date"
 
+
 function GithubIcon({ className }: { className?: string }) {
     return (
         <svg className={className} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
@@ -166,21 +167,13 @@ export function ProfileHeader({
         return (domains[label] || "https://") + url
     }
 
-    // Calculate "last active" label
-    const getLastActiveLabel = (lastActive: string | null | undefined): string | null => {
-        if (!lastActive) return null
-        const now = Date.now()
-        const then = new Date(lastActive).getTime()
-        const diffMs = now - then
-        const diffHours = diffMs / (1000 * 60 * 60)
-        if (diffHours < 1) return "Active now"
-        if (diffHours < 24) return `Active ${Math.round(diffHours)}h ago`
-        const diffDays = diffHours / 24
-        if (diffDays < 7) return `Active ${Math.round(diffDays)}d ago`
-        if (diffDays < 30) return `Active ${Math.round(diffDays)}d ago`
-        return null
-    }
-    const lastActiveLabel = getLastActiveLabel(lastActive)
+    // Calculate "last active" label — uses formatRelativeTime which encapsulates Date.now in a utility function
+    const lastActiveLabel = !lastActive ? null : (() => {
+        const rel = formatRelativeTime(lastActive)
+        if (rel === "Unknown") return null
+        if (rel === "just now") return "Active now"
+        return `Active ${rel}`
+    })()
 
     return (
         <GlassCard className="mb-4 md:mb-6 overflow-visible border border-border/60 shadow-xl" innerClassName="p-0">

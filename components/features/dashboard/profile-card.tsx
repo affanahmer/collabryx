@@ -48,7 +48,7 @@
  */
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Separator } from "@/components/ui/separator"
-import { MapPin, Link as LinkIcon, Eye, Users, Loader2 } from "lucide-react"
+import { MapPin, Link as LinkIcon, Eye, Users } from "lucide-react"
 import Link from "next/link"
 import { GlassCard } from "@/components/shared/glass-card"
 import { useProfile } from "@/hooks/use-profile"

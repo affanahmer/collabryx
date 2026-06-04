@@ -21,8 +21,6 @@ interface ProfileVisitTrackerProps {
 
 export function ProfileVisitTracker({ viewedId }: ProfileVisitTrackerProps) {
   useEffect(() => {
-    let cancelled = false
-
     const track = async () => {
       try {
         const res = await fetch("/api/activity/track/view", {
@@ -41,10 +39,6 @@ export function ProfileVisitTracker({ viewedId }: ProfileVisitTrackerProps) {
     }
 
     track()
-
-    return () => {
-      cancelled = true
-    }
   }, [viewedId])
 
   return null

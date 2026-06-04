@@ -176,7 +176,7 @@ const [experiences, setExperiences] = useState<Experience[]>([])
                 const { error } = await supabase
                     .from('user_experiences')
                     .insert(expsToAdd.map(e => {
-                        const { id, ...rest } = e
+                        const { id: _id, ...rest } = e
                         return { user_id: userId, ...rest }
                     }))
                 if (error) throw new Error(`Failed to add experiences: ${error.message}`)
@@ -211,7 +211,7 @@ const [experiences, setExperiences] = useState<Experience[]>([])
                 const { error } = await supabase
                     .from('user_projects')
                     .insert(projsToAdd.map(p => {
-                        const { id, ...rest } = p
+                        const { id: _id, ...rest } = p
                         return { user_id: userId, ...rest }
                     }))
                 if (error) throw new Error(`Failed to add projects: ${error.message}`)

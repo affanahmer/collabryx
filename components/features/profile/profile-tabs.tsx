@@ -435,6 +435,7 @@ export function ProfileTabs({
                                         {/* Project Image */}
                                         {project.imageUrl && (
                                             <div className="relative h-36 sm:h-40 w-full bg-muted/30 overflow-hidden">
+                                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                                 <img
                                                     src={project.imageUrl}
                                                     alt={project.title}

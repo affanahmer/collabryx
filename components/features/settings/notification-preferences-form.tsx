@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useRef, useMemo } from "react"
 import { useNotificationPreferences } from "@/hooks/use-notification-preferences"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -155,9 +155,9 @@ const NOTIFICATION_TYPES: NotificationItem[] = [
 export function NotificationPreferencesForm({ userId }: NotificationPreferencesFormProps) {
   const { preferences, isLoading, error, updatePreferences, isUpdating } = useNotificationPreferences(userId)
   const [hasChanges, setHasChanges] = useState(false)
-  const hasSyncedRef = useRef(false)
 
-  const [formData, setFormData] = useState<Record<string, boolean>>({
+  // Default notification state
+  const defaultFormData: Record<string, boolean> = {
     notifications_enabled: true,
     push_new_connections: true,
     push_connect_accepted: true,
@@ -180,24 +180,30 @@ export function NotificationPreferencesForm({ userId }: NotificationPreferencesF
     ai_smart_match_alerts: true,
     in_app_notifications: true,
     quiet_hours_enabled: false,
-  })
+  }
 
-  useEffect(() => {
-    if (preferences && !hasSyncedRef.current) {
-      setFormData((prev) => {
-        const synced = { ...prev }
-        // Only sync fields that exist in preferences (handle partial sync gracefully)
-        for (const key of Object.keys(synced) as PreferenceKey[]) {
-          const prefValue = (preferences as unknown as Record<string, unknown>)[key]
-          if (typeof prefValue === "boolean") {
-            synced[key] = prefValue
-          }
-        }
-        return synced
-      })
-      hasSyncedRef.current = true
+  // Merge preferences into defaults at render time (safe — no side effects, no setState in effects)
+  const mergedFormData = useMemo<Record<string, boolean>>(() => {
+    if (!preferences) return defaultFormData
+    const merged = { ...defaultFormData }
+    for (const key of Object.keys(merged) as PreferenceKey[]) {
+      const prefValue = (preferences as unknown as Record<string, unknown>)[key]
+      if (typeof prefValue === "boolean") {
+        merged[key] = prefValue
+      }
     }
+    return merged
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preferences])
+
+  const [formData, setFormData] = useState<Record<string, boolean>>(defaultFormData)
+
+  // Sync formData from preferences once on initial load via render-phase setState (safe — one-time)
+  const hasSyncedRef = useRef(false)
+  if (preferences && !hasSyncedRef.current) {
+    hasSyncedRef.current = true
+    setFormData(mergedFormData)
+  }
 
   const updateField = (field: PreferenceKey, value: boolean) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
