@@ -44,27 +44,17 @@ export default function AssistantContent() {
         sessionId: activeSessionId ?? undefined,
         onSessionReady: (sid) => {
             setActiveSessionId(sid)
-            setShowStarters(false)
         },
     })
 
     const handleSessionSelect = (sid: string) => {
         setActiveSessionId(sid)
         setSidebarOpen(false)
-        setShowStarters(false)
     }
 
     const handleNewSession = () => {
         setActiveSessionId(null)
-        setShowStarters(true)
     }
-
-    // Reset starters when user is in a fresh session (no messages, no active session)
-    useEffect(() => {
-        if (messages.length === 0 && !activeSessionId) {
-            setShowStarters(true)
-        }
-    }, [messages.length, activeSessionId])
 
     const effectiveSessionId = activeSessionId || sessionId
 
@@ -75,10 +65,9 @@ export default function AssistantContent() {
 
     const handleStarterClick = (desc: string) => {
         sendMessage(desc)
-        setShowStarters(false)
     }
 
-    const showStarterCards = showStarters && messages.length === 0 && !isStreaming
+    const showStarterCards = messages.length === 0 && !activeSessionId && !isStreaming
 
     return (
         <div className="flex flex-1 min-h-0">
@@ -143,7 +132,7 @@ export default function AssistantContent() {
                     externalMessages={externalMessages}
                     isLoadingExternal={isStreaming}
                     hasStarters={messages.length > 0}
-                    onToggleStarters={() => setShowStarters((s) => !s)}
+                    onToggleStarters={undefined}
                 />
 
                 {/* Bottom area: starter cards + input */}

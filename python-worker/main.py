@@ -164,7 +164,9 @@ logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 # SUPABASE_URL from python-worker/.env takes precedence.
 # Falls back to NEXT_PUBLIC_SUPABASE_URL from root .env (Next.js convention)
 # so the worker works correctly regardless of which working directory it starts from.
-SUPABASE_URL = os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
+_raw_supabase_url = os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
+# Defensive: ensure URL has a protocol prefix (httpx requires it)
+SUPABASE_URL = _raw_supabase_url if _raw_supabase_url and _raw_supabase_url.startswith(("http://", "https://")) else f"https://{_raw_supabase_url}" if _raw_supabase_url else None
 SUPABASE_SERVICE_ROLE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 WORKER_API_KEY = os.getenv("WORKER_API_KEY")
@@ -214,6 +216,13 @@ def validate_env_vars():
     missing = [var for var in required_vars if not os.getenv(var)]
     if missing:
         raise RuntimeError(f"Missing required environment variables: {missing}")
+    # Also check that SUPABASE_URL has a protocol (httpx requires http:// or https://)
+    _supabase_url = os.getenv("SUPABASE_URL") or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+    if _supabase_url and not _supabase_url.startswith(("http://", "https://")):
+        raise RuntimeError(
+            f"SUPABASE_URL ('{_supabase_url}') is missing 'http://' or 'https://' protocol. "
+            f"This causes httpx to fail with 'Request URL is missing protocol' errors."
+        )
 
 
 # Declare module-level singletons (initialized in lifespan)
@@ -338,8 +347,17 @@ async def lifespan(app: FastAPI):
 
     # B7: Initialize Supabase inside lifespan (not at module level)
     # Prevents silent degraded mode when env vars are missing at import time
-    supabase_url = os.environ.get("SUPABASE_URL")
+    # Use module-level SUPABASE_URL (has protocol fix applied) but still read key from env
+    supabase_url = SUPABASE_URL
     supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    if supabase_url:
+        # Warn if protocol was missing (defensive fix kicked in)
+        _raw = os.environ.get("SUPABASE_URL") or os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
+        if _raw and not _raw.startswith(("http://", "https://")):
+            logger.warning(
+                f"SUPABASE_URL is missing a protocol prefix ('{_raw}'). "
+                f"Auto-prepended 'https://'. Fix your environment configuration."
+            )
     if supabase_url and supabase_key:
         try:
             supabase = create_client(supabase_url, supabase_key)
