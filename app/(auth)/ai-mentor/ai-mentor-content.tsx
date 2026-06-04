@@ -288,7 +288,7 @@ export default function AIMentorContent({ collaborateUserId, startupContextParam
                 text={ideasModeText}
                 sessionId={effectiveSessionId}
                 userId={user?.id}
-                className="!mt-0"
+                className="mt-0!"
               />
             </div>
           </div>
