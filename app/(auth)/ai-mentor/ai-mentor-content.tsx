@@ -3,56 +3,8 @@
  * AIMentorContent — Orchestrator for AI Mentor Page with Session Management
  * ============================================================================
  *
- * PROBLEM (Bug #1, #2, #3 from analysis):
- * The original AIMentorContent had three critical flaws:
- *  1. It generated a random sessionId via `crypto.randomUUID()` that existed
- *     ONLY in the browser. This UUID was never persisted to the database.
- *  2. It passed this fake sessionId to BOTH the useAIStream hook AND the
- *     ChatInput component. The ChatInput tried to call a server action with
- *     this UUID, which always failed with "Session not found" because no
- *     ai_mentor_sessions row matched.
- *  3. The ChatList called getSessionHistory() with the same fake UUID on
- *     mount, always getting empty results. Users saw no history even when
- *     messages were displayed from streaming — those messages vanished on
- *     refresh.
- *
- * Additionally, there was no way to:
- *  - Browse past sessions
- *  - Switch between sessions
- *  - Archive old conversations
- *  - Start fresh without losing everything
- *
- * SOLUTION:
- * This component now acts as the CENTRAL ORCHESTRATOR for the AI Mentor
- * page, coordinating four sub-components into a cohesive experience:
- *
- *  1. SessionSidebar (left panel, togglable):
- *     - Lists all past sessions (active + archived)
- *     - Auto-refreshes via polling to pick up new sessions
- *     - Archive button per session
- *     - Click to switch active session
- *     - "New Session" button to clear active state
- *
- *  2. useAIStream hook:
- *     - Receives activeSessionId when user selects a past session
- *     - When no session is active, the first message creates one server-side
- *     - onSessionReady callback syncs the real DB session ID back to state
- *     - sendMessage is passed down to both ChatInput and suggestion handlers
- *
- *  3. ChatInput (bottom bar):
- *     - Receives isStreaming and onSend from this component
- *     - No direct knowledge of sessions, DB, or server actions
- *
- *  4. ChatList (main area):
- *     - Loads DB history via getSessionHistory(effectiveSessionId)
- *     - Merges DB messages with streaming messages (deduplicated by content)
- *     - Shows loading/empty/error states appropriately
- *
- * The effectiveSessionId logic:
- *  - If user selected a past session → use that
- *  - If in-flight streaming created a new session → use the streaming hook's
- *    sessionId (synced from server)
- *  - ChatList uses whichever is available to load history
+ * Central orchestrator for the AI Mentor page. Integrates the collapsible
+ * SessionSidebar, StartupPlanGenerator, and ChatList components.
  *
  * @see {@link ../../hooks/use-ai-stream.ts} — streaming hook
  * @see {@link ../../components/features/ai-mentor/session-sidebar.tsx} — session browser
@@ -61,17 +13,19 @@
 'use client'
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 import { useAIStream } from '@/hooks/use-ai-stream'
 import { useAuth } from '@/hooks/use-auth'
 import { ChatList } from '@/components/features/assistant/chat-list'
 import { ChatInput } from '@/components/features/assistant/chat-input'
+import { ChatErrorBoundary } from '@/components/features/assistant/chat-error-boundary'
 import { SessionSidebar } from '@/components/features/ai-mentor/session-sidebar'
+import { StartupPlanGenerator } from '@/components/features/ai-mentor/startup-plan-generator'
 import { cn } from '@/lib/utils'
 import { glass } from '@/lib/utils/glass-variants'
-import { Lightbulb, Users } from 'lucide-react'
+import { Lightbulb, Users, Sparkles, Menu, X } from 'lucide-react'
 import type { AIStructuredResponse, StartupIdeaAction } from '@/types/ai-responses'
 import { isAIStructuredResponse } from '@/types/ai-responses'
+import { getSessionHistory } from '@/lib/actions/ai-mentor'
 
 interface AIMentorContentProps {
   collaborateUserId?: string
@@ -82,6 +36,10 @@ export default function AIMentorContent({ collaborateUserId, startupContextParam
   const { user } = useAuth()
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+
+  // Sidebar Open State
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   const otherUserIds = useMemo(
     () => collaborateUserId ? [collaborateUserId] : undefined,
     [collaborateUserId]
@@ -112,12 +70,16 @@ export default function AIMentorContent({ collaborateUserId, startupContextParam
     if (collaborateUserId && user?.id && !collabMessageSent.current) {
       collabMessageSent.current = true
       const collaborationMessage = `I want to collaborate with this person. Give me 3 detailed startup ideas we could build together based on our combined skills and interests. For each idea, include a niche_score breakdown with overall, market_fit, skill_match, feasibility, and uniqueness scores. Make each idea a proper startup plan with problem, solution, target market, and why_you_two sections.`
-      // Use setTimeout to ensure sendMessageRef is populated from the useAIStream hook
-      // which may not be ready on the very first render
-      const timer = setTimeout(() => {
-        sendMessageRef.current?.(collaborationMessage)
-      }, 100)
-      return () => clearTimeout(timer)
+      // Retry loop: sendMessageRef may not be populated on first render because
+      // the streaming hook needs to initialize. Try up to 10 times with 200ms gaps.
+      const trySend = (attempts = 0) => {
+        if (sendMessageRef.current) {
+          sendMessageRef.current(collaborationMessage)
+        } else if (attempts < 10) {
+          setTimeout(() => trySend(attempts + 1), 200)
+        }
+      }
+      trySend()
     }
   }, [collaborateUserId, user?.id])
 
@@ -125,12 +87,17 @@ export default function AIMentorContent({ collaborateUserId, startupContextParam
   const handleSessionSelect = useCallback((sid: string) => {
     setActiveSessionId(sid)
     setRefreshKey((k) => k + 1)
+    setIdeasMode(false)
+    setIdeasModeText(null)
+    setManualExtractText(null)
+    setSidebarOpen(false)
   }, [])
 
   const handleNewSession = useCallback(() => {
     // Clear active session and let the hook create a new one on next send
     setActiveSessionId(null)
     setRefreshKey((k) => k + 1)
+    setSidebarOpen(false)
   }, [])
 
   // Use the current session ID for the ChatList (either from server or in-flight)
@@ -150,6 +117,52 @@ export default function AIMentorContent({ collaborateUserId, startupContextParam
   }, [messages])
 
   const handleSuggestionClick = useCallback((s: string) => sendMessage(s), [sendMessage])
+  // Manual re-extraction: forces the AI's last assistant response through
+  // the startup idea parser. Useful when --IDEA-- markers weren't generated.
+  const [manualExtractText, setManualExtractText] = useState<string | null>(null)
+  const handleExtractIdeas = useCallback(async () => {
+    // First check streaming messages (from current session)
+    const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant')
+    if (lastAssistant) {
+      setManualExtractText(lastAssistant.content)
+      setIdeasMode(true)
+      return
+    }
+    // Fallback: check DB-loaded messages if streaming hasn't happened yet
+    if (effectiveSessionId) {
+      try {
+        const result = await getSessionHistory(effectiveSessionId)
+        const dbMessages = result?.data
+        if (dbMessages && dbMessages.length > 0) {
+          const lastDbAssistant = [...dbMessages].reverse().find(
+            (m: { role: string }) => m.role === 'assistant'
+          )
+          if (lastDbAssistant) {
+            setManualExtractText((lastDbAssistant as { content: string }).content)
+            setIdeasMode(true)
+          }
+        }
+      } catch {
+        // Silently ignore fetch errors
+      }
+    }
+  }, [messages, effectiveSessionId])
+
+  // Ideas-focused view mode — when active, hides chat and shows full-width cards
+  const [ideasMode, setIdeasMode] = useState(false)
+  const [ideasModeText, setIdeasModeText] = useState<string | null>(null)
+
+  // Detect --IDEA-- markers in the streaming response and switch to ideas mode
+  useEffect(() => {
+    if (!isStreaming && messages.length > 0) {
+      const lastMsg = messages[messages.length - 1]
+      if (lastMsg.role === 'assistant' && lastMsg.content.includes('--IDEA--')) {
+        setIdeasModeText(lastMsg.content)
+        setIdeasMode(true)
+      }
+    }
+  }, [isStreaming, messages])
+
   const handleIdeaAction = useCallback((ideaId: number, action: StartupIdeaAction) => {
     const m: Record<StartupIdeaAction, string> = {
       validate: `Tell me more about validating idea #${ideaId}`,
@@ -173,36 +186,88 @@ export default function AIMentorContent({ collaborateUserId, startupContextParam
   }
 
   return (
-    <div className='flex flex-1 min-h-0'>
-      {/* Session Sidebar — always visible */}
-      <SessionSidebar
-        activeSessionId={effectiveSessionId}
-        onSessionSelect={handleSessionSelect}
-        onNewSession={handleNewSession}
-      />
+    <div className='flex flex-1 min-h-0 relative'>
+      {/* Session Sidebar */}
+      {sidebarOpen && (
+        <>
+          {/* Mobile backdrop overlay */}
+          <div
+            className="fixed inset-0 z-20 bg-black/20 backdrop-blur-sm md:hidden overscroll-contain"
+            onClick={() => setSidebarOpen(false)}
+          />
+          <SessionSidebar
+            activeSessionId={effectiveSessionId}
+            onSessionSelect={handleSessionSelect}
+            onNewSession={handleNewSession}
+            onClose={() => setSidebarOpen(false)}
+          />
+        </>
+      )}
 
-      {/* Main Chat Area */}
-      <div className='flex flex-col flex-1 min-w-0'>
+      {/* Main Content Area */}
+      <div className="flex flex-col flex-1 min-w-0">
         {/* Header */}
-        <div className={cn('px-4 md:px-6 py-4 border-b border-border/40 shrink-0', glass('header'))}>
-          <div className='flex items-center gap-3'>
-            <div className='rounded-full bg-primary/10 p-2'>
-              {collaborateUserId ? (
-                <Users className='h-4 w-4 text-primary' />
-              ) : (
-                <Lightbulb className='h-4 w-4 text-primary' />
-              )}
+        <div className={cn('px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b border-border/40 shrink-0', glass('header'))}>
+          <div className='flex items-center justify-between gap-2 md:gap-3'>
+            <div className='flex items-center gap-3 min-w-0'>
+              {/* Hamburger toggle button */}
+              <button
+                type="button"
+                onClick={() => setSidebarOpen(o => !o)}
+                className={cn(
+                  "flex items-center justify-center h-9 w-9 rounded-lg shrink-0 transition-all duration-200",
+                  "hover:bg-accent active:scale-95",
+                  glass("buttonGhost"),
+                )}
+                aria-label="Toggle session sidebar"
+              >
+                {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
+              <div className='rounded-full bg-primary/10 p-2 shrink-0'>
+                {collaborateUserId ? (
+                  <Users className='h-4 w-4 text-primary' />
+                ) : (
+                  <Lightbulb className='h-4 w-4 text-primary' />
+                )}
+              </div>
+              <div className="min-w-0">
+                <h1 className='text-base md:text-lg font-semibold leading-tight truncate'>
+                  {ideasMode ? 'Startup Ideas' : (collaborateUserId ? 'Collaboration Studio' : 'AI Mentor')}
+                </h1>
+                <p className='text-xs md:text-sm text-muted-foreground hidden sm:block truncate'>
+                  {ideasMode
+                    ? 'Enterprise-grade plans for your next venture'
+                    : (collaborateUserId
+                      ? 'Brainstorming startup ideas to build together'
+                      : 'Startup ideas, mentorship & collaboration'
+                    )
+                  }
+                </p>
+              </div>
             </div>
-            <div>
-              <h1 className='text-base md:text-lg font-semibold leading-tight'>
-                {collaborateUserId ? 'Collaboration Studio' : 'AI Mentor'}
-              </h1>
-              <p className='text-xs md:text-sm text-muted-foreground hidden sm:block'>
-                {collaborateUserId
-                  ? 'Brainstorming startup ideas to build together'
-                  : 'Startup ideas, mentorship & collaboration'
-                }
-              </p>
+            <div className="flex items-center gap-2 shrink-0">
+              {ideasMode && (
+                <button
+                  type="button"
+                  onClick={() => { setIdeasMode(false); setIdeasModeText(null) }}
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg
+                             bg-muted/50 text-muted-foreground hover:bg-muted transition-colors shrink-0"
+                >
+                  ← Back to chat
+                </button>
+              )}
+              {!ideasMode && (
+                <button
+                  type="button"
+                  onClick={handleExtractIdeas}
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg
+                             bg-primary/10 text-primary hover:bg-primary/20 transition-colors shrink-0"
+                  title="Parse startup ideas from the last AI response"
+                >
+                  <Sparkles className="h-3 w-3" />
+                  <span className="hidden sm:inline">Extract ideas</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -213,18 +278,50 @@ export default function AIMentorContent({ collaborateUserId, startupContextParam
           </div>
         )}
 
-        <ChatList
-          sessionId={effectiveSessionId}
-          externalMessages={externalMessages}
-          isLoadingExternal={isStreaming}
-          onSuggestionClick={handleSuggestionClick}
-          onIdeaAction={handleIdeaAction}
-          refreshKey={refreshKey}
-          onRefresh={() => setRefreshKey((k) => k + 1)}
-        />
+        {/* IDEAS-FOCUSED VIEW — full-width cards, no chat */}
+        {ideasMode && ideasModeText ? (
+          <div className="flex-1 overflow-y-auto min-h-0">
+            <div className="max-w-5xl mx-auto w-full px-6 py-6">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold">Startup Ideas</h2>
+                <p className="text-sm text-muted-foreground">
+                  Click any card to generate a full enterprise-grade plan
+                </p>
+              </div>
+              <StartupPlanGenerator
+                text={ideasModeText}
+                sessionId={effectiveSessionId}
+                userId={user?.id}
+                className="!mt-0"
+              />
+            </div>
+          </div>
+        ) : (
+          <>
+            <ChatList
+              sessionId={effectiveSessionId}
+              externalMessages={externalMessages}
+              isLoadingExternal={isStreaming}
+              onSuggestionClick={handleSuggestionClick}
+              onIdeaAction={handleIdeaAction}
+              refreshKey={refreshKey}
+              onRefresh={() => setRefreshKey((k) => k + 1)}
+              userId={user?.id}
+            />
 
-        <div className='border-t border-border/40 p-3 md:p-4 bg-background/80 backdrop-blur-xl shrink-0'>
-          <ChatInput isStreaming={isStreaming} onSend={sendMessage} />
+            {/* Manual idea extraction — renders cards from last AI response */}
+            {manualExtractText && (
+              <div className="px-4 md:px-6 py-2 shrink-0">
+                <StartupPlanGenerator text={manualExtractText} sessionId={effectiveSessionId} userId={user?.id} />
+              </div>
+            )}
+          </>
+        )}
+
+        <div className='border-t border-border/40 p-2 sm:p-3 md:p-4 bg-background/80 backdrop-blur-xl shrink-0'>
+          <ChatErrorBoundary>
+            <ChatInput isStreaming={isStreaming} onSend={sendMessage} />
+          </ChatErrorBoundary>
         </div>
       </div>
     </div>
