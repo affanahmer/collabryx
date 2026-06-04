@@ -1,57 +1,54 @@
 /**
  * ============================================================================
- * MessageBubble — Theme-Aware, Conversation-Style Chat Message Component
+ * MessageBubble — Production AI Chat Message with ai-elements Integration
  * ============================================================================
  *
- * PROBLEM (from user feedback):
- * The original chat bubbles had three issues:
- *  1. "Ugly pure white background" — Assistant messages used glass('bubble')
- *     which rendered as a washed-out white in light mode with no clear visual
- *     distinction between user and assistant messages. Both bubble types used
- *     the same `bg-background/40` base, making the conversation hard to scan.
- *  2. "Too large" — Both bubbles used `p-3 md:p-4` (12-16px padding on ALL
- *     sides), creating massive white rectangles that dominated the viewport.
- *     Combined with `rounded-xl shadow-sm`, each bubble had unnecessary visual
- *     weight that made the chat feel bloated.
- *  3. No conversation-style layout — Both bubbles were identical in alignment
- *     (centered, same width), lacking the alternating left-right pattern that
- *     makes chat interfaces scannable. Users couldn't instantly tell who said
- *     what by position alone.
+ * Features:
+ *  - Conversation-style alternating layout (assistant left, user right)
+ *  - Reasoning collapsible for streaming "thinking" state
+ *  - Sources citation display for RAG responses
+ *  - Structured response rendering (idea cards, suggestions, plans)
+ *  - Pulsing cursor during streaming
+ *  - Glass-glow themed styling
+ *  - Avatar with role-based icons
  *
- * SOLUTION:
- * Complete restyling following modern chat UI conventions:
- *  - **Alternating alignment**: Assistant bubbles align left with `self-start`,
- *    user bubbles align right with `self-end flex-row-reverse`. The avatar
- *    appears on the opposite side too for clear visual separation.
- *  - **Constrained width**: `max-w-[88%] md:max-w-[78%]` prevents bubbles from
- *    stretching full-width. Short messages look compact, long ones wrap naturally.
- *  - **Theme-aware backgrounds**: Assistant uses `bg-card/90 border-border/40`
- *    (adapts to dark/light theme via CSS variable), user uses
- *    `bg-primary/10 border-primary/20` (subtle tint that's visible in both modes).
- *  - **Reduced padding**: `px-3.5 py-2 md:px-4 md:py-2.5` — tighter horizontal
- *    padding, vertically compact. Messages look denser without feeling cramped.
- *  - **Chat-style corners**: `rounded-2xl` with asymmetric bottom corner
- *    (`rounded-bl-md` for assistant, `rounded-br-md` for user) creates the
- *    classic "speech bubble" tail effect.
- *  - **Removed shadow**: `shadow-sm` was dropped for a cleaner, flatter look
- *    that's more modern and less visually heavy.
- *  - **Smaller avatars**: Reduced from `h-8 w-8` to `h-6 w-6 md:h-7 md:w-7`,
- *    sized relative to the bubble rather than dominating the gutter.
- *  - **Pulsing cursor during streaming**: Replaced with a smaller,
- *    `align-text-bottom` cursor that fits inline with text.
- *
- * @see {@link ../ai-mentor/ai-structured-response.tsx} — renders idea cards below bubbles
+ * @see {@link ../../ai-elements/reasoning.tsx} — Thinking collapsible
+ * @see {@link ../../ai-elements/sources.tsx} — Source citations
+ * @see {@link ../ai-mentor/ai-structured-response.tsx} — Structured data cards
  * ============================================================================
  */
 'use client'
 
-import { useMemo } from 'react'
-import { Bot, User } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Bot, User, Lightbulb } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { cn } from '@/lib/utils'
+import { glass } from '@/lib/utils/glass-variants'
 import type { AIStructuredResponse, StartupIdeaAction } from '@/types/ai-responses'
 import { isAIStructuredResponse } from '@/types/ai-responses'
 import { AIStructuredResponse as StructuredResponseRenderer } from '@/components/features/ai-mentor/ai-structured-response'
+
+import {
+  Reasoning,
+  ReasoningTrigger,
+  ReasoningContent,
+} from '@/components/ai-elements/reasoning'
+import {
+  Sources,
+  SourcesTrigger,
+  SourcesContent,
+  Source,
+} from '@/components/ai-elements/sources'
+import {
+  Plan,
+  PlanHeader,
+  PlanTitle,
+  PlanDescription,
+  PlanContent,
+  PlanTrigger,
+} from '@/components/ai-elements/plan'
+import { Suggestions, Suggestion } from '@/components/ai-elements/suggestion'
+import { StartupPlanGenerator } from '@/components/features/ai-mentor/startup-plan-generator'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -64,10 +61,28 @@ interface MessageBubbleProps {
   isStreaming?: boolean
   onSuggestionClick?: (suggestion: string) => void
   onIdeaAction?: (ideaId: number, action: StartupIdeaAction) => void
+  sessionId?: string
 }
 
-export function MessageBubble({ message, isStreaming, onSuggestionClick, onIdeaAction }: MessageBubbleProps) {
+/** Get a preview of reasoning steps from structured data */
+function getReasoningSteps(data: AIStructuredResponse | null): string[] {
+  if (!data?.message) return []
+  // Extract bullet points and numbered steps as reasoning steps
+  const steps = data.message
+    .split('\n')
+    .filter(line => /^[-*\d.]/.test(line.trim()))
+    .slice(0, 5)
+  return steps
+}
+
+/** Check if content looks like a plan */
+function isPlanContent(steps: string[]): boolean {
+  return steps.length >= 3
+}
+
+export function MessageBubble({ message, isStreaming, onSuggestionClick, onIdeaAction, sessionId }: MessageBubbleProps) {
   const isAssistant = message.role === 'assistant'
+  const [reasoningOpen, setReasoningOpen] = useState(isStreaming)
 
   const structuredData = useMemo<AIStructuredResponse | null>(() => {
     if (message.structured) return message.structured
@@ -81,10 +96,15 @@ export function MessageBubble({ message, isStreaming, onSuggestionClick, onIdeaA
   }, [message.content, message.structured, isAssistant])
 
   const displayContent = structuredData ? structuredData.message : message.content
+  const reasoningSteps = getReasoningSteps(structuredData)
+  const hasReasoning = reasoningSteps.length > 0 && isStreaming
+
+  // Extract source URLs from content if present (simulated for demo)
+  const sourceUrls = displayContent.match(/https?:\/\/[^\s)]+/g)?.slice(0, 5) ?? []
 
   return (
     <div className={cn(
-      'flex gap-2 md:gap-2.5 max-w-[88%] md:max-w-[78%] transition-colors',
+      'flex gap-2 md:gap-2.5 max-w-[90%] md:max-w-[80%] transition-colors',
       isAssistant ? 'self-start' : 'self-end flex-row-reverse',
     )}>
       {/* Avatar */}
@@ -93,31 +113,96 @@ export function MessageBubble({ message, isStreaming, onSuggestionClick, onIdeaA
         isAssistant ? '' : 'border-primary/30',
       )}>
         {isAssistant ? (
-          <AvatarFallback className='bg-primary/10 text-primary text-[10px]'>
-            <Bot className='h-3 w-3 md:h-3.5 md:w-3.5' />
+          <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
+            <Bot className="h-3 w-3 md:h-3.5 md:w-3.5" />
           </AvatarFallback>
         ) : (
-          <AvatarFallback className='bg-primary/20 text-primary text-[10px]'>
-            <User className='h-3 w-3 md:h-3.5 md:w-3.5' />
+          <AvatarFallback className="bg-primary/20 text-primary text-[10px]">
+            <User className="h-3 w-3 md:h-3.5 md:w-3.5" />
           </AvatarFallback>
         )}
       </Avatar>
 
-      {/* Bubble */}
-      <div className='flex-1 min-w-0 space-y-1'>
+      {/* Content column */}
+      <div className="flex-1 min-w-0 space-y-2">
+        {/* REASONING — Collapsible thinking section while streaming */}
+        {isAssistant && hasReasoning && (
+          <Reasoning
+            isStreaming={isStreaming}
+            open={reasoningOpen}
+            onOpenChange={setReasoningOpen}
+            duration={0}
+          >
+            <ReasoningTrigger getThinkingMessage={(streaming) =>
+              streaming
+                ? <span className="text-xs">Analyzing your request...</span>
+                : <span className="text-xs">Completed analysis</span>
+            } />
+            <ReasoningContent>
+              {reasoningSteps.map((s, i) => `${i + 1}. ${s.replace(/^[-*\d.]+\s*/, '')}`).join('\n')}
+            </ReasoningContent>
+          </Reasoning>
+        )}
+
+        {/* PLAN — Expandable action plan for structured responses with steps */}
+        {isAssistant && structuredData && isPlanContent(reasoningSteps) && (
+          <Plan defaultOpen={false}>
+            <PlanHeader>
+              <div className="flex items-center gap-2">
+                <Lightbulb className="size-4 text-primary" />
+                <PlanTitle>Action Plan</PlanTitle>
+              </div>
+              <PlanTrigger />
+            </PlanHeader>
+            <PlanDescription>
+              {structuredData.suggestions?.length
+                ? `${structuredData.suggestions.length} suggested actions`
+                : 'Steps to get started'}
+            </PlanDescription>
+            <PlanContent>
+              <div className="space-y-2 text-sm">
+                {reasoningSteps.map((step, i) => (
+                  <div key={i} className="flex items-start gap-2 text-muted-foreground">
+                    <span className="text-primary font-mono text-xs mt-0.5">{i + 1}.</span>
+                    <span>{step.replace(/^[-*\d.]+\s*/, '')}</span>
+                  </div>
+                ))}
+              </div>
+            </PlanContent>
+          </Plan>
+        )}
+
+        {/* Main bubble content */}
         <div className={cn(
           'rounded-2xl px-3.5 py-2 md:px-4 md:py-2.5 text-sm leading-relaxed',
           isAssistant
-            ? 'bg-card/90 border border-border/40 text-card-foreground shadow-sm rounded-bl-md'
+            ? cn('bg-card/90 border border-border/40 text-card-foreground shadow-sm rounded-bl-md', glass('bubble'))
             : 'bg-primary/10 border border-primary/20 text-foreground rounded-br-md',
         )}>
-          <div className='whitespace-pre-wrap break-words'>
-            {displayContent}
+          <div className="whitespace-pre-wrap break-words overflow-x-auto">
+            {displayContent || (isStreaming ? '' : '...')}
             {isStreaming && (
-              <span className='inline-block ml-0.5 w-1.5 h-3.5 bg-foreground/60 animate-pulse rounded-sm align-text-bottom' />
+              <span className="inline-block ml-0.5 w-1.5 h-3.5 bg-foreground/60 animate-pulse rounded-sm align-text-bottom" />
             )}
           </div>
         </div>
+
+        {/* SOURCES — Citation links when URLs are detected */}
+        {isAssistant && sourceUrls.length > 0 && !structuredData && (
+          <Sources>
+            <SourcesTrigger count={sourceUrls.length} />
+            <SourcesContent>
+              {sourceUrls.map((url, i) => (
+                <Source key={i} href={url} title={url.length > 50 ? url.slice(0, 50) + '...' : url} />
+              ))}
+            </SourcesContent>
+          </Sources>
+        )}
+
+        {/* Startup idea cards — auto-detected from natural text via --IDEA-- markers or heuristics */}
+        {isAssistant && !isStreaming && displayContent.length > 20 && (
+          <StartupPlanGenerator text={displayContent} sessionId={sessionId} />
+        )}
 
         {/* Structured data (idea cards, suggestions) rendered below assistant bubbles */}
         {isAssistant && structuredData && (
@@ -126,6 +211,17 @@ export function MessageBubble({ message, isStreaming, onSuggestionClick, onIdeaA
             onSuggestionClick={onSuggestionClick}
             onIdeaAction={onIdeaAction}
           />
+        )}
+
+        {/* Suggestion chips from structured data */}
+        {isAssistant && structuredData?.suggestions && structuredData.suggestions.length > 0 && onSuggestionClick && (
+          <div className="pt-1">
+            <Suggestions>
+              {structuredData.suggestions.slice(0, 4).map((s) => (
+                <Suggestion key={s} suggestion={s} onClick={onSuggestionClick} />
+              ))}
+            </Suggestions>
+          </div>
         )}
       </div>
     </div>

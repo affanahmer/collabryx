@@ -30,10 +30,13 @@
  *     The firstEvent flag tracks this state machine.
  *  6. AbortController cleanup on unmount prevents memory leaks and
  *     stale state updates.
+ *  7. NEW: Exposes `status` (ChatStatus) for PromptInputSubmit integration
+ *     and `abort` function to stop streaming on user request.
+ *     Status tracking: submitted → streaming → (done/error)
  *
  * USAGE:
  * ```tsx
- * const { messages, isStreaming, sendMessage, error, sessionId } = useAIStream({
+ * const { messages, isStreaming, sendMessage, error, sessionId, status, abort } = useAIStream({
  *   userId: user.id,
  *   onSessionReady: (sid) => setActiveSessionId(sid),
  * })
@@ -46,6 +49,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { AIMessage } from '@/lib/rag/types'
+import type { ChatStatus } from 'ai'
 
 interface UseAIStreamOptions {
   userId: string
@@ -59,10 +63,46 @@ interface UseAIStreamOptions {
   onSessionReady?: (sessionId: string) => void
 }
 
+interface FileAttachment {
+  url: string
+  mediaType: string
+  filename?: string
+}
+
+/** Upload a file blob to the AI chat upload endpoint and return the public URL */
+export async function uploadChatFile(
+  blobUrl: string,
+  filename: string,
+  mediaType: string
+): Promise<{ url: string; filename: string; mediaType: string } | null> {
+  try {
+    // Fetch the blob data from the blob URL
+    const blobRes = await fetch(blobUrl)
+    const blob = await blobRes.blob()
+    const file = new File([blob], filename, { type: mediaType })
+
+    const formData = new FormData()
+    formData.append('file', file)
+
+    const res = await fetch('/api/ai/upload', {
+      method: 'POST',
+      body: formData,
+    })
+    if (!res.ok) return null
+    return await res.json()
+  } catch (err) {
+    console.error('Failed to upload chat file:', err)
+    return null
+  }
+}
+
 export function useAIStream(options: UseAIStreamOptions) {
   const [messages, setMessages] = useState<AIMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+  type StreamStatus = ChatStatus | 'awaiting_input'
+  const [status, setStatus] = useState<StreamStatus>('awaiting_input')
+  const statusRef = useRef<StreamStatus>('awaiting_input')
   const currentMessageRef = useRef<string>('')
   const abortControllerRef = useRef<AbortController | null>(null)
   const messagesRef = useRef<AIMessage[]>([])
@@ -80,17 +120,54 @@ export function useAIStream(options: UseAIStreamOptions) {
     }
   }, [])
 
-  const sendMessage = useCallback(async (content: string) => {
+  /** Abort the current streaming request */
+  const abort = useCallback(() => {
+    abortControllerRef.current?.abort()
+    abortControllerRef.current = null
+    setStatus('awaiting_input')
+    setIsStreaming(false)
+  }, [])
+
+  interface SendFilesArg {
+    url: string
+    mediaType: string
+    filename?: string
+  }
+
+  const sendMessage = useCallback(async (
+    content: string,
+    files?: SendFilesArg[],
+    mentionedUserIds?: string[]
+  ) => {
+    // Build message content with file references
+    let messageContent = content
+    let fileContext = ''
+    if (files && files.length > 0) {
+      fileContext = files.map(f =>
+        `[Attached: ${f.filename || 'file'} (${f.mediaType})${f.url ? ` - ${f.url}` : ''}]`
+      ).join('\n')
+      messageContent = content
+        ? `${content}\n\n${fileContext}`
+        : fileContext
+    }
+
+    // Merge explicit mention IDs with existing collaboration user IDs
+    const allOtherUserIds: string[] = []
+    if (options.otherUserIds) allOtherUserIds.push(...options.otherUserIds)
+    if (mentionedUserIds && mentionedUserIds.length > 0) allOtherUserIds.push(...mentionedUserIds)
+
     const userMessage: AIMessage = {
       id: crypto.randomUUID(),
       role: 'user',
-      content,
+      content: messageContent,
       created_at: new Date().toISOString()
     }
     setMessages(prev => [...prev, userMessage])
     currentMessageRef.current = ''
 
     setIsStreaming(true)
+    setStatus('submitted')
+    statusRef.current = 'submitted'
     setError(null)
 
     abortControllerRef.current?.abort()
@@ -106,9 +183,11 @@ export function useAIStream(options: UseAIStreamOptions) {
           userId: options.userId,
           sessionId: sessionId || undefined,
           messages: [...messagesRef.current, userMessage],
-          query: content,
-          otherUserIds: options.otherUserIds,
-          startupContext: options.startupContext
+          query: messageContent,
+          files: files?.map(f => ({ url: f.url, mediaType: f.mediaType, filename: f.filename })),
+          otherUserIds: allOtherUserIds.length > 0 ? allOtherUserIds : undefined,
+          mentionedUserIds: mentionedUserIds && mentionedUserIds.length > 0 ? mentionedUserIds : undefined,
+          startupContext: options.startupContext,
         })
       })
 
@@ -159,6 +238,12 @@ export function useAIStream(options: UseAIStreamOptions) {
               }
               firstEvent = false
 
+              // Once we get the first content token, switch to streaming status
+              if (statusRef.current === 'submitted' && parsed.content) {
+                setStatus('streaming')
+                statusRef.current = 'streaming'
+              }
+
               if (parsed.content) {
                 currentMessageRef.current += parsed.content
                 options.onChunk?.(parsed.content)
@@ -181,9 +266,15 @@ export function useAIStream(options: UseAIStreamOptions) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       const error = err instanceof Error ? err : new Error(String(err))
       setError(error)
+      setStatus('error')
+      statusRef.current = 'error'
       options.onError?.(error)
     } finally {
       setIsStreaming(false)
+      if (statusRef.current !== 'error') {
+        setStatus('awaiting_input')
+        statusRef.current = 'awaiting_input'
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options.userId, sessionId, options.onChunk, options.onComplete, options.onError, options.onSessionReady])
@@ -194,5 +285,7 @@ export function useAIStream(options: UseAIStreamOptions) {
     sendMessage,
     error,
     sessionId,
+    status,
+    abort,
   }
 }

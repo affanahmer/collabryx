@@ -1,123 +1,203 @@
 /**
  * ============================================================================
- * ChatInput — Unified Message Input for AI Mentor & Assistant
+ * ChatInput — Unified Message Input with @Mentions
  * ============================================================================
  *
- * PROBLEM (Bug #4 from analysis — Dual Architecture Contradiction):
- * The original ChatInput imported `sendMessage` directly from
- * `@/lib/actions/ai-mentor` (a Next.js Server Action) and called it with the
- * client-side crypto.randomUUID() sessionId. This server action:
- *  1. Checked `SELECT FROM ai_mentor_sessions WHERE id = <randomUUID>`
- *  2. Since the UUID was never in the DB, it returned "Session not found"
- *  3. The error was displayed as a toast, and the user's message vanished
+ * Features:
+ *  - MentionPopover for @mention autocomplete
+ *  - Streaming-aware submit with auto-stop
+ *  - Glass-glow themed styling
+ *  - File attachments not supported by current AI model (text-only)
  *
- * Meanwhile, the parent AIMentorContent used a COMPLETELY DIFFERENT path:
- * the useAIStream hook that fetched /api/ai/stream. So suggestion-chip clicks
- * went through streaming (sometimes worked) but typed messages went through
- * the broken server action (always failed). Users got inconsistent behavior
- * depending on HOW they sent their message.
- *
- * SOLUTION:
- * ChatInput no longer knows about server actions, sessions, or persistence.
- * It accepts two simple props:
- *  - `onSend: (content: string) => void` — called when the user submits
- *  - `isStreaming: boolean` — disables input during AI response generation
- *
- * The parent (AIMentorContent or AssistantContent) owns the streaming hook
- * and passes down the sendMessage function from useAIStream as onSend. This
- * eliminates the dual-path problem entirely. All messages — whether typed,
- * chip-clicked, or idea-actioned — go through the SAME streaming pipeline.
- *
- * Additionally:
- *  - The Sparkles quick-fill button now sets input text without auto-sending
- *  - The placeholder text was updated to reflect broader capabilities
- *  - Form submission and PromptInput's internal submit both call the same
- *    handler (no double-send)
- *
- * @see {@link ../hooks/use-ai-stream.ts} — the streaming hook that provides onSend
+ * @see {@link ../../ai-elements/prompt-input.tsx}
+ * @see {@link ../../../hooks/use-mentions.ts}
  * ============================================================================
  */
 'use client'
-import { Button } from '@/components/ui/button'
 import {
   PromptInput,
-  PromptInputAction,
-  PromptInputActions,
   PromptInputTextarea,
-} from '@/components/ui/prompt-input'
-import { Sparkles, SendHorizontal, Loader2 } from 'lucide-react'
-import { useState } from 'react'
+  PromptInputFooter,
+  PromptInputTools,
+  PromptInputButton,
+  PromptInputSubmit,
+} from '@/components/ai-elements/prompt-input'
+import { MentionPopover } from '@/components/features/assistant/mention-popover'
+import { useMentions } from '@/hooks/use-mentions'
+import type { ChatStatus } from 'ai'
+import { Sparkles } from 'lucide-react'
+import { useCallback, useRef, useEffect, type ClipboardEventHandler } from 'react'
 import { cn } from '@/lib/utils'
 import { glass } from '@/lib/utils/glass-variants'
 
 interface ChatInputProps {
-  /** Disable input while streaming */
   isStreaming?: boolean
-  /** Called when user submits a message (connected to streaming hook) */
-  onSend: (content: string) => void
+  onSend: (
+    content: string,
+    files?: Array<{ url: string; mediaType: string; filename?: string }>,
+    mentionedUserIds?: string[]
+  ) => void
+  status?: 'submitted' | 'streaming' | 'error' | 'awaiting_input' | 'ready'
+  onStop?: () => void
 }
 
-export function ChatInput({ isStreaming = false, onSend }: ChatInputProps) {
-  const [input, setInput] = useState('')
+export function ChatInput({
+  isStreaming = false,
+  onSend,
+  status,
+  onStop,
+}: ChatInputProps) {
+  const {
+    mentionState,
+    resolvedMentions,
+    checkForMention,
+    insertMention,
+    clearMentions,
+    dismissMentions,
+  } = useMentions()
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!input.trim() || isStreaming) return
-    onSend(input.trim())
-    setInput('')
-  }
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+
+  // Suppress all file drag-and-drop on the nearest form (current model doesn't support images)
+  useEffect(() => {
+    const preventFileDrop = (e: DragEvent) => {
+      if (e.dataTransfer?.types?.includes('Files')) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+    // Target the form rendered by PromptInput inside this component tree
+    const form = document.querySelector('form')
+    if (!form) return
+    form.addEventListener('dragover', preventFileDrop, true)
+    form.addEventListener('drop', preventFileDrop, true)
+    return () => {
+      form.removeEventListener('dragover', preventFileDrop, true)
+      form.removeEventListener('drop', preventFileDrop, true)
+    }
+  }, [])
+
+  // Quick-fill button handler
+  const handleQuickFill = useCallback(() => {
+    const textarea = document.querySelector<HTMLTextAreaElement>('textarea[name="message"]')
+    if (textarea) {
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype,
+        'value'
+      )?.set
+      nativeInputValueSetter?.call(textarea, 'Generate startup ideas based on my profile')
+      textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    }
+  }, [])
+
+  // Textarea change handler — detect @mentions
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const textarea = e.currentTarget
+    textareaRef.current = textarea
+    checkForMention(textarea.value, textarea.selectionStart)
+  }, [checkForMention])
+
+  // Textarea keydown handler
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    textareaRef.current = e.currentTarget
+    if (mentionState.active) {
+      if (e.key === 'Enter' && !e.shiftKey && mentionState.active && mentionState.users.length > 0) {
+        e.preventDefault()
+        return
+      }
+    }
+  }, [mentionState])
+
+  // Handle mention selection
+  const handleMentionSelect = useCallback((user: { id: string; name: string; headline: string | null; avatar_url: string | null }) => {
+    const textarea = textareaRef.current || document.querySelector<HTMLTextAreaElement>('textarea[name="message"]')
+    if (!textarea) return
+
+    const { newText, newCursorPos } = insertMention(textarea.value, textarea.selectionStart, user)
+
+    // Update textarea value via native setter to trigger React's controlled input
+    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLTextAreaElement.prototype,
+      'value'
+    )?.set
+    nativeInputValueSetter?.call(textarea, newText)
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+    textarea.selectionStart = newCursorPos
+    textarea.selectionEnd = newCursorPos
+  }, [insertMention])
+
+  // Block file pastes (Ctrl+V of images) — current model doesn't support multimodal input
+  const handlePaste: ClipboardEventHandler<HTMLTextAreaElement> = useCallback((e) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+    for (const item of items) {
+      if (item.kind === 'file') {
+        e.preventDefault()
+        return
+      }
+    }
+  }, [])
+
+  // Submit handler — text only, no file uploads (model doesn't support multimodal)
+  const handleSubmit = useCallback(async (
+    message: { text: string }
+  ) => {
+    if (!message.text.trim()) return
+
+    // Get resolved mention user IDs
+    const mentionIds = resolvedMentions.map(m => m.id)
+
+    // Send message with mention IDs
+    onSend(message.text.trim(), undefined, mentionIds.length > 0 ? mentionIds : undefined)
+
+    // Reset mentions
+    clearMentions()
+  }, [onSend, resolvedMentions, clearMentions])
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      aria-label="Chat input form"
-      className={cn(
-        'relative rounded-xl overflow-hidden shadow-sm',
-        'focus-within:ring-1 focus-within:ring-primary transition-all',
-        glass('input'),
-        'border',
-      )}
-    >
+    <div className="relative">
+      {/* Mention autocomplete popover — positioned above the form */}
+      <MentionPopover
+        mentionState={mentionState}
+        onSelect={handleMentionSelect}
+        onDismiss={dismissMentions}
+      />
+
       <PromptInput
-        value={input}
-        onValueChange={setInput}
-        isLoading={isStreaming}
-        maxHeight={128}
+        onSubmit={handleSubmit}
+        className={cn(
+          'relative rounded-xl overflow-hidden',
+          'focus-within:ring-1 focus-within:ring-primary transition-all',
+          glass('card'),
+        )}
+        maxFiles={0}
       >
+        {/* Main textarea */}
         <PromptInputTextarea
-          placeholder="Ask for startup ideas, mention connections, or general questions..."
+          placeholder="Ask for startup ideas, @mention connections, or general questions..."
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
         />
-        <PromptInputActions className="absolute right-2 bottom-2 gap-1">
-          <PromptInputAction tooltip="Generate startup ideas" side="top">
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className={cn('h-8 w-8 rounded-lg', glass('buttonGhost'))}
-              onClick={() =>
-                setInput('Generate startup ideas based on my profile')
-              }
+
+        {/* Footer with tools and submit */}
+        <PromptInputFooter>
+          <PromptInputTools>
+            <PromptInputButton
+              tooltip="Generate startup ideas"
+              onClick={handleQuickFill}
             >
-              <Sparkles className="h-4 w-4" />
-            </Button>
-          </PromptInputAction>
-          <PromptInputAction tooltip="Send message" side="top">
-            <Button
-              type="submit"
-              size="icon"
-              className={cn('h-8 w-8 rounded-lg', glass('buttonPrimary'))}
-              disabled={!input.trim() || isStreaming}
-            >
-              {isStreaming ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <SendHorizontal className="h-4 w-4" />
-              )}
-            </Button>
-          </PromptInputAction>
-        </PromptInputActions>
+              <Sparkles className="size-4" />
+            </PromptInputButton>
+          </PromptInputTools>
+
+          <PromptInputSubmit
+            status={(status === 'awaiting_input' ? 'ready' : status ?? undefined) as ChatStatus}
+            onStop={onStop}
+          />
+        </PromptInputFooter>
       </PromptInput>
-    </form>
+    </div>
   )
 }
 ChatInput.displayName = 'ChatInput'

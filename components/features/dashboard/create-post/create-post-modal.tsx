@@ -137,7 +137,6 @@ export function CreatePostModal() {
                     "sm:max-w-[600px] p-0 gap-0 overflow-hidden sm:rounded-2xl",
                     "glass-glow"
                 )}
-                showDecorations={true}
             >
                 <DialogHeader className={cn("px-5 py-4", glass("divider"))}>
                     <DialogTitle className="text-lg font-bold">Create Post</DialogTitle>
