@@ -69,7 +69,7 @@ import { ChatInput } from '@/components/features/assistant/chat-input'
 import { SessionSidebar } from '@/components/features/ai-mentor/session-sidebar'
 import { cn } from '@/lib/utils'
 import { glass } from '@/lib/utils/glass-variants'
-import { Lightbulb, Menu, X, Users } from 'lucide-react'
+import { Lightbulb, Users } from 'lucide-react'
 import type { AIStructuredResponse, StartupIdeaAction } from '@/types/ai-responses'
 import { isAIStructuredResponse } from '@/types/ai-responses'
 
@@ -80,7 +80,6 @@ interface AIMentorContentProps {
 
 export default function AIMentorContent({ collaborateUserId, startupContextParam }: AIMentorContentProps) {
   const { user } = useAuth()
-  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const otherUserIds = useMemo(
@@ -90,7 +89,7 @@ export default function AIMentorContent({ collaborateUserId, startupContextParam
   const collabMessageSent = useRef(false)
   const sendMessageRef = useRef<((content: string) => Promise<void>) | null>(null)
 
-  const { messages, isStreaming, sendMessage, error, sessionId } = useAIStream({
+  const { messages, isStreaming, sendMessage, error, sessionId, status, abort } = useAIStream({
     userId: user?.id ?? '',
     sessionId: activeSessionId ?? undefined,
     otherUserIds,
@@ -122,10 +121,9 @@ export default function AIMentorContent({ collaborateUserId, startupContextParam
     }
   }, [collaborateUserId, user?.id])
 
-  // Session switching — reset when user picks a different session
+  // Session switching — load messages for the selected session
   const handleSessionSelect = useCallback((sid: string) => {
     setActiveSessionId(sid)
-    setSidebarOpen(false)
     setRefreshKey((k) => k + 1)
   }, [])
 
@@ -175,51 +173,42 @@ export default function AIMentorContent({ collaborateUserId, startupContextParam
   }
 
   return (
-    <div className='flex h-[calc(100vh-4rem)] max-w-6xl mx-auto'>
-      {/* Session Sidebar */}
-      {sidebarOpen && (
-        <SessionSidebar
-          activeSessionId={effectiveSessionId}
-          onSessionSelect={handleSessionSelect}
-          onNewSession={handleNewSession}
-          onClose={() => setSidebarOpen(false)}
-        />
-      )}
+    <div className='flex flex-1 min-h-0'>
+      {/* Session Sidebar — always visible */}
+      <SessionSidebar
+        activeSessionId={effectiveSessionId}
+        onSessionSelect={handleSessionSelect}
+        onNewSession={handleNewSession}
+      />
 
       {/* Main Chat Area */}
       <div className='flex flex-col flex-1 min-w-0'>
         {/* Header */}
-        <div className={cn('px-4 md:px-6 py-3 md:py-4 border-b', glass('header'))}>
-          <div className='flex items-center gap-2'>
-            <button
-              type="button"
-              onClick={() => setSidebarOpen((o) => !o)}
-              className="p-1 -ml-1 hover:bg-accent rounded-md transition-colors"
-              aria-label="Toggle session sidebar"
-            >
-              {sidebarOpen ? <X className='h-4 w-4' /> : <Menu className='h-4 w-4' />}
-            </button>
-            <div className='rounded-full bg-primary/10 p-1.5'>
+        <div className={cn('px-4 md:px-6 py-4 border-b border-border/40 shrink-0', glass('header'))}>
+          <div className='flex items-center gap-3'>
+            <div className='rounded-full bg-primary/10 p-2'>
               {collaborateUserId ? (
                 <Users className='h-4 w-4 text-primary' />
               ) : (
                 <Lightbulb className='h-4 w-4 text-primary' />
               )}
             </div>
-            <h1 className='text-lg font-semibold'>
-              {collaborateUserId ? 'Collaboration Studio' : 'AI Mentor'}
-            </h1>
+            <div>
+              <h1 className='text-base md:text-lg font-semibold leading-tight'>
+                {collaborateUserId ? 'Collaboration Studio' : 'AI Mentor'}
+              </h1>
+              <p className='text-xs md:text-sm text-muted-foreground hidden sm:block'>
+                {collaborateUserId
+                  ? 'Brainstorming startup ideas to build together'
+                  : 'Startup ideas, mentorship & collaboration'
+                }
+              </p>
+            </div>
           </div>
-          <p className='text-xs md:text-sm text-muted-foreground mt-0.5'>
-            {collaborateUserId
-              ? 'Brainstorming startup ideas to build together'
-              : 'Get personalized startup ideas, collaboration advice, and general mentorship'
-            }
-          </p>
         </div>
 
         {error && (
-          <div className='mx-4 mt-2 bg-destructive/10 text-destructive p-2.5 rounded-md text-xs md:text-sm'>
+          <div className='mx-4 mt-2 bg-destructive/10 text-destructive p-2.5 rounded-md text-xs md:text-sm shrink-0'>
             {error?.message || 'An unexpected error occurred. Please try again.'}
           </div>
         )}
@@ -230,10 +219,11 @@ export default function AIMentorContent({ collaborateUserId, startupContextParam
           isLoadingExternal={isStreaming}
           onSuggestionClick={handleSuggestionClick}
           onIdeaAction={handleIdeaAction}
+          refreshKey={refreshKey}
           onRefresh={() => setRefreshKey((k) => k + 1)}
         />
 
-        <div className={cn('border-t p-3 md:p-4 bg-background', glass('footer'))}>
+        <div className='border-t border-border/40 p-3 md:p-4 bg-background/80 backdrop-blur-xl shrink-0'>
           <ChatInput isStreaming={isStreaming} onSend={sendMessage} />
         </div>
       </div>

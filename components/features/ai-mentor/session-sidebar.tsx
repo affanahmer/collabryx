@@ -3,40 +3,15 @@
  * SessionSidebar — Past AI Mentor Session Browser with Archive Support
  * ============================================================================
  *
- * PROBLEM (Missing Feature from analysis):
- * The AI Mentor had NO way to browse past conversations. The getUserSessions()
- * server action existed in the codebase but was never called from any frontend
- * component. The only way to see a session was to be in it — and sessions were
- * identified by random client UUIDs that didn't persist, so there was nothing
- * to browse. Users could not:
- *  - See a list of their past mentoring sessions
- *  - Resume a previous conversation
- *  - Archive old sessions they were done with
- *  - Start a fresh session without losing access to the current one
+ * Glass-glow themed sidebar for browsing, resuming, and managing AI mentor
+ * sessions. Features:
+ *  - Real-time polling for new sessions
+ *  - Active session highlighting with glass-glow-hover
+ *  - Archive/unarchive support
+ *  - Relative timestamps
+ *  - Empty state with prompt to start chatting
  *
- * Additionally, the original getUserSessions() only returned 'active' sessions,
- * so even if we built a UI for it, archived sessions would be invisible.
- *
- * SOLUTION:
- * This is a NEW component that provides a full session management UI:
- *  - Fetches all sessions via getUserSessions() on mount and re-fetches
- *    whenever the activeSessionId changes (new messages change session state)
- *  - Auto-polls every 5 seconds to pick up sessions created by other tabs
- *  - Shows each session's title, relative timestamp, and status indicator
- *  - Highlights the currently active session with an accent background
- *  - Archive button (hover-reveal) on each session moves it to archived status
- *    via archiveSession() server action
- *  - "New Session" button at the top clears the active session so the next
- *    user message creates a fresh DB session
- *  - Loading spinner during fetch, empty state when no sessions exist
- *
- * ACCOMPANYING CHANGE:
- * The getUserSessions() server action in lib/actions/ai-mentor.ts was updated
- * to return BOTH 'active' AND 'archived' sessions, ordered by updated_at DESC
- * with a limit of 50. Previously it only returned 'active' sessions.
- *
- * @see {@link ../../../lib/actions/ai-mentor.ts} — getUserSessions, archiveSession
- * @see {@link ../../../app/(auth)/ai-mentor/ai-mentor-content.tsx} — parent orchestrator
+ * @see {@link ../../../lib/actions/ai-mentor.ts}
  * ============================================================================
  */
 'use client'
@@ -46,9 +21,10 @@ import { cn } from '@/lib/utils'
 import { glass } from '@/lib/utils/glass-variants'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Plus, MessageSquare, Archive, Loader2 } from 'lucide-react'
+import { Plus, MessageSquare, Archive, Loader2, History } from 'lucide-react'
 import { getUserSessions, archiveSession } from '@/lib/actions/ai-mentor'
 import { toast } from 'sonner'
+import { Shimmer } from '@/components/ai-elements/shimmer'
 
 interface Session {
   id: string
@@ -76,7 +52,6 @@ export function SessionSidebar({
   const [archivingId, setArchivingId] = useState<string | null>(null)
 
   const loadSessions = useCallback(async () => {
-    setIsLoading(true)
     try {
       const result = await getUserSessions()
       if (!result.error && result.data) {
@@ -93,7 +68,7 @@ export function SessionSidebar({
     loadSessions()
   }, [loadSessions, activeSessionId])
 
-  // Refresh when active session changes (new message may have been added)
+  // Poll for new sessions
   useEffect(() => {
     const interval = setInterval(loadSessions, 5000)
     return () => clearInterval(interval)
@@ -136,44 +111,46 @@ export function SessionSidebar({
   }
 
   return (
-    <div
-      className={cn(
-        'w-72 md:w-80 border-r flex flex-col shrink-0 bg-background/95 backdrop-blur-xl',
-      )}
-    >
+    <div className='w-72 md:w-80 border-r border-border/40 flex flex-col shrink-0 bg-background z-10 min-w-0'>
       {/* Header */}
-      <div className={cn('px-3 py-3 border-b flex items-center justify-between', glass('header'))}>
-        <h2 className='text-sm font-semibold'>Sessions</h2>
-        <div className='flex items-center gap-1'>
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-7 px-2 text-xs"
-            onClick={() => {
-              onNewSession()
-              onClose()
-            }}
-          >
-            <Plus className='h-3.5 w-3.5 mr-1' />
-            New
-          </Button>
-        </div>
+      <div className="px-3 py-3 border-b border-border/40 flex items-center justify-between">
+        <h2 className="text-sm font-semibold flex items-center gap-2">
+          <History className="h-4 w-4 text-muted-foreground" />
+          <Shimmer>Chat History</Shimmer>
+        </h2>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className={cn("h-7 px-2 text-xs", glass("buttonGhost"))}
+          onClick={() => {
+            onNewSession()
+            onClose()
+          }}
+        >
+          <Plus className="h-3.5 w-3.5 mr-1" />
+          New
+        </Button>
       </div>
 
       {/* Session list */}
-      <ScrollArea className='flex-1'>
+      <ScrollArea className="flex-1">
         {isLoading ? (
-          <div className='flex items-center justify-center py-8'>
-            <Loader2 className='h-5 w-5 animate-spin text-muted-foreground' />
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
           </div>
         ) : sessions.length === 0 ? (
-          <div className='text-center text-muted-foreground text-xs py-8 px-4'>
-            No past sessions yet.<br />
-            Start a new conversation!
+          <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+            <MessageSquare className="h-8 w-8 text-muted-foreground/40 mb-3" />
+            <p className="text-muted-foreground text-xs">
+              No past sessions yet.
+            </p>
+            <p className="text-muted-foreground/60 text-[10px] mt-1">
+              Start a new conversation to begin!
+            </p>
           </div>
         ) : (
-          <div className='p-2 space-y-1'>
+          <div className="p-2 space-y-1">
             {sessions.map((session) => (
               <div
                 key={session.id}
@@ -182,19 +159,19 @@ export function SessionSidebar({
                 onClick={() => onSessionSelect(session.id)}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSessionSelect(session.id); } }}
                 className={cn(
-                  'w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors cursor-pointer',
-                  'hover:bg-accent/50 group flex items-start gap-2',
+                  'w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer',
+                  'group flex items-start gap-2',
                   activeSessionId === session.id
-                    ? 'bg-accent/70 border border-border/60'
-                    : 'border border-transparent',
+                    ? cn('glass-glow-strong', 'bg-accent/50')
+                    : cn('hover:bg-accent/30 border border-transparent', 'glass-glow-hover'),
                 )}
               >
-                <MessageSquare className='h-4 w-4 mt-0.5 shrink-0 text-muted-foreground' />
-                <div className='flex-1 min-w-0'>
-                  <div className='font-medium truncate'>
+                <MessageSquare className="h-4 w-4 mt-0.5 shrink-0 text-muted-foreground" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium truncate text-foreground/90">
                     {session.title || 'Untitled Session'}
                   </div>
-                  <div className='text-[10px] text-muted-foreground mt-0.5'>
+                  <div className="text-[10px] text-muted-foreground/60 mt-0.5">
                     {formatDate(session.updated_at || session.created_at)}
                     {session.status === 'archived' && ' • Archived'}
                   </div>
@@ -214,9 +191,9 @@ export function SessionSidebar({
                     aria-label={`Archive session ${session.title}`}
                   >
                     {archivingId === session.id ? (
-                      <Loader2 className='h-3.5 w-3.5 animate-spin' />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      <Archive className='h-3.5 w-3.5' />
+                      <Archive className="h-3.5 w-3.5" />
                     )}
                   </div>
                 )}
