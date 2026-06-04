@@ -579,6 +579,9 @@ export const PromptInput = ({
 
   const addLocal = useCallback(
     (fileList: File[] | FileList) => {
+      // FAST EXIT: if maxFiles=0, ignore ALL file additions
+      if (maxFiles === 0) return;
+
       const incoming = [...fileList];
       const accepted = incoming.filter((f) => matchesAccept(f));
       if (incoming.length && accepted.length === 0) {
@@ -643,6 +646,9 @@ export const PromptInput = ({
   // Wrapper that validates files before calling provider's add
   const addWithProviderValidation = useCallback(
     (fileList: File[] | FileList) => {
+      // FAST EXIT: if maxFiles=0, ignore ALL file additions
+      if (maxFiles === 0) return;
+
       const incoming = [...fileList];
       const accepted = incoming.filter((f) => matchesAccept(f));
       if (incoming.length && accepted.length === 0) {
@@ -863,19 +869,21 @@ export const PromptInput = ({
 
       try {
         // Convert blob URLs to data URLs asynchronously
-        const convertedFiles: FileUIPart[] = await Promise.all(
+        // Wrapped in individual try/catch to prevent "Cannot read" errors
+        // from the AI SDK's file processing pipeline from propagating
+        const convertedFiles: FileUIPart[] = (await Promise.all(
           files.map(async ({ id: _id, ...item }) => {
             if (item.url?.startsWith("blob:")) {
-              const dataUrl = await convertBlobUrlToDataUrl(item.url);
-              // If conversion failed, keep the original blob URL
-              return {
-                ...item,
-                url: dataUrl ?? item.url,
-              };
+              try {
+                const dataUrl = await convertBlobUrlToDataUrl(item.url);
+                return { ...item, url: dataUrl ?? item.url };
+              } catch {
+                return null; // Skip failed conversions silently
+              }
             }
             return item;
           })
-        );
+        )).filter(Boolean) as FileUIPart[];
 
         const result = onSubmit({ files: convertedFiles, text }, event);
 

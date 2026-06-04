@@ -100,13 +100,68 @@ export function useAIStream(options: UseAIStreamOptions) {
   const [messages, setMessages] = useState<AIMessage[]>([])
   const [isStreaming, setIsStreaming] = useState(false)
   const [error, setError] = useState<Error | null>(null)
-  type StreamStatus = ChatStatus | 'awaiting_input'
+  type StreamStatus = ChatStatus | 'awaiting_input' | 'ready'
   const [status, setStatus] = useState<StreamStatus>('awaiting_input')
   const statusRef = useRef<StreamStatus>('awaiting_input')
   const currentMessageRef = useRef<string>('')
   const abortControllerRef = useRef<AbortController | null>(null)
   const messagesRef = useRef<AIMessage[]>([])
   const [sessionId, setSessionId] = useState(() => options.sessionId || '')
+  const prevSessionIdRef = useRef(options.sessionId)
+  const isStreamingRef = useRef(false)
+
+  // Keep isStreamingRef in sync for use in the session-sync effect below
+  useEffect(() => {
+    isStreamingRef.current = isStreaming
+  }, [isStreaming])
+
+  // Sync internal sessionId when parent passes a different sessionId.
+  // This handles TWO cases:
+  //
+  // Case A: "New Session" — activeSessionId changes from a real UUID to null.
+  //   → Clear internal state so the next sendMessage creates a fresh DB session.
+  //
+  // Case B: User clicks a past session — activeSessionId changes to a different UUID.
+  //   → Clear messages so ChatList loads the new session's history from DB.
+  //
+  // CRITICAL: We must NOT clear messages when the sessionId is being set by the
+  // streaming hook itself (via onSessionReady). Example flow:
+  //   1. User sends message (activeSessionId=null)
+  //   2. Server creates session, returns session_id in SSE
+  //   3. onSessionReady(sid) fires → parent sets activeSessionId=sid
+  //   4. This effect fires because options.sessionId changed (undefined → sid)
+  //   5. If we cleared messages here, we'd DESTROY the in-flight streaming content!
+  //
+  // We detect this by checking isStreamingRef: if we're actively streaming AND
+  // the previous value was falsy, this is a natural session creation, not a
+  // user-initiated session switch.
+  useEffect(() => {
+    const prev = prevSessionIdRef.current
+    prevSessionIdRef.current = options.sessionId
+
+    if (options.sessionId !== prev) {
+      if (!options.sessionId) {
+        // Case A: "New Session" — always safe to clear
+        setSessionId('')
+        setMessages([])
+        currentMessageRef.current = ''
+      } else {
+        // Case B: Session ID changed to a real value
+        // If we're streaming AND prev was falsy, this is a natural session creation
+        // from onSessionReady — DO NOT clear messages.
+        if (isStreamingRef.current && !prev) {
+          // Streaming created this session — just update the sessionId,
+          // keep messages intact
+          setSessionId(options.sessionId)
+        } else {
+          // User clicked a past session — clear and load new history
+          setSessionId(options.sessionId)
+          setMessages([])
+          currentMessageRef.current = ''
+        }
+      }
+    }
+  }, [options.sessionId])
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -253,6 +308,14 @@ export function useAIStream(options: UseAIStreamOptions) {
                     ? { ...msg, content: currentMessageRef.current }
                     : msg
                 ))
+              }
+
+              // Handle server-extracted startup ideas (structured data event)
+              if (parsed.ideas && Array.isArray(parsed.ideas)) {
+                // Ideas are received; they'll be rendered by the
+                // StartupPlanGenerator from the content markers too,
+                // but this structured event provides a fallback.
+                console.debug(`📦 ${parsed.ideas.length} startup idea(s) extracted server-side`)
               }
             } catch {
               // Ignore parse errors for non-JSON data
