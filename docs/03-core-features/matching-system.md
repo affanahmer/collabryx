@@ -33,7 +33,6 @@ Collabryx uses a **hybrid matching system** combining:
 | Semantic Similarity | 40% | Vector embedding cosine similarity |
 | Shared Skills | 25% | Common skills and expertise |
 | Shared Interests | 20% | Common interests and goals |
-| Activity Level | 10% | User engagement score |
 | Reciprocity | 5% | Mutual interest likelihood |
 
 ### Match Score Calculation
@@ -43,7 +42,6 @@ interface MatchScore {
   semantic: number      // 0-1 from vector similarity
   skills: number        // 0-1 from skill overlap
   interests: number     // 0-1 from interest overlap
-  activity: number      // 0-1 from activity score
   reciprocity: number   // 0-1 from pattern analysis
   total: number         // Weighted sum
 }

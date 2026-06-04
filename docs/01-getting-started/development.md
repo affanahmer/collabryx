@@ -11,7 +11,6 @@ Complete guide for developing with the Collabryx codebase.
 - [Project Commands](#project-commands)
 - [Code Standards](#code-standards)
 - [Git Workflow](#git-workflow)
-- [Testing](#testing)
 - [Debugging](#debugging)
 - [Performance Optimization](#performance-optimization)
 - [Common Tasks](#common-tasks)
@@ -387,7 +386,6 @@ docs:     # Documentation changes
 style:    # Code style changes (formatting, no logic change)
 refactor: # Code refactoring
 perf:     # Performance improvements
-test:     # Adding or updating tests
 chore:    # Build process or auxiliary tool changes
 
 # Examples
@@ -427,47 +425,6 @@ perf(images): implement lazy loading and optimization
 3. **Request review**
 4. **Address feedback**
 5. **Merge after approval**
-
----
-
-## Testing
-
-### Manual Testing Checklist
-
-Before submitting a PR, verify:
-
-- [ ] **Functionality Works**
-  - Core feature works as expected
-  - No console errors
-  - No TypeScript errors
-
-- [ ] **Responsiveness**
-  - Mobile (320px - 767px)
-  - Tablet (768px - 1023px)
-  - Desktop (1024px+)
-
-- [ ] **Browser Compatibility**
-  - Chrome/Edge (latest)
-  - Firefox (latest)
-  - Safari (latest)
-
-- [ ] **Accessibility**
-  - Keyboard navigation works
-  - Screen reader friendly
-  - Proper ARIA labels
-
-- [ ] **Performance**
-  - No unnecessary re-renders
-  - Images are optimized
-  - Bundle size impact is minimal
-
-### Testing in Multiple Browsers
-
-```bash
-# Test on different devices using network URL
-bun run dev
-# Access via http://192.168.x.x:3000 on other devices
-```
 
 ---
 

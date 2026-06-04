@@ -16,15 +16,13 @@ Complete catalog of user stories and sequence diagrams for the Collabryx AI netw
 - [7. Posts & Social Feed](#7-posts--social-feed)
 - [8. AI Mentor & Assistant](#8-ai-mentor--assistant)
 - [9. Notifications](#9-notifications)
-- [10. Activity & Analytics](#10-activity--analytics)
-- [11. Embedding Infrastructure](#11-embedding-infrastructure)
-- [12. Content Moderation](#12-content-moderation)
-- [13. Settings & Account Management](#13-settings--account-management)
-- [14. Landing Page & Public](#14-landing-page--public)
-- [15. Security (Cross-cutting)](#15-security-cross-cutting)
-- [16. Bookmarks](#16-bookmarks)
-- [17. Billing (UI)](#17-billing-ui)
-- [18. Help & Support](#18-help--support)
+- [10. Embedding Infrastructure](#10-embedding-infrastructure)
+- [11. Settings & Account Management](#11-settings--account-management)
+- [12. Landing Page & Public](#12-landing-page--public)
+- [13. Security (Cross-cutting)](#13-security-cross-cutting)
+- [14. Bookmarks](#14-bookmarks)
+- [15. Billing (UI)](#15-billing-ui)
+- [16. Help & Support](#16-help--support)
 - [Master Summary](#master-summary)
 
 ---
@@ -169,7 +167,7 @@ User → Settings → Edit onboarding fields
 
 ## 3. Profile Management
 
-**9 user stories · 5 sequence diagrams**
+**9 user stories · 4 sequence diagrams**
 
 ### User Stories
 
@@ -225,34 +223,24 @@ User → Match card / Search → navigate(/profile/[id])
   → [Blocked] → "User unavailable"
 ```
 
-**SD-14: Profile Analytics**
-```
-User → /analytics → fetchAnalytics(userId, timeRange)
-  → Calculate: views, match rate, engagement score, influence score, streak
-  → Charts: daily views, matches, connections, posts
-  → Time range: 7d / 30d / 90d → Re-fetch
-  → "Export CSV" → Download
-```
-
 ---
 
 ## 4. AI-Powered Matching
 
-**10 user stories · 5 sequence diagrams**
+**9 user stories · 5 sequence diagrams**
 
 ### User Stories
 
 | ID | Title | Story | Key Scenarios |
 |----|-------|-------|---------------|
-| **US-27** | View Match Suggestions | As a **User**, I want to **see AI-ranked match suggestions**, so that I discover relevant collaborators. | ✅ Sorted by hybrid score (semantic 40% + skills 25% + interests 20% + activity 10% + reciprocity 5%) ✅ Cards: name, headline, %, top 3 common skills ⚠️ Empty → "Complete your profile" or "Check back soon" |
+| **US-27** | View Match Suggestions | As a **User**, I want to **see AI-ranked match suggestions**, so that I discover relevant collaborators. | ✅ Sorted by hybrid score (semantic 45% + skills 25% + interests 20% + reciprocity 10%) ✅ Cards: name, headline, %, top 3 common skills ⚠️ Empty → "Complete your profile" or "Check back soon" |
 | **US-28** | Match Compatibility Breakdown | As a **User**, I want to **see WHY a match was suggested**, so that I understand the algorithm. | ✅ "Why this match?" → Modal: scores, common skills, shared interests, AI explanation |
 | **US-29** | Accept / Dismiss Match | As a **User**, I want to **accept or dismiss suggestions**, so that I control my network. | ✅ Accept → Connection request → Notification ✅ Dismiss → Hidden → New suggestion surfaces ⚠️ "Undo" within 5s → Match restored |
 | **US-30** | Semantic Search | As a **User**, I want to **search using natural language**, so that I find exactly who I need. | ✅ Type "React developer building fintech MVPs" → Query embedded → Cosine search → Results ⚠️ Query too short → "Be more specific" ⛔ No results > threshold → "Try different terms" |
 | **US-31** | Filter Matches | As a **User**, I want to **filter by role, skills, interests, min%**, so that I narrow results. | ✅ Apply filters → Intersection logic ✅ Combine filters ⚠️ Zero results → "Broaden filters" |
 | **US-32** | Update Match Preferences | As a **User**, I want to **set what I'm looking for**, so that matching aligns with my needs. | ✅ Update preferences → Match scores re-calculated ✅ Stored in match_preferences table |
-| **US-33** | Match Quality Feedback | As a **User**, I want to **provide feedback on match quality**, so the algorithm improves. | ✅ "Not relevant" reasons → Thompson Sampling adjustment ✅ "Spam" selected → Moderation flag created |
+| **US-33** | Match Quality Feedback | As a **User**, I want to **provide feedback on match quality**, so the algorithm improves. | ✅ "Not relevant" reasons → Thompson Sampling adjustment ✅ "Spam" selected → Flagged |
 | **US-34** | Super-Like / Highlight | As a **User**, I want to **send a highlighted interest signal**, so the recipient knows I'm keen. | ✅ Super-like → ⭐ notification ✅ Limited: 3 per day |
-| **US-35** | Report Inappropriate Match | As a **User**, I want to **report suspicious match profiles**, so the platform stays safe. | ✅ "…" → Report → Reason → Flagged for moderation ✅ Hidden from reporter's suggestions |
 | **US-36** | Match Refresh | As a **User**, I want to **manually refresh suggestions**, so I get new recommendations. | ✅ "Find New Matches" → Batch re-run → New suggestions ⚠️ Rate limited: 1 per 10 minutes |
 
 ### Sequence Diagrams
@@ -266,7 +254,7 @@ Profile Updated → constructSemanticText(profile)
   → Trigger batch match generation:
     1. Cosine similarity (pgvector HNSW index)
     2. Filter: not connected/requested/blocked
-    3. Hybrid scores (semantic + skills + interests + activity + reciprocity)
+    3. Hybrid scores (semantic + skills + interests + reciprocity)
     4. INSERT INTO match_suggestions
   → User sees new match cards
 ```
@@ -307,7 +295,6 @@ User dismisses match → "Tell us why" optional prompt
   → Reasons: Wrong role / Wrong skills / Not interesting / Spam
   → Feedback stored → Thompson Sampling parameters updated
   → Similar profiles deprioritized
-  → [Spam] → Moderation flag
 ```
 
 ---
@@ -579,7 +566,7 @@ User query → Context Assembler → fetch profile(s)
 
 | ID | Title | Story | Key Scenarios |
 |----|-------|-------|---------------|
-| **US-71** | Real-time Notifications | As a **User**, I want **instant notifications for all events**, so I never miss activity. | ✅ Events: request, accept, message, like, comment, match ✅ Bell badge ✅ Realtime via Supabase broadcast |
+| **US-71** | Real-time Notifications | As a **User**, I want **instant notifications for key events**, so I stay informed. | ✅ Events: connection request, message, like, comment ✅ Bell badge ✅ Realtime via Supabase broadcast |
 | **US-72** | Notification Management | As a **User**, I want to **view, read, and delete notifications**, so I manage my inbox. | ✅ Click bell → dropdown → Click → Navigate + auto mark read ✅ "Mark all read" ✅ "Delete all read" |
 | **US-73** | Notification Preferences | As a **User**, I want to **customize which notifications I receive**, so I control volume. | ✅ Settings → Per-type toggle: Connect/Message/Like/Comment/System/Match ✅ Per-channel: In-app / Email |
 | **US-74** | Daily Digest | As the **System**, I want to **send daily email digests**, so users stay engaged offline. | ✅ Cron: aggregate → Summary email → Send ⚠️ No notifications → Skip |
@@ -623,44 +610,7 @@ Cron (daily, 8 AM UTC) → POST /api/notifications/digest
   → Log to audit_logs
 ```
 
----
-
-## 10. Activity & Analytics
-
-**5 user stories · 2 sequence diagrams**
-
-### User Stories
-
-| ID | Title | Story | Key Scenarios |
-|----|-------|-------|---------------|
-| **US-77** | Analytics Dashboard | As a **User**, I want to **see comprehensive analytics**, so that I can improve my presence. | ✅ /analytics → Views, match rate, engagement score, influence score, streak ✅ Time range: 7/30/90 days ✅ Charts: daily views, matches, connections, posts |
-| **US-78** | Activity Feed | As a **User**, I want to **see my recent activity**, so that I can track engagement. | ✅ /activity → Feed: views, match actions, connections, post engagement ✅ Filter by type |
-| **US-79** | Analytics Export | As a **User**, I want to **export analytics as CSV**, so that I can analyze externally. | ✅ "Export CSV" → exportAnalyticsToCSV() → Download |
-| **US-80** | Auto Activity Tracking | As the **System**, I want to **track all interactions automatically**, so analytics stay current. | ✅ useActivityTracking() → POST /api/activity/track on all actions ✅ Daily aggregation |
-| **US-81** | Influence Score | As a **User**, I want to **see my influence score**, so that I understand my platform impact. | ✅ Calculated: views received + match interest + post engagement + connections + verification |
-
-### Sequence Diagrams
-
-**SD-39: Activity Tracking Flow**
-```
-User action → useActivityTracking.trackView(profileId)
-  → POST /api/activity/track { type, target_id, metadata }
-  → INSERT INTO events → Daily aggregation → user_analytics UPSERT
-  → Analytics queries read from pre-aggregated user_analytics
-```
-
-**SD-40: Analytics Dashboard**
-```
-User → /analytics → fetchAnalytics(userId, timeRange)
-  → Query user_analytics for time range
-  → Calculate: views, match rate, engagement score, influence score, streak
-  → Render: stat cards + time-series charts
-  → Filter change → Re-fetch → CSV export → Download
-```
-
----
-
-## 11. Embedding Infrastructure
+## 10. Embedding Infrastructure
 
 **5 user stories · 3 sequence diagrams**
 
@@ -707,45 +657,7 @@ User profile → useEffect: subscribe embedding_status channel
   → Status: queued ⏳ → processing 🔄 → completed ✅ → failed ⚠️
 ```
 
----
-
-## 12. Content Moderation
-
-**4 user stories · 2 sequence diagrams**
-
-### User Stories
-
-| ID | Title | Story | Key Scenarios |
-|----|-------|-------|---------------|
-| **US-87** | Report Content | As a **User**, I want to **report inappropriate content**, so the community stays safe. | ✅ "…" → Report → Reason (Spam/Harassment/Inappropriate/Misinformation/Other) → Submit |
-| **US-88** | Admin Dashboard | As an **Admin**, I want to **review flagged content**, so I can take action. | ✅ /admin/moderation → Flagged list → Review → Approve/Quarantine/Reject/Delete ✅ Bulk actions |
-| **US-89** | Content Scanning | As the **System**, I want to **auto-scan for toxicity/spam/NSFW/PII**, so harmful content is caught. | ✅ New post → Auto-scan → [High risk] → Auto-quarantine ✅ [Low risk] → Published with flag |
-| **US-90** | Quarantine Management | As an **Admin**, I want to **manage quarantined content**, so it can be reviewed and released or removed. | ✅ Quarantined list → Review → Release or Delete ✅ Notify author |
-
-### Sequence Diagrams
-
-**SD-44: Content Report Flow**
-```
-User → Post/Profile/Comment → "…" → "Report"
-  → Report dialog: reason + optional description → Submit
-  → INSERT content_moderation_logs (reporter, content_type, content_id, reason)
-  → Auto-scan: toxicity/spam/NSFW/PII
-  → [High confidence] → Auto-quarantine → Admin notified
-  → [Low confidence] → Admin queue → Reporter: "Thank you"
-```
-
-**SD-45: Admin Moderation**
-```
-Admin → /admin/moderation → Fetch pending + auto-flagged
-  → Table: preview, reporter, reason, scan score, timestamp
-  → Click → Full content + user history
-  → Actions: Approve / Quarantine / Delete / Ban User
-  → Audit log: every action recorded
-```
-
----
-
-## 13. Settings & Account Management
+## 11. Settings & Account Management
 
 **6 user stories · 3 sequence diagrams**
 
@@ -753,7 +665,7 @@ Admin → /admin/moderation → Fetch pending + auto-flagged
 
 | ID | Title | Story | Key Scenarios |
 |----|-------|-------|---------------|
-| **US-91** | Privacy Settings | As a **User**, I want to **control who sees my profile, email, connections, activity**, so I maintain privacy. | ✅ /privacy → Toggle: profile visibility (public/connections/private), email, connections list, activity status ✅ Data download, search engine opt-out |
+| **US-91** | Privacy Settings | As a **User**, I want to **control who sees my profile, email, connections**, so I maintain privacy. | ✅ /privacy → Toggle: profile visibility (public/connections/private), email, connections list ✅ Data download, search engine opt-out |
 | **US-92** | Blocked Users | As a **User**, I want to **view and manage blocked users**, so I can reverse blocks. | ✅ Settings → Blocked Users → List with unblock ✅ Unblock → Can reconnect |
 | **US-93** | Notification Prefs | As a **User**, I want to **toggle notification types and channels**, so I control volume. | ✅ Per-type toggles → Per-channel (In-app/Email) |
 | **US-94** | Theme Preference | As a **User**, I want to **switch dark/light mode**, so the interface matches my preference. | ✅ Toggle → next-themes → Instant apply ✅ Persisted to DB ✅ System-default option |
@@ -777,8 +689,8 @@ User → Settings → "Delete Account"
   → Step 2: "Type DELETE to confirm"
   → Step 3: Enter password
   → Cascade delete: messages, conversations, requests, connections,
-    match_suggestions, embeddings, posts, comments, notifications,
-    ai_mentor data, events, profile, auth user
+    embeddings, posts, comments, notifications,
+    ai_mentor data, profile, auth user
   → Redirect / → Toast: "Account deleted"
 ```
 
@@ -792,7 +704,7 @@ User → Header → AnimatedThemeToggler
 
 ---
 
-## 14. Landing Page & Public
+## 12. Landing Page & Public
 
 **5 user stories · 2 sequence diagrams**
 
@@ -828,7 +740,7 @@ Page load → Check WebGL support + memory
 
 ---
 
-## 15. Security (Cross-cutting)
+## 13. Security (Cross-cutting)
 
 **5 system stories · 3 sequence diagrams**
 
@@ -878,7 +790,7 @@ User action → auditLogger.log(action, userId, resource, id, metadata, ip, ua)
 
 ---
 
-## 16. Bookmarks
+## 14. Bookmarks
 
 **3 user stories · 1 sequence diagram**
 
@@ -904,7 +816,7 @@ User → Post → Click bookmark icon
 
 ---
 
-## 17. Billing (UI)
+## 15. Billing (UI)
 
 **3 user stories · 1 sequence diagram**
 
@@ -929,7 +841,7 @@ User → /settings/billing → Fetch plan info
 
 ---
 
-## 18. Help & Support
+## 16. Help & Support
 
 **3 user stories · 1 sequence diagram**
 
@@ -964,31 +876,29 @@ User → /help → Search bar + topic cards
 |---|--------|:-----------:|:-----------------:|
 | 1 | Authentication & Authorization | 10 | 6 |
 | 2 | Onboarding | 7 | 3 |
-| 3 | Profile Management | 9 | 5 |
-| 4 | AI-Powered Matching | 10 | 5 |
+| 3 | Profile Management | 9 | 4 |
+| 4 | AI-Powered Matching | 9 | 5 |
 | 5 | Messaging & Real-time Chat | 9 | 4 |
 | 6 | Connections & Networking | 7 | 3 |
 | 7 | Posts & Social Feed | 10 | 5 |
 | 8 | AI Mentor & Assistant | 8 | 4 |
 | 9 | Notifications | 6 | 3 |
-| 10 | Activity & Analytics | 5 | 2 |
-| 11 | Embedding Infrastructure | 5 | 3 |
-| 12 | Content Moderation | 4 | 2 |
-| 13 | Settings & Account | 6 | 3 |
-| 14 | Landing Page & Public | 5 | 2 |
-| 15 | Security (System) | 5 | 3 |
-| 16 | Bookmarks | 3 | 1 |
-| 17 | Billing (UI) | 3 | 1 |
-| 18 | Help & Support | 3 | 1 |
-| **TOTAL** | | **115** | **56** |
+| 10 | Embedding Infrastructure | 5 | 3 |
+| 11 | Settings & Account | 6 | 3 |
+| 12 | Landing Page & Public | 5 | 2 |
+| 13 | Security (System) | 5 | 3 |
+| 14 | Bookmarks | 3 | 1 |
+| 15 | Billing (UI) | 3 | 1 |
+| 16 | Help & Support | 3 | 1 |
+| **TOTAL** | | **105** | **51** |
 
 ### By Priority
 
 | Priority | Count | Description |
 |----------|:-----:|-------------|
-| **P0 — Core** | 40 | Auth, Onboarding, Profile, Matching, Messaging, Connections |
-| **P1 — Engagement** | 35 | Posts/Feed, AI Mentor, Notifications, Activity |
-| **P2 — Platform** | 25 | Embedding, Moderation, Settings, Landing, Bookmarks, Billing, Help |
+| **P0 — Core** | 39 | Auth, Onboarding, Profile, Matching, Messaging, Connections |
+| **P1 — Engagement** | 30 | Posts/Feed, AI Mentor, Notifications |
+| **P2 — Platform** | 21 | Embedding, Settings, Landing, Bookmarks, Billing, Help |
 | **P3 — System** | 15 | Security, Circuit Breaker, Rate Limiting, RLS, Audit, DLQ |
 
 ### By Actor
@@ -996,13 +906,13 @@ User → /help → Search bar + topic cards
 | Actor | Stories |
 |-------|:-------:|
 | Visitor | 8 |
-| User | 75 |
-| Admin | 8 |
-| System | 24 |
+| User | 69 |
+| Admin | 6 |
+| System | 22 |
 
 ---
 
-**Last Updated**: 2026-05-31  
-**Version**: 1.0.0
+**Last Updated**: 2026-06-05  
+**Version**: 1.1.0
 
 [← Back to Architecture](../02-architecture/overview.md)

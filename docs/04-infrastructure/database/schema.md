@@ -4,8 +4,8 @@ Complete reference for Collabryx database schema.
 
 **Version:** 4.2.0 (Self-Contained)  
 **Last Updated:** 2026-06-03  
-**Total Tables:** 36 (master) + 2 (migrations) = 38  
-**Note:** Some analytics/moderation tables were refactored. See [master file](https://github.com/your-org/collabryx/blob/main/supabase/setup/99-master-all-tables.sql) for authoritative list.
+**Total Tables:** 29 (master) + 2 (migrations) = 31  
+**Note:** Analytics and content moderation tables have been removed from the master schema. See [master file](https://github.com/your-org/collabryx/blob/main/supabase/setup/99-master-all-tables.sql) for authoritative list.
 
 ---
 
@@ -26,7 +26,7 @@ Complete reference for Collabryx database schema.
 ## Overview
 
 **Database:** PostgreSQL (Supabase)  
-**Total Tables:** 38 (36 in master + 2 migration-added)  
+**Total Tables:** 31 (29 in master + 2 migration-added)  
 **Extensions:** pgvector  
 **Master File:** `supabase/setup/99-master-all-tables.sql` (run this file only)  
 **Version:** 4.2.0 (Self-contained, no external dependencies)
@@ -187,49 +187,6 @@ User theme preferences.
 
 ---
 
-## Analytics (4 Tables)
-
-### user_engagement_metrics
-Tracks user engagement metrics and activity patterns.
-
-**Key columns:** id, user_id, metric_type, value, period, calculated_at
-
-### user_activity_analytics
-Detailed user activity tracking and analytics.
-
-**Key columns:** id, user_id, activity_type, metadata, session_id, created_at
-
-### feature_adoption_metrics
-Tracks feature adoption and usage patterns.
-
-**Key columns:** id, user_id, feature_name, adopted_at, usage_count, last_used_at
-
-### analytics_aggregation_queue
-Queue for analytics data aggregation jobs.
-
-**Key columns:** id, metric_type, period, status, scheduled_at, completed_at
-
----
-
-## Content Moderation (3 Tables)
-
-### content_reports
-User-reported content for moderation review.
-
-**Key columns:** id, reporter_id, content_type, content_id, reason, status, reviewed_by, reviewed_at
-
-### content_moderation_queue
-Queue of content awaiting moderation.
-
-**Key columns:** id, content_type, content_id, priority, status, assigned_moderator, created_at
-
-### content_moderation_logs
-Audit log of moderation actions.
-
-**Key columns:** id, moderator_id, action, content_type, content_id, reason, created_at
-
----
-
 ## Vector Embeddings (4 Tables)
 
 ### profile_embeddings
@@ -258,7 +215,7 @@ Queue for pending embedding requests from onboarding.
 
 ## Row Level Security
 
-All 26 tables have RLS enabled with policies for:
+All 19 tables have RLS enabled with policies for:
 - Users can view their own data
 - Users can update their own data
 - Public read access where appropriate
@@ -297,7 +254,6 @@ All 26 tables have RLS enabled with policies for:
 - `check_embedding_rate_limit(user_id)` - Check rate limit (3/hour)
 - `reset_embedding_rate_limit(user_id)` - Admin: reset rate limit
 - `queue_embedding_request(user_id, source)` - Queue embedding request
-- `get_pending_queue_stats()` - Get queue statistics by status
 
 ### Optimistic Locking (New in v4.1.0)
 - `increment_post_counter(post_id)` - Increment post counter for optimistic locking
@@ -341,8 +297,8 @@ All 26 tables have RLS enabled with policies for:
 
 ---
 
-**Last Updated**: 2026-03-21  
-**Version**: 4.1.0  
+**Last Updated**: 2026-06-05  
+**Version**: 4.2.0  
 **Source**: [supabase/setup/99-master-all-tables.sql](../../../supabase/setup/99-master-all-tables.sql)
 
 [← Back to Docs](../README.md)

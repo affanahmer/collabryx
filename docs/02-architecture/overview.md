@@ -40,8 +40,6 @@ collabryx/
 │
 ├── app/                       # Next.js App Router (entry point)
 │   ├── (auth)/               # Protected routes (requires authentication)
-│   │   ├── activity/         # Activity feed page
-│   │   ├── admin/moderation/ # Admin moderation dashboard
 │   │   ├── ai-mentor/        # AI mentor chat
 │   │   ├── analytics/        # Platform analytics
 │   │   ├── assistant/        # AI assistant
@@ -70,8 +68,7 @@ collabryx/
 │   │   ├── verify-email/    # Email verification
 │   │   └── auth-sync/       # Auth callback sync
 │   │
-│   ├── api/                 # API routes (22+ endpoints)
-│   │   ├── activity/        # Activity feed + tracking
+│   ├── api/                 # API routes (20+ endpoints)
 │   │   ├── ai/chat/         # AI chat + streaming
 │   │   ├── ai-mentor/       # AI mentor messaging
 │   │   ├── analytics/       # Daily analytics
@@ -81,7 +78,6 @@ collabryx/
 │   │   ├── feed/            # Feed scoring
 │   │   ├── health/          # Health check
 │   │   ├── matches/         # Generate + batch + health
-│   │   ├── moderate/        # Content moderation
 │   │   ├── notifications/   # Cleanup + digest + send
 │   │   └── upload/          # File upload
 │   │
@@ -92,8 +88,7 @@ collabryx/
 │   └── not-found.tsx        # 404 page
 │
 ├── components/               # React components
-│   ├── features/            # Feature-specific (16 domains)
-│   │   ├── activity/        # Activity feed components
+│   ├── features/            # Feature-specific (14 domains)
 │   │   ├── ai-mentor/       # AI mentor streaming
 │   │   ├── analytics/       # Analytics charts
 │   │   ├── assistant/       # AI assistant (chat-input, chat-list, message-bubble)
@@ -103,7 +98,6 @@ collabryx/
 │   │   ├── landing/         # Landing page components
 │   │   ├── matches/         # Match cards, filters, dialogs
 │   │   ├── messages/        # Chat window, sidebar, message input
-│   │   ├── moderation/      # Report content dialog
 │   │   ├── notifications/   # Notifications client
 │   │   ├── onboarding/      # Multi-step wizard (5 steps)
 │   │   ├── posts/           # Post attachment upload
@@ -130,14 +124,13 @@ collabryx/
 │       ├── query-provider.tsx
 │       └── smooth-scroll-provider.tsx
 │
-├── hooks/                   # Custom React hooks (28)
+├── hooks/                   # Custom React hooks (~20)
 │   ├── use-auth.ts
 │   ├── use-messages.ts
 │   ├── use-matches-query.ts
-│   ├── use-activity-feed.ts
 │   ├── use-feed.ts
 │   ├── use-connections.ts
-│   └── ... (28 total)
+│   └── ... (~20 total)
 │
 ├── lib/                     # Library code
 │   ├── actions/             # Server Actions (10)
@@ -158,8 +151,6 @@ collabryx/
 │   ├── docker-*.mjs         # Docker management scripts
 │   └── seed-data/           # Database seeders
 │
-├── e2e/                     # Root-level E2E tests
-├── tests/                   # Test suite (120+ files, 750+ tests)
 ├── docs/                    # Documentation (33+ files)
 ├── python-worker/           # FastAPI embedding service
 ├── supabase/                # Database setup

@@ -10,7 +10,7 @@ Complete guide to setting up the Collabryx database schema in Supabase.
 
 **DO NOT run individual SQL files (01-23).** They are reference-only.
 
-Run the master migration file that includes all 36 tables:
+Run the master migration file that includes all 29 tables:
 
 ```sql
 -- In Supabase SQL Editor:
@@ -20,7 +20,7 @@ Run the master migration file that includes all 36 tables:
 supabase/setup/99-master-all-tables.sql
 ```
 
-This creates all 36 tables including:
+This creates all 29 tables including:
 - User management (profiles, user_skills, user_interests, user_experiences, user_projects)
 - Social features (posts, post_attachments, post_reactions, comments, comment_likes, connections)
 - Matching system (match_suggestions, match_scores, match_activity, match_preferences)
@@ -29,8 +29,6 @@ This creates all 36 tables including:
 - AI features (ai_mentor_sessions, ai_mentor_messages)
 - Preferences (theme_preferences)
 - **Vector embeddings** (profile_embeddings, embedding_dead_letter_queue, embedding_rate_limits, embedding_pending_queue)
-- **Analytics** (user_engagement_metrics, user_activity_analytics, feature_adoption_metrics, analytics_aggregation_queue)
-- **Content Moderation** (content_reports, content_moderation_queue, content_moderation_logs)
 
 **New in v4.1.0:**
 - Optimistic locking support for posts (version column + counter functions)
@@ -75,7 +73,7 @@ WHERE routine_schema = 'public'
   AND routine_name LIKE '%embedding%';
 
 -- Expected: check_embedding_rate_limit, reset_embedding_rate_limit,
---           queue_embedding_request, get_pending_queue_stats
+--           queue_embedding_request
 ```
 
 ### Step 3: Configure Python Worker
@@ -251,9 +249,6 @@ SELECT * FROM embedding_pending_queue;
 ### 2. Monitor Queue
 
 ```sql
--- Get queue stats
-SELECT * FROM get_pending_queue_stats();
-
 -- Check DLQ status
 SELECT 
     status,
@@ -327,7 +322,6 @@ Rate limiting functions use `SECURITY DEFINER`:
 - `check_embedding_rate_limit()` - Check if user can generate embedding
 - `reset_embedding_rate_limit()` - Admin function to reset limits
 - `queue_embedding_request()` - Queue embedding for processing
-- `get_pending_queue_stats()` - Get queue statistics
 
 ---
 
@@ -340,5 +334,5 @@ Rate limiting functions use `SECURITY DEFINER`:
 
 ---
 
-**Last Updated:** 2026-03-21  
-**Version:** 4.1.0 (Final Boss - Self-Contained)
+**Last Updated:** 2026-06-05  
+**Version:** 4.2.0

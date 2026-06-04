@@ -616,8 +616,6 @@ Already implemented in `embedding_rate_limits` table.
 
 - [ ] GPU acceleration for faster processing
 - [ ] Multi-model support (different embedding models)
-- [ ] Advanced analytics dashboard
-- [ ] A/B testing for matching algorithms
 - [ ] Real-time embedding updates
 
 ### Performance Goals

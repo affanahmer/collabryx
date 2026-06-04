@@ -174,7 +174,6 @@ graph TD
         DashboardPage[page.tsx]
         DashboardView[dashboard-view.tsx]
         StatsCard[stats-card.tsx]
-        ActivityFeed[activity-feed.tsx]
     end
     
     subgraph Matches["Matches Feature"]
@@ -193,7 +192,6 @@ graph TD
     
     DashboardPage --> DashboardView
     DashboardView --> StatsCard
-    DashboardView --> ActivityFeed
     
     MatchesPage --> MatchesList
     MatchesList --> MatchCard
@@ -269,7 +267,6 @@ sequenceDiagram
     participant U as User
     participant App as Next.js
     participant VDB as profile_embeddings
-    participant MS as match_suggestions
     participant UI as UI
     
     U->>App: Open matches page
@@ -279,10 +276,6 @@ sequenceDiagram
     App->>VDB: Cosine similarity search
     VDB-->>App: Similar profiles + scores
     
-    App->>MS: Apply filters
-    Note over MS: Exclude connected<br/>Sort by score<br/>Limit 50
-    
-    MS-->>App: Ranked matches
     App->>UI: Display matches
 ```
 
@@ -367,9 +360,6 @@ erDiagram
     conversations }|--|| profiles : participant_1
     conversations }|--|| profiles : participant_2
     
-    match_suggestions }|--|| profiles : user_id
-    match_suggestions }|--|| profiles : suggested_user_id
-    
     profile_embeddings ||--|| profiles : belongs_to
     embedding_dead_letter_queue ||--|| profiles : retry_for
     embedding_pending_queue ||--|| profiles : queued_for
@@ -403,7 +393,6 @@ graph TD
     end
     
     subgraph Matching["Matching System"]
-        suggestions[match_suggestions]
         scores[match_scores]
     end
     
