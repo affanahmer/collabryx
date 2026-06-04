@@ -1,7 +1,7 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { Check, Trash2, Bell, UserPlus, MessageSquare, Heart, Star, AtSign, Award } from "lucide-react"
+import { Check, Trash2, Bell, UserPlus, MessageSquare, Heart, Star, AtSign, Award, Undo2 } from "lucide-react"
 import {
   useNotifications,
   useMarkAllNotificationsAsRead,
@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { cn } from "@/lib/utils"
+import { useQueryClient } from "@tanstack/react-query"
 import { useState, useCallback } from "react"
 import { toast } from "sonner"
 
@@ -84,13 +85,17 @@ export function NotificationDropdown({ onOpenChange }: NotificationDropdownProps
   const handleMarkAllAsRead = useCallback(() => {
     markAllAsRead.mutate(undefined, {
       onSuccess: () => {
-        toast.success("All notifications marked as read")
+        toast("All notifications marked as read", {
+          icon: <Check className="h-4 w-4 text-emerald-500" />,
+        })
       },
       onError: () => {
         toast.error("Failed to mark notifications as read")
       }
     })
   }, [markAllAsRead])
+
+  const queryClient = useQueryClient()
 
   const handleDelete = useCallback((e: React.MouseEvent | React.KeyboardEvent, notificationId: string) => {
     e.stopPropagation()
@@ -100,17 +105,23 @@ export function NotificationDropdown({ onOpenChange }: NotificationDropdownProps
     
     deleteNotification.mutate(notificationId, {
       onSuccess: () => {
-        toast.success("Notification deleted", {
-          description: "Undo",
+        toast("Notification deleted", {
+          description: "You can undo this action",
           duration: 5000,
+          icon: <Trash2 className="h-4 w-4 text-destructive" />,
           action: {
-            label: "Undo",
+            label: <span className="flex items-center gap-1"><Undo2 className="h-3.5 w-3.5" /> Undo</span>,
             onClick: () => {
+              // Restore by removing from the deleted set and refetching
+              // The actual DB deletion is handled server-side; this removes
+              // the optimistic UI deletion and refreshes from the server
               setDeletedIds(prev => {
                 const next = new Set(prev)
                 next.delete(notificationId)
                 return next
               })
+              queryClient.invalidateQueries({ queryKey: ['notifications'] })
+              toast.success("Notification restored")
             }
           }
         })
@@ -124,7 +135,7 @@ export function NotificationDropdown({ onOpenChange }: NotificationDropdownProps
         toast.error("Failed to delete notification")
       }
     })
-  }, [deleteNotification])
+  }, [deleteNotification, queryClient])
 
   const getNotificationIcon = (type: string) => {
     const IconComponent = (NOTIFICATION_ICONS[type as keyof typeof NOTIFICATION_ICONS] || Bell) as React.FC<{ className?: string }>

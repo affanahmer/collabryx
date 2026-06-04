@@ -48,7 +48,10 @@ export function useNotifications(options?: FetchNotificationsOptions) {
     queryKey: NOTIFICATION_QUERY_KEYS.list(options),
     queryFn: async () => {
       const { data, error } = await fetchNotifications(options)
-      if (error) throw error
+      if (error) {
+        console.error('[useNotifications] Fetch error:', error.message)
+        throw error
+      }
       return data
     },
     staleTime: 1000 * 60 * 2,  // 2 minutes
@@ -70,11 +73,14 @@ export function useUnreadCount() {
     queryKey: NOTIFICATION_QUERY_KEYS.unread(),
     queryFn: async () => {
       const { count, error } = await getUnreadCount()
-      if (error) throw error
+      if (error) {
+        console.error('[useUnreadCount] Fetch error:', error.message)
+        throw error
+      }
       return count
     },
-    staleTime: 1000 * 60,  // 1 minute
-    gcTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 15,   // 15 seconds — fast refresh for @mention notifications
+    gcTime: 1000 * 60 * 5,  // 5 minutes
     retry: 1,
   })
 }
@@ -192,13 +198,19 @@ export function useRealtimeNotifications() {
         .subscribe()
     }
 
-    setup().catch((err) => console.error("Failed to set up notifications channel:", err))
+    setup().catch((err) => console.error("[useRealtimeNotifications] Failed to set up channel:", err))
 
     return () => {
       isMounted = false
-      if (channel) {
-        supabase.removeChannel(channel)
+      const currentChannel = channel
+      if (currentChannel) {
+        try {
+          supabase.removeChannel(currentChannel)
+        } catch (cleanupErr) {
+          console.error('[useRealtimeNotifications] Error removing channel:', cleanupErr)
+        }
       }
+      channel = null
     }
   }, [queryClient])
 }

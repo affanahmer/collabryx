@@ -1,35 +1,96 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Bell, Heart, MessageSquare, UserPlus, Lightbulb } from "lucide-react"
+import { Bell, Heart, MessageSquare, UserPlus, Lightbulb, AtSign } from "lucide-react"
 import { toast } from "sonner"
 import { GlassCard } from "@/components/shared/glass-card"
 import { glass } from "@/lib/utils/glass-variants"
+import {
+    useNotifications,
+    useMarkNotificationAsRead,
+    useMarkAllNotificationsAsRead,
+    useRealtimeNotifications,
+} from "@/hooks/use-notifications"
+import { useConnectionRequests } from "@/hooks/use-connections"
+import type { NotificationWithActor } from "@/lib/services/notifications"
 
-interface Notification {
+interface DisplayNotification {
     id: string
-    type: "connect" | "message" | "like" | "system"
+    type: string
     actor: { id: string; name: string; avatar: string }
     content: string
     time: string
     read: boolean
+    connectionId?: string
 }
 
 interface NotificationsClientProps {
-    initialNotifications: Notification[]
+    initialNotifications?: DisplayNotification[]
 }
 
 export function NotificationsClient({ initialNotifications }: NotificationsClientProps) {
     const router = useRouter()
-    const [notifications, setNotifications] = useState<Notification[]>(initialNotifications)
+
+    // Real notification data from database hooks
+    const { data: dbNotifications = [] } = useNotifications({ limit: 50 })
+    const { mutate: markAsRead } = useMarkNotificationAsRead()
+    const { mutate: markAllAsRead } = useMarkAllNotificationsAsRead()
+    const { acceptRequest, declineRequest } = useConnectionRequests()
+
+    // Subscribe to real-time updates
+    useRealtimeNotifications()
+
+    // Map database notifications to display format (fallback to initialNotifications)
+    const notifications: DisplayNotification[] = useMemo(() => {
+        if (dbNotifications.length > 0) {
+            return dbNotifications.map((n: NotificationWithActor) => ({
+                id: n.id,
+                type: n.type,
+                actor: {
+                    id: n.actor_id || '',
+                    name: n.actor_name || 'Unknown',
+                    avatar: n.actor_avatar || '',
+                },
+                content: n.content,
+                time: n.time_ago,
+                read: n.is_read,
+                connectionId: n.type === 'connect' ? n.resource_id : undefined,
+            }))
+        }
+        return (initialNotifications || []) as DisplayNotification[]
+    }, [dbNotifications, initialNotifications])
 
     const handleMarkAllRead = useCallback(() => {
-        setNotifications(prev => prev.map(n => ({ ...n, read: true })))
-        toast.success("All notifications marked as read")
-    }, [])
+        markAllAsRead(undefined, {
+            onSuccess: () => toast.success("All notifications marked as read"),
+            onError: () => toast.error("Failed to mark all as read"),
+        })
+    }, [markAllAsRead])
+
+    const handleAccept = useCallback(async (n: DisplayNotification) => {
+        const id = n.connectionId || n.actor.id
+        const success = await acceptRequest(id)
+        if (success) {
+            toast.success('Connection request accepted')
+            markAsRead(n.id)
+        } else {
+            toast.error('Failed to accept connection request')
+        }
+    }, [acceptRequest, markAsRead])
+
+    const handleIgnore = useCallback(async (n: DisplayNotification) => {
+        const id = n.connectionId || n.actor.id
+        const success = await declineRequest(id)
+        if (success) {
+            toast.success('Connection request declined')
+            markAsRead(n.id)
+        } else {
+            toast.error('Failed to decline connection request')
+        }
+    }, [declineRequest, markAsRead])
 
     const unreadCount = notifications.filter(n => !n.read).length
 
@@ -58,7 +119,7 @@ export function NotificationsClient({ initialNotifications }: NotificationsClien
                 {notifications.length === 0 ? (
                     <GlassCard innerClassName="text-center py-12">
                         <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                        <p className="text-muted-foreground">No notifications yet</p>
+                        <p className="text-muted-foreground">No notifications yet. Get started by connecting with people!</p>
                     </GlassCard>
                 ) : (
                     notifications.map((n) => (
@@ -75,11 +136,13 @@ export function NotificationsClient({ initialNotifications }: NotificationsClien
                                 n.type === "connect" && glass("badgeInfo"),
                                 n.type === "message" && glass("badgeSuccess"),
                                 n.type === "like" && glass("badgeError"),
+                                n.type === "mention" && glass("badgeWarning"),
                                 n.type === "system" && glass("badgeWarning")
                             )}>
                                 {n.type === "connect" && <UserPlus className="h-4.5 w-4.5" />}
                                 {n.type === "message" && <MessageSquare className="h-4.5 w-4.5" />}
                                 {n.type === "like" && <Heart className="h-4.5 w-4.5" />}
+                                {n.type === "mention" && <AtSign className="h-4.5 w-4.5" />}
                                 {n.type === "system" && <Bell className="h-4.5 w-4.5" />}
                             </div>
 
@@ -94,8 +157,8 @@ export function NotificationsClient({ initialNotifications }: NotificationsClien
                                 {n.type === "connect" && (
                                     <div className="flex flex-col sm:flex-row gap-2 mt-3">
                                         <div className="flex gap-2">
-                                            <Button size="sm" className="h-8 px-4">Accept</Button>
-                                            <Button size="sm" variant="outline" className="h-8 px-4">Ignore</Button>
+                                            <Button size="sm" className="h-8 px-4" onClick={() => handleAccept(n)}>Accept</Button>
+                                            <Button size="sm" variant="outline" className="h-8 px-4" onClick={() => handleIgnore(n)}>Ignore</Button>
                                         </div>
                                         <Button
                                             size="sm"

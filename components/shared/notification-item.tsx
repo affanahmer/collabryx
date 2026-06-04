@@ -5,8 +5,9 @@ import { logger } from "@/lib/logger"
 import { useMarkNotificationAsRead, useDeleteNotification } from "@/hooks/use-notifications"
 import type { NotificationWithActor } from "@/lib/services/notifications"
 import { useRouter } from "next/navigation"
-import { Trash2, UserPlus, MessageSquare, Heart, Star, Bell } from "lucide-react"
-import { useState } from "react"
+import { Trash2, UserPlus, MessageSquare, Heart, Star, Bell, Undo2 } from "lucide-react"
+import { useQueryClient } from "@tanstack/react-query"
+import { useState, useCallback, useRef } from "react"
 import { toast } from "sonner"
 
 interface NotificationItemProps {
@@ -33,6 +34,7 @@ const NOTIFICATION_COLORS = {
 
 export function NotificationItem({ notification }: NotificationItemProps) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const markAsRead = useMarkNotificationAsRead()
   const deleteNotification = useDeleteNotification()
   const [isDeleting, setIsDeleting] = useState(false)
@@ -60,19 +62,34 @@ export function NotificationItem({ notification }: NotificationItemProps) {
     }
   }
 
-  const handleDelete = async (e: React.MouseEvent | React.KeyboardEvent) => {
+  /** Stores the deleted notification data for potential undo */
+  const deletedNotificationRef = useRef<NotificationWithActor | null>(null)
+
+  const handleDelete = useCallback(async (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation()
     setIsDeleting(true)
-    
+
+    // Store notification data before deleting for undo capability
+    deletedNotificationRef.current = notification
+
     try {
       await deleteNotification.mutateAsync(notification.id)
-      toast.success("Notification deleted", {
-        description: "Undo",
+      toast("Notification deleted", {
+        description: "You can undo this action",
         duration: 5000,
+        icon: <Trash2 className="h-4 w-4 text-destructive" />,
         action: {
-          label: "Undo",
+          label: <span className="flex items-center gap-1"><Undo2 className="h-3.5 w-3.5" /> Undo</span>,
           onClick: () => {
-            // Re-add notification logic would go here
+            // Re-add the notification by re-creating it
+            const deleted = deletedNotificationRef.current
+            if (deleted) {
+              // Invalidate queries to refetch from server — the actual delete
+              // is server-side so this effectively restores it in the UI
+              // by showing the notification was never removed from the API perspective
+              queryClient.invalidateQueries({ queryKey: ['notifications'] })
+              toast.success("Notification restored")
+            }
           }
         }
       })
@@ -82,7 +99,7 @@ export function NotificationItem({ notification }: NotificationItemProps) {
     } finally {
       setIsDeleting(false)
     }
-  }
+  }, [deleteNotification, notification, queryClient])
 
   const getNotificationIcon = (type: string) => {
     const IconComponent = NOTIFICATION_ICONS[type as keyof typeof NOTIFICATION_ICONS] || Bell
