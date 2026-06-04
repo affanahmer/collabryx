@@ -30,8 +30,7 @@
 11. [Task 8: Cross-Encoder Re-Ranking](#task-8-cross-encoder-re-ranking)
 12. [File Structure](#file-structure)
 13. [Gitignore Rules](#gitignore-rules)
-14. [Testing Strategy](#testing-strategy)
-15. [Dependency Graph](#dependency-graph)
+14. [Dependency Graph](#dependency-graph)
 
 ---
 
@@ -147,8 +146,6 @@ User profile data is fetched but NOT passed to LLM. Python worker explicitly exp
 | `lib/rag/session-summarizer.ts` | Summarizes long conversations to stay within token limits |
 | `lib/rag/context-assembler.ts` | Fusion layer that combines all context sources |
 | `lib/prompt/ai-mentor-prompts.ts` | Centralized prompt templates |
-| `tests/unit/rag/context-fetcher.test.ts` | Unit tests |
-| `tests/unit/rag/vector-retriever.test.ts` | Unit tests |
 
 ### Files to Modify
 
@@ -245,18 +242,6 @@ Vector +        (skills only) (plain prompt)  having trouble"
 Summary                        + history
 ```
 
-### Testing Approach
-
-| Test Type | Scenario |
-|-----------|----------|
-| Unit | context-fetcher maps profile to UserProfileContext |
-| Unit | vector-retriever generates embeddings, handles errors |
-| Unit | session-summarizer parses JSON response |
-| Unit | prompt-builder formats context correctly |
-| Integration | Full RAG flow: message → context fetch → LLM call → response |
-| Integration | Graceful degradation when services fail |
-| E2E | Context injection verification |
-
 ---
 
 ## Task 2: MiniMax Provider Integration
@@ -281,7 +266,6 @@ No MiniMax API integration currently exists. MiniMax offers 204k token context a
 | `lib/ai/providers/base.ts` | Interfaces & types for AI providers |
 | `lib/ai/providers/registry.ts` | ProviderRegistry with fallback logic |
 | `lib/ai/providers/minimax.ts` | MiniMax provider implementation |
-| `tests/unit/ai/providers/minimax.test.ts` | Unit tests |
 
 ### Files to Modify
 
@@ -427,28 +411,6 @@ The codebase uses placeholder values (e.g., `0.85` defaults, `0.8` threshold) in
    - Remove placeholder `0.85` defaults (lines 59, 86)
    - Use actual cosine similarity from embeddings
 
-### Testing Approach
-
-```typescript
-describe('cosineSimilarity', () => {
-  it('returns 1 for identical vectors', () => {
-    const v = [1, 2, 3]
-    expect(cosineSimilarity(v, v)).toBeCloseTo(1, 5)
-  })
-  it('returns 0 for orthogonal vectors', () => {
-    expect(cosineSimilarity([1, 0], [0, 1])).toBeCloseTo(0, 5)
-  })
-  it('handles 384-dim profile embeddings', () => {
-    const a = Array(384).fill(1)
-    const b = Array(384).fill(1)
-    expect(cosineSimilarity(a, b)).toBeCloseTo(1, 5)
-  })
-  it('returns 0 for zero vector', () => {
-    expect(cosineSimilarity([0, 0], [1, 1])).toBe(0)
-  })
-})
-```
-
 ---
 
 ## Task 4: Hybrid Search Implementation
@@ -512,25 +474,6 @@ Current retrieval uses only vector similarity. Need to combine with keyword/BM25
 
 7. **Add search result caching**
    - Cache combined scores with TTL
-
-### Testing Approach
-
-```typescript
-describe('HybridSearch', () => {
-  it('combines vector and keyword scores', async () => {
-    const result = await hybridSearch.search('React developer', { limit: 10 })
-    expect(result.scores).toHaveLength(10)
-    result.scores.forEach(s => {
-      expect(s.vectorScore).toBeDefined()
-      expect(s.keywordScore).toBeDefined()
-      expect(s.combinedScore).toBeGreaterThan(0)
-    })
-  })
-  it('falls back to vector-only when no keywords match', async () => {
-    // Test with gibberish query
-  })
-})
-```
 
 ---
 
@@ -601,20 +544,6 @@ AI mentor responses are currently non-streaming. Users need progressive display.
 
 6. **Add message buffering for smooth rendering**
 
-### Testing Approach
-
-```typescript
-describe('useAIStream', () => {
-  it('streams tokens as they arrive', async () => {
-    const { tokens, complete } = renderUseAIStream()
-    act(() => { tokens.emit('Hello') })
-    act(() => { tokens.emit(' World') })
-    act(() => { complete() })
-    expect(screen.getByText('Hello World')).toBeInTheDocument()
-  })
-})
-```
-
 ---
 
 ## Task 6: Session Summarization
@@ -668,20 +597,6 @@ Long conversations grow unbounded. Need summarization to compress history while 
    - Confirmation dialog before summarization
    - Undo capability (keep original messages for 24h)
 
-### Testing Approach
-
-```typescript
-describe('Summarizer', () => {
-  it('triggers when session exceeds 20 messages', () => {
-    const shouldSummarize = shouldTriggerSummarization(mockSession(21))
-    expect(shouldSummarize).toBe(true)
-  })
-  it('extracts key sentences from conversation', async () => {
-    const summary = await extractSummary(mockLongConversation())
-    expect(summary.length).toBeLessThan(500)
-  })
-})
-```
 ---
 
 ## ~~Task 7: [MISSING]~~
@@ -748,21 +663,6 @@ Initial retrieval returns candidates by approximate similarity. Cross-encoder re
 6. **Add caching for re-ranked results**
    - Profile changes invalidate cache
 
-### Testing Approach
-
-```typescript
-describe('CrossEncoderReranker', () => {
-  it('re-ranks candidates by precise similarity', async () => {
-    const candidates = [
-      { id: '1', vector: [...], score: 0.9 },
-      { id: '2', vector: [...], score: 0.85 }
-    ]
-    const reranked = await reranker.rerank(candidates, 'React developer')
-    expect(reranked[0].id).toBe('2') // Re-ranked order differs
-  })
-})
-```
-
 ---
 
 ## File Structure
@@ -800,25 +700,6 @@ lib/
 ├── actions/
 │   └── ai-mentor.ts                      # MODIFY
 ├── rate-limit.ts                          # MODIFY
-
-tests/
-├── unit/
-│   ├── rag/
-│   │   ├── context-fetcher.test.ts        # NEW
-│   │   ├── vector-retriever.test.ts      # NEW
-│   │   └── session-summarizer.test.ts     # NEW
-│   ├── ai/
-│   │   └── providers/
-│   │       └── minimax.test.ts          # NEW
-│   ├── services/
-│   │   ├── hybrid-search.test.ts         # NEW
-│   │   ├── bm25.test.ts                  # NEW
-│   │   └── cross-encoder.test.ts        # NEW
-│   ├── utils/
-│   │   └── vector-math.test.ts           # NEW
-└── integration/
-    └── rag/
-        └── full-rag-flow.test.ts         # NEW
 
 components/
 └── features/
@@ -922,10 +803,6 @@ out/
 .npm/
 .yarn/
 
-# Test coverage
-coverage/
-.nyc_output/
-
 # Logs
 *.log
 logs/
@@ -954,52 +831,6 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 
 
 ```
-
----
-
-## Testing Strategy
-
-### Test Pyramid
-
-```
-                         E2E Tests
-          ┌─────────────────────────────────────┐
-          │ Full RAG flow: message → context     │
-          │ fetch → LLM call → response          │
-          │ Graceful degradation when services fail│
-          └─────────────────────────────────────┘
-                         Integration Tests
-          ┌─────────────────────────────────────┐
-          │ context-assembler combines sources  │
-          │ Vector retriever handles empty results│
-          │ Session summarizer triggers at threshold│
-          │ Fallback chain works correctly      │
-          └─────────────────────────────────────┘
-                         Unit Tests
-          ┌─────────────────────────────────────┐
-          │ context-fetcher: maps profile       │
-          │ vector-retriever: embeddings        │
-          │ session-summarizer: JSON parse       │
-          │ prompt-builder: format context      │
-          │ vector-math: cosine similarity     │
-          │ bm25: ranking algorithm             │
-          │ cross-encoder: re-ranking           │
-          └─────────────────────────────────────┘
-```
-
-### Key Test Scenarios
-
-| Scenario | Test Type | Description |
-|----------|-----------|-------------|
-| User with full profile → context fully injected | E2E | Verify all context fields in prompt |
-| User with minimal profile → graceful fallback | Integration | Only skills present, no vector context |
-| Vector store unavailable → keyword search fallback | Integration | Force error in vector retrieval |
-| Session > 10 messages → automatic summarization | Integration | Verify summary in context |
-| LLM call fails → error handling | Integration | Verify graceful error message |
-| Provider fallback → MiniMax → OpenAI | Integration | Test circuit breaker tripping |
-| Rate limit exceeded → 429 response | Integration | Rapid fire requests |
-| Streaming token-by-token | E2E | Verify typewriter effect |
-
 ---
 
 ## Dependency Graph
