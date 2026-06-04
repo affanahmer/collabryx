@@ -54,7 +54,7 @@ export class OpenAICompatibleProvider implements AIProvider {
     return true
   }
 
-  async chat(messages: Message[], systemPrompt?: string): Promise<AIProviderResponse> {
+  async chat(messages: Message[], systemPrompt?: string, signal?: AbortSignal): Promise<AIProviderResponse> {
     // Build the message array once and cache it so retries only re-send the
     // network call, not re-construct the payload (which for OpenAI means re-
     // counting tokens and potentially triggering double billing on retries).
@@ -62,19 +62,28 @@ export class OpenAICompatibleProvider implements AIProvider {
     const body = this.buildRequestBody(allMessages, false)
 
     const response = await this.withRetry(async () => {
-      return this.makeRequestWithBody(body, false)
+      return this.makeRequestWithBody(body, false, signal)
     })
 
     return this.parseChatResponse(response)
   }
 
-  async *stream(messages: Message[], systemPrompt?: string): AsyncGenerator<string> {
+  async *stream(messages: Message[], systemPrompt?: string, signal?: AbortSignal): AsyncGenerator<string> {
     const allMessages = this.buildMessages(messages, systemPrompt)
 
     const controller = new AbortController()
     const timeoutId = setTimeout(() => {
       controller.abort()
     }, this.config.timeout)
+
+    // Link external abort signal to the internal controller
+    if (signal) {
+      if (signal.aborted) {
+        controller.abort()
+      } else {
+        signal.addEventListener('abort', () => controller.abort(), { once: true })
+      }
+    }
 
     try {
       const response = await fetch(`${this.baseURL}/chat/completions`, {
@@ -160,20 +169,32 @@ export class OpenAICompatibleProvider implements AIProvider {
 
   private async makeRequestWithBody(
     body: string,
-    streaming: false
+    streaming: false,
+    signal?: AbortSignal
   ): Promise<Record<string, unknown>>
 
   private async makeRequestWithBody(
     body: string,
-    streaming: true
+    streaming: true,
+    signal?: AbortSignal
   ): Promise<Response>
 
   private async makeRequestWithBody(
     body: string,
-    streaming: boolean
+    streaming: boolean,
+    signal?: AbortSignal
   ): Promise<Record<string, unknown> | Response> {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
+
+    // Link external abort signal to the internal controller
+    if (signal) {
+      if (signal.aborted) {
+        controller.abort()
+      } else {
+        signal.addEventListener('abort', () => controller.abort(), { once: true })
+      }
+    }
 
     try {
       const response = await fetch(`${this.baseURL}/chat/completions`, {

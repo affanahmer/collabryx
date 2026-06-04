@@ -45,9 +45,18 @@ export class AnthropicNativeProvider implements AIProvider {
     return true
   }
 
-  async chat(messages: Message[], systemPrompt?: string): Promise<AIProviderResponse> {
+  async chat(messages: Message[], systemPrompt?: string, signal?: AbortSignal): Promise<AIProviderResponse> {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
+
+    // Link external abort signal to the internal controller
+    if (signal) {
+      if (signal.aborted) {
+        controller.abort()
+      } else {
+        signal.addEventListener('abort', () => controller.abort(), { once: true })
+      }
+    }
 
     try {
       const body = this.buildRequestBody(messages, systemPrompt, false)
@@ -101,9 +110,18 @@ export class AnthropicNativeProvider implements AIProvider {
     }
   }
 
-  async *stream(messages: Message[], systemPrompt?: string): AsyncGenerator<string> {
+  async *stream(messages: Message[], systemPrompt?: string, signal?: AbortSignal): AsyncGenerator<string> {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
+
+    // Link external abort signal to the internal controller
+    if (signal) {
+      if (signal.aborted) {
+        controller.abort()
+      } else {
+        signal.addEventListener('abort', () => controller.abort(), { once: true })
+      }
+    }
 
     try {
       const body = this.buildRequestBody(messages, systemPrompt, true)

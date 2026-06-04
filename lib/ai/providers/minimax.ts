@@ -32,7 +32,7 @@ export class MiniMaxProvider implements AIProvider {
     }
   }
 
-  async chat(messages: Message[], systemPrompt?: string): Promise<AIProviderResponse> {
+  async chat(messages: Message[], systemPrompt?: string, signal?: AbortSignal): Promise<AIProviderResponse> {
     const allMessages: Message[] = []
 
     if (systemPrompt) {
@@ -44,6 +44,15 @@ export class MiniMaxProvider implements AIProvider {
     const response = await this.withRetry(async () => {
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
+
+      // Link external abort signal to the internal controller
+      if (signal) {
+        if (signal.aborted) {
+          controller.abort()
+        } else {
+          signal.addEventListener('abort', () => controller.abort(), { once: true })
+        }
+      }
 
       try {
         const res = await fetch(`${this.baseURL}/chat/completions`, {
@@ -127,7 +136,7 @@ export class MiniMaxProvider implements AIProvider {
     return true
   }
 
-  async *stream(messages: Message[], systemPrompt?: string): AsyncGenerator<string> {
+  async *stream(messages: Message[], systemPrompt?: string, signal?: AbortSignal): AsyncGenerator<string> {
     const allMessages: Message[] = []
 
     if (systemPrompt) {
@@ -138,6 +147,17 @@ export class MiniMaxProvider implements AIProvider {
 
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), this.config.timeout)
+
+    // Link external abort signal to the internal controller
+    if (signal) {
+      if (signal.aborted) {
+        controller.abort()
+      } else {
+        signal.addEventListener('abort', () => controller.abort(), { once: true })
+      }
+    }
+
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
 
     try {
       const res = await fetch(`${this.baseURL}/chat/completions`, {
@@ -181,7 +201,7 @@ export class MiniMaxProvider implements AIProvider {
         throw new MiniMaxAPIError('Response body is null')
       }
 
-      const reader = res.body.getReader()
+      reader = res.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
 
@@ -226,6 +246,7 @@ export class MiniMaxProvider implements AIProvider {
       }
     } finally {
       clearTimeout(timeoutId)
+      reader?.releaseLock()
     }
   }
 

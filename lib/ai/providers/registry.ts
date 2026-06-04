@@ -85,23 +85,23 @@ export class ProviderRegistry {
   }
 
   private async executeWithTimeout(
-    chatFn: (messages: Message[], systemPrompt?: string) => Promise<AIProviderResponse>,
+    chatFn: (messages: Message[], systemPrompt?: string, signal?: AbortSignal) => Promise<AIProviderResponse>,
     messages: Message[],
     systemPrompt?: string,
     timeoutMs?: number
   ): Promise<AIProviderResponse> {
     if (timeoutMs) {
       const controller = new AbortController()
-      const timeoutPromise = new Promise<AIProviderResponse>((_, reject) =>
-        setTimeout(() => {
-          controller.abort()
-          reject(new Error('Provider timeout'))
-        }, timeoutMs)
-      )
-      return Promise.race([
-        systemPrompt ? chatFn(messages, systemPrompt) : chatFn(messages),
-        timeoutPromise,
-      ])
+      const timeoutId = setTimeout(() => {
+        controller.abort()
+      }, timeoutMs)
+      try {
+        return await (systemPrompt
+          ? chatFn(messages, systemPrompt, controller.signal)
+          : chatFn(messages, undefined, controller.signal))
+      } finally {
+        clearTimeout(timeoutId)
+      }
     }
     return systemPrompt ? chatFn(messages, systemPrompt) : chatFn(messages)
   }
@@ -209,7 +209,7 @@ function registerLegacyProviders(registry: ProviderRegistry): void {
         apiKey: process.env.OPENROUTER_API_KEY,
         baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
         model: process.env.OPENROUTER_MODEL || 'deepseek/deepseek-v4-flash',
-        maxTokens: parseInt(process.env.OPENROUTER_MAX_TOKENS || '8192', 10),
+        maxTokens: parseInt(process.env.OPENROUTER_MAX_TOKENS || '16384', 10),
         temperature: parseFloat(process.env.OPENROUTER_TEMPERATURE || '0.7'),
         timeout: parseInt(process.env.OPENROUTER_TIMEOUT || '120000', 10),
         extraHeaders: openRouterHeaders,
@@ -243,7 +243,7 @@ function registerLegacyProviders(registry: ProviderRegistry): void {
         apiKey: process.env.OPENAI_API_KEY,
         baseURL: 'https://api.openai.com/v1',
         model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-        maxTokens: 4096,
+        maxTokens: parseInt(process.env.OPENAI_MAX_TOKENS || '8192', 10),
         temperature: 0.7,
         timeout: 60000,
       }),
@@ -257,7 +257,7 @@ function registerLegacyProviders(registry: ProviderRegistry): void {
     const provider = new AnthropicNativeProvider({
       apiKey: process.env.ANTHROPIC_API_KEY,
       model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514',
-      maxTokens: 4096,
+      maxTokens: parseInt(process.env.ANTHROPIC_MAX_TOKENS || '8192', 10),
       temperature: 0.7,
       timeout: 60000,
     })

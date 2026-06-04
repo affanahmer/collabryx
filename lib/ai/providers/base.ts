@@ -22,8 +22,8 @@ export interface AIProviderResponse {
 
 export interface AIProvider {
   readonly config: AIProviderConfig
-  chat(messages: Message[], systemPrompt?: string): Promise<AIProviderResponse>
-  stream?(messages: Message[], systemPrompt?: string): AsyncGenerator<string>
+  chat(messages: Message[], systemPrompt?: string, signal?: AbortSignal): Promise<AIProviderResponse>
+  stream?(messages: Message[], systemPrompt?: string, signal?: AbortSignal): AsyncGenerator<string>
   supportsStreaming(): boolean
 }
 
