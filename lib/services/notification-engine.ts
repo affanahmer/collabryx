@@ -144,15 +144,11 @@ export async function sendNotification(
     return { success: false, error: error?.message || "Failed to create notification" };
   }
 
-  // Broadcast for real-time delivery (best-effort)
+  // Broadcast for real-time delivery via HTTP (best-effort)
   try {
     const channel = supabase.channel(`notifications:user:${input.userId}`);
-    channel.subscribe((_status: string) => {
-      channel.send({
-        type: 'broadcast',
-        event: 'new_notification',
-        payload: { id: data.id },
-      });
+    channel.httpSend('new_notification', { id: data.id }).finally(() => {
+      channel.unsubscribe();
     });
   } catch {
     // Best-effort broadcast - notification already persisted to DB

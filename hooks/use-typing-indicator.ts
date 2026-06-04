@@ -93,20 +93,12 @@ export function useTypingIndicator(conversationId?: string, userId?: string): Us
 
         const supabase = createClient()
         const channel = supabase.channel(`typing:${convId}`)
-        channel.subscribe((_status: string) => {
-            channel.send({
-                type: "broadcast",
-                event: "typing",
-                payload: {
-                    conversation_id: convId,
-                    user_id: userId,
-                    is_typing: true
-                }
-            })
-            // Cleanup channel after send completes
-            setTimeout(() => {
-                supabase.removeChannel(channel)
-            }, 100)
+        channel.httpSend("typing", {
+            conversation_id: convId,
+            user_id: userId,
+            is_typing: true
+        }).finally(() => {
+            supabase.removeChannel(channel)
         })
     }, [userId])
 
@@ -114,20 +106,15 @@ export function useTypingIndicator(conversationId?: string, userId?: string): Us
     const clearTypingStatus = useCallback(() => {
         if (!conversationId || !userId) return
 
+        // Use the persistent channel from subscription (already subscribed)
         if (channelRef.current) {
-            channelRef.current.send({
-                type: "broadcast",
-                event: "typing",
-                payload: {
-                    conversation_id: conversationId,
-                    user_id: userId,
-                    is_typing: false
-                }
+            channelRef.current.httpSend("typing", {
+                conversation_id: conversationId,
+                user_id: userId,
+                is_typing: false
+            }).catch(() => {
+                // Silent catch - best effort broadcast
             })
-        }
-
-        if (debounceRef.current) {
-            clearTimeout(debounceRef.current)
         }
     }, [conversationId, userId])
 

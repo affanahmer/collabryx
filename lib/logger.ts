@@ -82,11 +82,40 @@ class Logger {
     if (this.shouldLog('error')) {
       const fullContext = {
         ...context,
-        error: error instanceof Error ? error.message : String(error),
+        error:
+          error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error !== null
+              ? safeStringify(error as Record<string, unknown>)
+              : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       }
       console.error(this.formatMessage('error', message, fullContext))
     }
+  }
+}
+
+/**
+ * Safely stringify an object without throwing on circular references,
+ * and without truncating important detail.
+ */
+function safeStringify(obj: Record<string, unknown>): string {
+  try {
+    return JSON.stringify(obj, (_key, value) => {
+      if (typeof value === 'object' && value !== null) {
+        // Extract common Supabase error fields as a concise string
+        const err = value as Record<string, unknown>
+        if (err.message || err.code || err.details || err.hint) {
+          return `{message:${err.message}, code:${err.code}, details:${err.details}, hint:${err.hint}}`
+        }
+        if (err.error_description) {
+          return err.error_description
+        }
+      }
+      return value
+    })
+  } catch {
+    return Object.prototype.toString.call(obj)
   }
 }
 

@@ -99,17 +99,14 @@ async function markAsReadMutation(conversationId: string): Promise<void> {
 
   if (markError) throw markError
 
-  // Broadcast read receipt on the same channel that postgres_changes uses
+  // Broadcast read receipt via HTTP (REST) - no need to wait for subscription
   const channel = supabase.channel(`messages:${conversationId}`)
-  channel.subscribe()
-  channel.send({
-    type: "broadcast",
-    event: "read_receipt",
-    payload: {
-      conversation_id: conversationId,
-      user_id: user.id,
-      read_at: new Date().toISOString(),
-    },
+  channel.httpSend("read_receipt", {
+    conversation_id: conversationId,
+    user_id: user.id,
+    read_at: new Date().toISOString(),
+  }).finally(() => {
+    channel.unsubscribe()
   })
 }
 

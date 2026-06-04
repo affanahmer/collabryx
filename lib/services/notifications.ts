@@ -107,7 +107,14 @@ export async function fetchNotifications(
 
     const { data: notifications, error } = await query
 
-    if (error) throw error
+    if (error) {
+      // Augment Supabase error with query context for better debugging
+      const enhanced = new Error(`[Supabase] ${error.message || "Query failed"}`)
+      ;(enhanced as unknown as Record<string, unknown>).code = error.code
+      ;(enhanced as unknown as Record<string, unknown>).details = error.details
+      ;(enhanced as unknown as Record<string, unknown>).hint = error.hint
+      throw enhanced
+    }
 
     const mappedNotifications: NotificationWithActor[] = (notifications || []).map((notif) => {
       const actor = notif.actor?.[0]
