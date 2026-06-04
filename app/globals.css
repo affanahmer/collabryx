@@ -1,7 +1,7 @@
 @import url('https://api.fontshare.com/v2/css?f[]=clash-display@400,500,600,700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
-
+@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -10,8 +10,8 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-space-black: #0A0A0F;
-  --font-sans: var(--font-inter), sans-serif;
-  --font-heading: "Clash Display", sans-serif;
+  --font-sans: var(--font-sans);
+  --font-heading: var(--font-sans);
   --font-metrics: var(--font-space-grotesk), sans-serif;
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -83,11 +83,17 @@
       transform: rotate(calc(var(--angle) * 1deg + 360deg)) translateY(calc(var(--radius) * 1px)) rotate(calc((var(--angle) * -1deg) - 360deg));
     }
   }
+
+  --radius-2xl: calc(var(--radius) * 1.8);
+
+  --radius-3xl: calc(var(--radius) * 2.2);
+
+  --radius-4xl: calc(var(--radius) * 2.6)
 }
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
+  --background: oklch(0.985 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
@@ -99,7 +105,7 @@
   --brand-foreground: oklch(1 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
+  --muted: oklch(0.96 0 0);
   --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
@@ -162,11 +168,13 @@
   * {
     border-color: var(--border);
     outline-color: color-mix(in oklch, var(--ring) 50%, transparent);
+    @apply border-border outline-ring/50;
   }
 
   body {
     background-color: var(--background);
     color: var(--foreground);
+    @apply bg-background text-foreground;
   }
 
   /* Typography - Tightened letter-spacing for headings */
@@ -179,6 +187,8 @@
     letter-spacing: 0;
     line-height: 1.5;
   }
+  html {
+    @apply font-sans;}
 }
 
 @layer utilities {
@@ -408,12 +418,12 @@
    glassDecorations entries for leftHighlight and ambientTint were left
    as empty strings, causing the signature Collabryx glow to disappear
    across all ~95 GlassCard instances in the app.
-   
+
    SOLUTION:
    This CSS utility system restores the full glass glow aesthetic using
    pure CSS pseudo-elements (::before, ::after) instead of requiring
    extra DOM nodes. Three tiered classes were created:
-   
+
    1. .glass-glow (Base):
       - Blue-tinted background with 24px blur and saturate(120%) for
         the signature frosted glass depth
@@ -427,18 +437,18 @@
         edge highlight via layered background gradients
       - Dark mode variant adjusts backgrounds and shadows for the
         #0A0A0F deep navy-black surface
-   
+
    2. .glass-glow-hover (Interactive):
       - Smooth 300ms cubic-bezier transition
       - On hover: lifts 2px, intensifies the background and border
         opacity, enhances the blue glow shadow for a "lit from within"
         interaction feedback
-   
+
    3. .glass-glow-strong (Emphasis):
       - Stronger border and amplified blue ambient glow for cards that
         need visual prominence (billing stats, analytics highlights)
       - 60px spread negative offset creates a wider, softer glow aura
-   
+
    WHY CSS PSEUDO-ELEMENTS INSTEAD OF DOM NODES:
    The original approach used three separate <div> elements inside
    GlassCard for decorations. This bloated the DOM and made the
