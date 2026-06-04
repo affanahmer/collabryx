@@ -48,9 +48,7 @@ class UserAnalyticsSeeder(BaseSeeder):
         # ---- Content metrics ----
         total_posts = max(0, int(activity * random.randint(1, 80)))
         total_comments = max(0, int(activity * random.randint(1, 200) * (1 + content_bias)))
-        total_reactions_given = max(0, int(activity * random.randint(1, 300) * (1 + social_bias)))
         total_reactions_received = max(0, int(total_posts * random.uniform(0.5, 3.0)))
-        total_post_saves = max(0, int(total_posts * random.uniform(0.1, 0.5)))
 
         # ---- Social metrics ----
         total_connections = max(0, int(activity * random.randint(1, 50)))
@@ -80,63 +78,88 @@ class UserAnalyticsSeeder(BaseSeeder):
         influence_score = min(100, influence_score)
         contribution_score = min(100, contribution_score)
 
-        # ---- Response metrics ----
-        if total_messages_sent > 0:
-            response_rate = round(min(1.0, random.uniform(0.3, 0.95)), 4)
+        # ---- Timestamps ----
+        last_active_at = now - timedelta(
+            hours=random.randint(0, 24 * 7),
+            minutes=random.randint(0, 59),
+        )
+
+        # ---- Match acceptance rate ----
+        if total_matches_received > 0:
+            match_acceptance_rate = round(
+                (total_matches_accepted / total_matches_received) * 100, 1
+            )
         else:
-            response_rate = 0.0
+            match_acceptance_rate = 0.0
+
+        # ---- Compute engagement & influence using the DB formulas ----
+        # Engagement = min(views/10, 1)*25 + min(matches_accepted/5, 1)*25
+        #              + min(connections/10, 1)*25 + min(reactions/20, 1)*25
+        computed_engagement = round(min(
+            min(total_profile_views / 10, 1) * 25
+            + min(total_matches_accepted / 5, 1) * 25
+            + min(total_connections / 10, 1) * 25
+            + min(total_reactions_received / 20, 1) * 25,
+            100
+        ))
+
+        # Influence = min(views/200, 1)*25 + min(connections/100, 1)*25
+        #             + min(posts/50, 1)*15 + min(reactions/200, 1)*15
+        #             + min(matches_accepted/20, 1)*20
+        computed_influence = round(min(
+            min(total_profile_views / 200, 1) * 25
+            + min(total_connections / 100, 1) * 25
+            + min(total_posts / 50, 1) * 15
+            + min(total_reactions_received / 200, 1) * 15
+            + min(total_matches_accepted / 20, 1) * 20,
+            100
+        ))
 
         # ---- Timestamps ----
         last_active_at = now - timedelta(
             hours=random.randint(0, 24 * 7),
             minutes=random.randint(0, 59),
         )
-        last_post_at = now - timedelta(days=random.randint(0, 14)) if total_posts > 0 else None
-        last_connection_at = now - timedelta(days=random.randint(0, 30)) if total_connections > 0 else None
 
-        # ---- Feature usage ----
-        features_used = []
-        if random.random() < 0.8:
-            features_used.append("ai_mentor")
-        if random.random() < 0.6:
-            features_used.append("matching")
-        if random.random() < 0.7:
-            features_used.append("collaboration")
-        if random.random() < 0.5:
-            features_used.append("project_showcase")
-
-        # ---- Build the row ----
+        # ---- Build the row using ACTUAL DB column names ----
         row = {
             "user_id": user_id,
-            "total_posts": total_posts,
-            "total_comments": total_comments,
-            "total_reactions_given": total_reactions_given,
-            "total_reactions_received": total_reactions_received,
-            "total_post_saves": total_post_saves,
-            "total_connections": total_connections,
-            "total_messages_sent": total_messages_sent,
-            "total_matches_received": total_matches_received,
-            "total_matches_accepted": total_matches_accepted,
-            "total_profile_views": total_profile_views,
-            "total_reports_filed": max(0, int(activity * random.randint(0, 5))),
-            "total_reports_received": max(0, int(activity * random.randint(0, 3))),
-            "daily_active_streak": daily_active_streak,
-            "weekly_active_days": weekly_active_days,
-            "active_days_last_7": active_days_last_7,
-            "active_days_last_30": active_days_last_30,
-            "avg_session_duration_minutes": avg_session_duration_minutes,
-            "total_session_time_last_7_days": total_session_time_last_7_days,
-            "sessions_last_7_days": sessions_last_7_days,
-            "engagement_score": engagement_score,
-            "influence_score": influence_score,
-            "contribution_score": contribution_score,
-            "response_rate": response_rate,
-            "onboarding_completed": random.random() < 0.85,
-            "profile_completeness_score": round(min(100, random.uniform(40, 100)), 2),
-            "features_used": features_used,
-            "last_active_at": last_active_at.isoformat(),
-            "last_post_at": last_post_at.isoformat() if last_post_at else None,
-            "last_connection_at": last_connection_at.isoformat() if last_connection_at else None,
+            # Profile views
+            "profile_views_count": total_profile_views,
+            "profile_views_last_7_days": active_days_last_7,
+            "profile_views_last_30_days": active_days_last_30,
+            # Post engagement
+            "post_impressions_count": max(0, int(total_posts * random.randint(10, 100))),
+            "post_reactions_received": total_reactions_received,
+            "post_comments_received": total_comments,
+            "posts_created_count": total_posts,
+            # Matching
+            "match_suggestions_count": total_matches_received,
+            "matches_accepted_count": total_matches_accepted,
+            "match_acceptance_rate": match_acceptance_rate,
+            "high_confidence_matches_count": max(0, int(total_matches_received * random.uniform(0.1, 0.4))),
+            # Connections
+            "connections_count": total_connections,
+            "connection_requests_sent": max(0, int(total_connections * random.uniform(1.0, 2.5))),
+            "connection_requests_received": max(0, int(total_connections * random.uniform(0.5, 1.5))),
+            "mutual_connections_avg": max(0, int(total_connections * random.uniform(0.1, 0.3))),
+            # Messaging
+            "messages_sent_count": total_messages_sent,
+            "messages_received_count": max(0, int(total_messages_sent * random.uniform(0.5, 1.5))),
+            "conversations_count": max(1, int(total_messages_sent / max(1, random.randint(3, 10)))),
+            "avg_response_time_minutes": round(random.uniform(5, 120) * max(0.3, 1 - activity), 2),
+            # AI
+            "ai_sessions_count": max(0, int(activity * random.randint(0, 20))),
+            "ai_messages_count": max(0, int(activity * random.randint(0, 100))),
+            # Session tracking
+            "sessions_count": sessions_last_7_days,
+            "total_time_spent_minutes": int(total_session_time_last_7_days),
+            # Scores (use computed values that match DB formula)
+            "engagement_score": computed_engagement,
+            "influence_score": computed_influence,
+            "activity_streak_days": daily_active_streak,
+            # Activity tracking
+            "last_active": last_active_at.isoformat(),
         }
 
         return row

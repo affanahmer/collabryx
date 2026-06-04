@@ -2,6 +2,12 @@
  * Analytics Service - Supabase queries for user analytics
  * 
  * Provides typed analytics data fetching for profile performance metrics
+ * 
+ * Architecture:
+ *   - fetchUserAnalytics(): Reads aggregated data from user_analytics table
+ *     (counters are maintained by database triggers in the analytics pipeline)
+ *   - fetchAnalyticsActivity(): Reads raw events for chart visualization
+ *   - Scores are computed both in-DB (triggers) and in-TS (fallback/export)
  */
 
 import { createClient } from "@/lib/supabase/client"
@@ -100,7 +106,22 @@ export async function fetchUserAnalytics(): Promise<{
       throw error
     }
 
-    return { data, error: null }
+    // Compute engagement & influence scores as TS fallback
+    // (primary computation happens in DB via analytics pipeline trigger,
+    //  this ensures scores are always current even if the trigger hasn't fired)
+    const computedEngagement = calculateEngagementScore(data)
+    const computedInfluence = calculateInfluenceScore(data)
+    
+    // Use the higher of DB-stored vs computed score to handle edge cases
+    // where the trigger might have missed an update
+    return {
+      data: {
+        ...data,
+        engagement_score: Math.max(data.engagement_score, computedEngagement),
+        influence_score: Math.max(data.influence_score, computedInfluence),
+      },
+      error: null,
+    }
   } catch (error) {
     logger.app.error("Failed to fetch user analytics", error)
     return { data: null, error: error instanceof Error ? error : new Error("Unknown error") }
@@ -188,6 +209,7 @@ function aggregateActivityByDay(
     if (dayData) {
       switch (event.event_type) {
         case "profile_view":
+        case "profile_viewed":
           dayData.profile_views += 1
           break
         case "match_accepted":
@@ -209,7 +231,13 @@ function aggregateActivityByDay(
 }
 
 /**
- * Calculate engagement score from analytics data
+ * Calculate engagement score from analytics data (0-100)
+ * 
+ * Formula (matches DB function calculate_engagement_score):
+ *   - Profile visibility (25%): views / 10 (capped at 1.0)
+ *   - Match activity (25%): accepted / 5 (capped at 1.0)
+ *   - Connection activity (25%): connections / 10 (capped at 1.0)
+ *   - Content engagement (25%): reactions / 20 (capped at 1.0)
  */
 export function calculateEngagementScore(analytics: UserAnalyticsData): number {
   let score = 0
@@ -226,7 +254,38 @@ export function calculateEngagementScore(analytics: UserAnalyticsData): number {
   // Content engagement (25%)
   score += Math.min(analytics.post_reactions_received / 20, 1) * 25
 
-  return Math.round(score)
+  return Math.round(Math.min(score, 100))
+}
+
+/**
+ * Calculate influence score from analytics data (0-100)
+ * 
+ * Formula (matches DB function calculate_influence_score):
+ *   - Visibility (25%): profile views / 200 (capped at 1.0)
+ *   - Network size (25%): connections / 100 (capped at 1.0)
+ *   - Content creation (15%): posts created / 50 (capped at 1.0)
+ *   - Content impact (15%): reactions received / 200 (capped at 1.0)
+ *   - Match success (20%): matches accepted / 20 (capped at 1.0)
+ */
+export function calculateInfluenceScore(analytics: UserAnalyticsData): number {
+  let score = 0
+
+  // Visibility (25%)
+  score += Math.min(analytics.profile_views_count / 200, 1) * 25
+
+  // Network size (25%)
+  score += Math.min(analytics.connections_count / 100, 1) * 25
+
+  // Content creation (15%)
+  score += Math.min(analytics.posts_created_count / 50, 1) * 15
+
+  // Content impact (15%)
+  score += Math.min(analytics.post_reactions_received / 200, 1) * 15
+
+  // Match success (20%)
+  score += Math.min(analytics.matches_accepted_count / 20, 1) * 20
+
+  return Math.round(Math.min(score, 100))
 }
 
 /**

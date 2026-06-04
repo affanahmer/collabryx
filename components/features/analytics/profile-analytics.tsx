@@ -58,8 +58,8 @@ function MetricCard({
         </div>
         <div className="text-2xl font-bold">{value}</div>
         {description && (
-          <p className="text-xs text-muted-foreground">
-            {description}
+          <div className="text-xs text-muted-foreground">
+            <span>{description}</span>
             {trend && (
               <span
                 className={`ml-2 ${
@@ -73,7 +73,7 @@ function MetricCard({
                 {trend === "up" ? "↑" : trend === "down" ? "↓" : "→"}
               </span>
             )}
-          </p>
+          </div>
         )}
       </div>
     </GlassCard>
