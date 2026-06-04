@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Search, Users, FileText, Tag, Heart, Loader2, CornerDownLeft, Sparkles, ShieldAlert, ArrowRight } from "lucide-react"
+import { Search, Users, Tag, Heart, Loader2, CornerDownLeft, Sparkles, ShieldAlert, ArrowRight } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Popover,

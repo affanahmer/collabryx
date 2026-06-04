@@ -55,12 +55,6 @@ export function PullToRefresh({
     const isPulling = useRef(false)
     const currentPointerId = useRef<number | null>(null)
 
-    const getClientY = (e: React.TouchEvent | React.MouseEvent | MouseEvent | TouchEvent): number => {
-        if ('touches' in e && e.touches.length > 0) return e.touches[0].clientY
-        if ('clientY' in e) return e.clientY
-        return 0
-    }
-
     const beginPull = useCallback(
         (clientY: number) => {
             if (refreshing) return
@@ -148,7 +142,7 @@ export function PullToRefresh({
     )
 
     const onTouchEnd = useCallback(
-        (e: React.TouchEvent) => {
+        (_e: React.TouchEvent) => {
             if (currentPointerId.current === null) return
             currentPointerId.current = null
             endPull()

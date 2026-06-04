@@ -9,7 +9,6 @@
 import { useState } from "react"
 import { ProfileAnalytics } from "@/components/features/analytics/profile-analytics"
 import { AnalyticsChart } from "@/components/features/analytics/analytics-chart"
-import { SessionHeartbeat } from "@/components/features/analytics/session-heartbeat"
 import { useAnalyticsDashboard, useExportAnalytics } from "@/hooks/use-analytics"
 import { Button } from "@/components/ui/button"
 import { GlassCard } from "@/components/shared/glass-card"

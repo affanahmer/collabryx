@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { GlassCard } from "@/components/shared/glass-card"
 import { Button } from "@/components/ui/button"
-import { Bookmark, MessageCircle, Heart, Share2, ExternalLink, Filter, Loader2, Trash2 } from "lucide-react"
+import { Bookmark, MessageCircle, Heart, Share2, ExternalLink, Filter, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"

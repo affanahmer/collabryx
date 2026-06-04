@@ -214,6 +214,7 @@ export function Feed() {
     useEffect(() => {
         if (posts.length === 0) return
         fetchBookmarkStatus(posts)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- posts excluded to avoid infinite loop (fetchBookmarkStatus updates posts)
     }, [posts.length, fetchBookmarkStatus])
 
     // â”€â”€ Ecosystem States â”€â”€
@@ -374,7 +375,7 @@ export function Feed() {
         } finally {
             setIsInitialLoading(false)
         }
-    }, [mapPostToUI, hasEmbedding])
+    }, [mapPostToUI, hasEmbedding, fetchBookmarkStatus])
 
     /** Show a collaborate toast when reacting to someone else's post */
     const showCollaborateToast = useCallback((post: PostUI) => {

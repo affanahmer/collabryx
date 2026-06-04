@@ -5,7 +5,7 @@
  * Follows 4-point grid, standardized typography, and brand colors
  */
 
-import { Bell, Heart, MessageSquare, UserPlus, Users, Star, TrendingUp, Award, AtSign, ThumbsUp, BellRing } from "lucide-react"
+import { Bell, Heart, MessageSquare, UserPlus, Star, TrendingUp, Award, AtSign } from "lucide-react"
 
 /**
  * Spacing system (4-point grid)
