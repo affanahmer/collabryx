@@ -28,7 +28,7 @@ import {
 } from "@/hooks/use-notifications"
 import { useConnectionRequests } from "@/hooks/use-connections"
 import { toast } from "sonner"
-import type { Notification } from "@/types/database.types"
+import type { NotificationWithActor } from "@/lib/services/notifications"
 
 interface DisplayNotification {
   id: string
@@ -40,6 +40,8 @@ interface DisplayNotification {
   resourceType?: 'post' | 'profile' | 'conversation' | 'match' | 'comment'
   resourceId?: string
   connectionId?: string
+  postTitle?: string
+  postContent?: string
 }
 
 function formatTimeAgo(dateString: string): string {
@@ -106,6 +108,16 @@ function NotificationListItem({
           </span>
         </div>
 
+        {/* Post preview for comment/like notifications */}
+        {notification.postContent && (notification.type === "comment" || notification.type === "like") && (
+          <div className="mt-1.5 pl-3 border-l-2 border-muted-foreground/20">
+            <p className="text-xs text-muted-foreground/70 line-clamp-2 italic">
+              {notification.postContent?.slice(0, 120)}
+              {(notification.postContent?.length || 0) > 120 ? '...' : ''}
+            </p>
+          </div>
+        )}
+
         {/* Action Buttons for Connection Requests */}
         {notification.type === "connect" && (
           <div className="flex gap-2 mt-3">
@@ -168,7 +180,7 @@ export default function NotificationsPage() {
 
   // Transform database notifications to display format
   const displayNotifications: DisplayNotification[] = useMemo(() => {
-    return notifications.map((notif: Notification) => ({
+    return notifications.map((notif: NotificationWithActor) => ({
       id: notif.id,
       type: notif.type as NotificationType,
       actor: {
@@ -181,6 +193,8 @@ export default function NotificationsPage() {
       resourceType: notif.resource_type,
       resourceId: notif.resource_id,
       connectionId: notif.type === 'connect' ? notif.resource_id : undefined,
+      postTitle: notif.post?.title,
+      postContent: notif.post?.content,
     }))
   }, [notifications])
 

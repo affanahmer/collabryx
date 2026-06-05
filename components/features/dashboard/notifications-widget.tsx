@@ -109,6 +109,16 @@ function NotificationItem({
             </span>
           </div>
 
+          {/* Post preview for comment/like notifications */}
+          {notification.post?.content && (notification.type === "comment" || notification.type === "like") && (
+            <div className="mt-1 pl-3 border-l-2 border-muted-foreground/20">
+              <p className="text-xs text-muted-foreground/70 line-clamp-2 italic">
+                {notification.post.content.slice(0, 120)}
+                {notification.post.content.length > 120 ? '...' : ''}
+              </p>
+            </div>
+          )}
+
           {/* Action Buttons for Connection Requests */}
           {notification.type === "connect" && (
             <div className="flex gap-2 mt-3">

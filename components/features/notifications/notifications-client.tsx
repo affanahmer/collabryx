@@ -25,6 +25,8 @@ interface DisplayNotification {
     time: string
     read: boolean
     connectionId?: string
+    postTitle?: string
+    postContent?: string
 }
 
 interface NotificationsClientProps {
@@ -58,6 +60,8 @@ export function NotificationsClient({ initialNotifications }: NotificationsClien
                 time: n.time_ago,
                 read: n.is_read,
                 connectionId: n.type === 'connect' ? n.resource_id : undefined,
+                postTitle: n.post?.title,
+                postContent: n.post?.content,
             }))
         }
         return (initialNotifications || []) as DisplayNotification[]
@@ -153,6 +157,16 @@ export function NotificationsClient({ initialNotifications }: NotificationsClien
                                     </p>
                                     <span className="text-xs text-muted-foreground whitespace-nowrap">{n.time}</span>
                                 </div>
+
+                                {/* Post preview for comment/like notifications */}
+                                {n.postContent && (n.type === "comment" || n.type === "like") && (
+                                    <div className="mt-1 pl-3 border-l-2 border-muted-foreground/20">
+                                        <p className="text-xs text-muted-foreground/70 line-clamp-2 italic">
+                                            {n.postContent.slice(0, 120)}
+                                            {n.postContent.length > 120 ? '...' : ''}
+                                        </p>
+                                    </div>
+                                )}
 
                                 {n.type === "connect" && (
                                     <div className="flex flex-col sm:flex-row gap-2 mt-3">

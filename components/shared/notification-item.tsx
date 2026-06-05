@@ -145,6 +145,13 @@ export function NotificationItem({ notification }: NotificationItemProps) {
         <p className="text-base font-normal leading-tight tracking-tight text-foreground">
           {notification.content}
         </p>
+        {/* Post preview for comment/like notifications */}
+        {(notification.type === "comment" || notification.type === "like") && notification.post?.content && (
+          <p className="text-xs text-muted-foreground/70 mt-1 pl-2 border-l-2 border-muted-foreground/20 line-clamp-1 italic">
+            {notification.post.content.slice(0, 80)}
+            {notification.post.content.length > 80 ? '...' : ''}
+          </p>
+        )}
         <p className="text-xs text-muted-foreground mt-1 leading-tight">
           {notification.time_ago}
         </p>

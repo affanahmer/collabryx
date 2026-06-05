@@ -35,6 +35,13 @@ export interface NotificationWithActor extends Notification {
   actor_name?: string
   actor_avatar?: string
   time_ago: string
+  /** Post data for post-related notifications */
+  post?: {
+    id: string
+    title?: string
+    content?: string
+    author_id?: string
+  } | null
 }
 
 export interface FetchNotificationsOptions {
@@ -82,6 +89,8 @@ export async function fetchNotifications(
         user_id,
         type,
         actor_id,
+        actor_name,
+        actor_avatar,
         content,
         resource_type,
         resource_id,
@@ -116,15 +125,37 @@ export async function fetchNotifications(
       throw enhanced
     }
 
+    // Batch-fetch post data for post-related notifications
+    const postIds = (notifications || [])
+      .filter((n) => n.resource_type === 'post' && n.resource_id)
+      .map((n) => n.resource_id!)
+    
+    let postsMap = new Map<string, { id: string; title: string; content: string }>()
+    if (postIds.length > 0) {
+      const { data: posts } = await supabase
+        .from('posts')
+        .select('id, title, content')
+        .in('id', postIds)
+      if (posts) {
+        for (const p of posts) {
+          postsMap.set(p.id, p)
+        }
+      }
+    }
+
     const mappedNotifications: NotificationWithActor[] = (notifications || []).map((notif) => {
       const actor = notif.actor?.[0]
+      const postData = notif.resource_type === 'post' && notif.resource_id
+        ? postsMap.get(notif.resource_id)
+        : undefined
+      
       return {
         id: notif.id,
         user_id: notif.user_id,
         type: notif.type,
         actor_id: notif.actor_id,
-        actor_name: actor?.display_name || actor?.full_name,
-        actor_avatar: actor?.avatar_url,
+        actor_name: actor?.display_name || actor?.full_name || notif.actor_name,
+        actor_avatar: actor?.avatar_url || notif.actor_avatar,
         content: notif.content,
         resource_type: notif.resource_type,
         resource_id: notif.resource_id,
@@ -132,6 +163,11 @@ export async function fetchNotifications(
         is_actioned: notif.is_actioned,
         created_at: notif.created_at,
         time_ago: formatTimeAgo(notif.created_at),
+        post: postData ? {
+          id: postData.id,
+          title: postData.title,
+          content: postData.content,
+        } : null,
       }
     })
 

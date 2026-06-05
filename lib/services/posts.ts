@@ -407,8 +407,7 @@ export async function fetchPersonalizedFeed(options: PostsQueryOptions = {}): Pr
         duration: queryDuration,
       })
     } else {
-      logger.api.error("Personalized feed computation failed (non-Error) — falling back to chronological", {
-        rawError: String(error),
+      logger.api.error("Personalized feed computation failed — falling back to chronological", error, {
         queryCount,
         duration: queryDuration,
       })
