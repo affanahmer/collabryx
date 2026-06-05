@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
-import { Inter, Space_Grotesk, Noto_Sans } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { SmoothScrollProvider } from "@/components/providers/smooth-scroll-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { validateEnv } from "@/lib/validate-env";
 import { cn } from "@/lib/utils";
-
-const notoSans = Noto_Sans({subsets:['latin'],variable:'--font-sans'});
 
 const inter = Inter({
   variable: "--font-inter",
@@ -98,13 +95,15 @@ export default function RootLayout({
   validateEnvOnce()
   
   return (
-    <html lang="en" suppressHydrationWarning className={cn("font-sans", notoSans.variable)}>
+    <html lang="en" suppressHydrationWarning>
+        <head>
+          <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="anonymous" />
+        </head>
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}
         suppressHydrationWarning
       >
-          <SmoothScrollProvider>
-            <QueryProvider>
+          <QueryProvider>
               <ThemeProvider
                 attribute="class"
                 defaultTheme="system"
@@ -121,7 +120,7 @@ export default function RootLayout({
                 <Toaster richColors position="top-right" />
               </ThemeProvider>
             </QueryProvider>
-          </SmoothScrollProvider>
+
       </body>
     </html>
   );

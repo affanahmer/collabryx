@@ -108,70 +108,60 @@ export async function proxy(request: NextRequest) {
     }
 
     // ===========================================
-    // EMAIL VERIFICATION + ONBOARDING GATES
-    // Tier 2: getUser() makes a network call — only call when we
-    // need actual user data (email, profile checks). Avoid at all
-    // costs for simple auth guards.
-    //
-    // NOTE: `user` is hoisted to function scope (let) so it's available
-    // for the public-auth-route redirect below (/login, /register).
-    // Those routes aren't in protectedRoutes, so isAuthRoute=false for them
-    // and the getUser() call here wouldn't fire without this guard.
+    // TIER 2 — Conditional network calls for routes that need real user data
+    // getUser() is a network call — only fire on routes that actually need it.
+    // Simple auth guarding already happened via Tier 1 (JWT claims).
     // ===========================================
     let user: import("@supabase/supabase-js").User | null = null
 
-    if (isAuthenticated) {
+    if (isAuthenticated && isAuthRoute) {
         const { data: { user: userData } } = await supabase.auth.getUser()
         user = userData
 
-        if (isAuthRoute) {
-            // Email verification gate
-            const skipEmailVerification = process.env.SKIP_EMAIL_VERIFICATION === "true"
-            const emailNotConfirmed = user && !user.email_confirmed_at
+        // Email verification gate
+        const skipEmailVerification = process.env.SKIP_EMAIL_VERIFICATION === "true"
+        const emailNotConfirmed = user && !user.email_confirmed_at
 
-            if (!skipEmailVerification && emailNotConfirmed) {
-                if (!request.nextUrl.pathname.startsWith("/verify-email") && !request.nextUrl.pathname.startsWith("/auth-sync")) {
-                    const url = request.nextUrl.clone()
-                    url.pathname = "/verify-email"
-                    const redirectResponse = NextResponse.redirect(url)
-                    supabaseResponse.cookies.getAll().forEach(cookie => {
-                        redirectResponse.cookies.set(cookie.name, cookie.value)
-                    })
-                    return redirectResponse
-                }
+        if (!skipEmailVerification && emailNotConfirmed) {
+            if (!request.nextUrl.pathname.startsWith("/verify-email") && !request.nextUrl.pathname.startsWith("/auth-sync")) {
+                const url = request.nextUrl.clone()
+                url.pathname = "/verify-email"
+                const redirectResponse = NextResponse.redirect(url)
+                supabaseResponse.cookies.getAll().forEach(cookie => {
+                    redirectResponse.cookies.set(cookie.name, cookie.value)
+                })
+                return redirectResponse
             }
+        }
 
-            // Onboarding check (dev mode only — auth-sync handles production)
-            if (user && !request.nextUrl.pathname.startsWith("/onboarding") && !request.nextUrl.pathname.startsWith("/auth-sync") && isDevMode()) {
-                const { data: profile } = await supabase
-                    .from("profiles")
-                    .select("onboarding_completed")
-                    .eq("id", user.id)
-                    .single()
+        // Onboarding check (dev mode only — auth-sync handles production)
+        if (user && !request.nextUrl.pathname.startsWith("/onboarding") && !request.nextUrl.pathname.startsWith("/auth-sync") && isDevMode()) {
+            const { data: profile } = await supabase
+                .from("profiles")
+                .select("onboarding_completed")
+                .eq("id", user.id)
+                .single()
 
-                if (!profile || profile.onboarding_completed !== true) {
-                    const url = request.nextUrl.clone()
-                    url.pathname = "/onboarding"
-                    const redirectResponse = NextResponse.redirect(url)
-                    supabaseResponse.cookies.getAll().forEach(cookie => {
-                        redirectResponse.cookies.set(cookie.name, cookie.value)
-                    })
-                    return redirectResponse
-                }
+            if (!profile || profile.onboarding_completed !== true) {
+                const url = request.nextUrl.clone()
+                url.pathname = "/onboarding"
+                const redirectResponse = NextResponse.redirect(url)
+                supabaseResponse.cookies.getAll().forEach(cookie => {
+                    redirectResponse.cookies.set(cookie.name, cookie.value)
+                })
+                return redirectResponse
             }
         }
     }
 
     // Redirect authenticated users away from login/register to auth-sync
-    // auth-sync is the single entry point that handles routing to:
-    //   - onboarding (if profile not completed)
-    //   - verify-email (if email not confirmed and SKIP_EMAIL_VERIFICATION is false)
-    //   - dashboard (if everything is complete)
+    // Only fires when isAuthenticated (JWT) is true — getUser() above handles the route guard
     const isPublicAuthRoute =
         request.nextUrl.pathname === "/login" ||
         request.nextUrl.pathname === "/register"
 
-    if (user && isPublicAuthRoute) {
+    if (isAuthenticated && isPublicAuthRoute) {
+        // Use JWT claims sub as user ID — avoids an extra getUser() call
         const url = request.nextUrl.clone()
         url.pathname = "/auth-sync"
         const redirectResponse = NextResponse.redirect(url)
