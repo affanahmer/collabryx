@@ -49,6 +49,7 @@ gcTime: 10 * 60 * 1000,   // 10 minutes
 // hooks/use-matches-query.ts
 staleTime: 5 * 60 * 1000, // 5 minutes
 gcTime: 15 * 60 * 1000,   // 15 minutes
+// Values are configured per-query in the respective hooks.
 ```
 
 ### Best Practices
@@ -200,7 +201,7 @@ HNSW index configured for fast similarity search:
 CREATE INDEX profile_embeddings_idx 
 ON profile_embeddings 
 USING hnsw (embedding vector_cosine_ops)
-WITH (m = 16, ef_construction = 64);
+WITH (m = 32, ef_construction = 128);
 ```
 
 ---
@@ -273,5 +274,5 @@ Set limits to prevent regressions:
 
 ---
 
-**Last Updated:** 2026-06-02
+**Last Updated:** 2026-06-05
 **Status:** ✅ Implemented

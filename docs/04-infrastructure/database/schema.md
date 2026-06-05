@@ -2,10 +2,9 @@
 
 Complete reference for Collabryx database schema.
 
-**Version:** 4.2.0 (Self-Contained)  
-**Last Updated:** 2026-06-03  
-**Total Tables:** 29 (master) + 2 (migrations) = 31  
-**Note:** Analytics and content moderation tables have been removed from the master schema. See [master file](https://github.com/your-org/collabryx/blob/main/supabase/setup/99-master-all-tables.sql) for authoritative list.
+**Version:** 4.3.0 (Self-Contained)  
+**Last Updated:** 2026-06-05  
+**Total Tables:** 39
 
 ---
 
@@ -26,10 +25,10 @@ Complete reference for Collabryx database schema.
 ## Overview
 
 **Database:** PostgreSQL (Supabase)  
-**Total Tables:** 31 (29 in master + 2 migration-added)  
+**Total Tables:** 39
 **Extensions:** pgvector  
 **Master File:** `supabase/setup/99-master-all-tables.sql` (run this file only)  
-**Version:** 4.2.0 (Self-contained, no external dependencies)
+**Version:** 4.3.0 (Self-contained, no external dependencies)
 
 ### What's New in v4.1.0
 
@@ -40,7 +39,7 @@ Complete reference for Collabryx database schema.
 
 ---
 
-## User Management (5 Tables)
+## User Management (6 Tables)
 
 ### profiles
 Primary user profile table with collaboration readiness and verification.
@@ -66,6 +65,11 @@ Work experience history.
 User portfolio projects.
 
 **Key columns:** id, user_id, title, description, url, image_url, tech_stack, is_public
+
+### search_blocklist
+Blocked search terms.
+
+**Key columns:** word (text, PK)
 
 ---
 
@@ -213,9 +217,33 @@ Queue for pending embedding requests from onboarding.
 
 ---
 
+## Analytics & Moderation (5 Tables)
+
+### events
+Generic event bus for trigger-based processing.
+
+**Key columns:** id, user_id, event_type, properties (JSONB), created_at
+
+### user_analytics
+Per-user analytics with engagement and influence scoring.
+
+**Key columns:** user_id (PK, not uuid id), profile_views_count, profile_views_last_7_days, profile_views_last_30_days, post_impressions_count, post_reactions_received, post_comments_received, posts_created_count, match_suggestions_count, matches_accepted_count, match_acceptance_rate, high_confidence_matches_count, connections_count, connection_requests_sent, connection_requests_received, mutual_connections_avg, messages_sent_count, messages_received_count, conversations_count, avg_response_time_minutes, ai_sessions_count, ai_messages_count, sessions_count, total_time_spent_minutes, last_active (timestamptz), last_active_ip (inet), engagement_score, influence_score, activity_streak_days, created_at, updated_at, last_calculated_at
+
+### platform_analytics
+Platform-wide daily snapshots.
+
+**Key columns:** date (PK date), dau, mau, wau, new_users, deleted_users, active_users_change, new_posts, total_posts, posts_with_media, avg_post_length, new_matches, total_matches, avg_match_score, high_confidence_matches, new_connections, total_connections, connection_acceptance_rate, pending_requests, new_messages, total_messages, new_conversations, avg_messages_per_conversation, total_profile_views, total_post_reactions, total_comments, avg_session_duration_minutes, ai_sessions_count, ai_messages_count, avg_session_length, content_flagged, content_approved, content_rejected, avg_moderation_time_seconds, api_requests_count, avg_api_latency_ms, error_count, error_rate, embeddings_generated, embeddings_pending, embeddings_failed, avg_embedding_time_ms, created_at, updated_at
+
+### content_moderation_logs
+Full moderation audit trail.
+
+**Key columns:** id (uuid PK), content_type, content_id (uuid), user_id (uuid), action, risk_score, toxicity_score, spam_score, nsfw_score, pii_detected (boolean), details (JSONB), moderated_at
+
+---
+
 ## Row Level Security
 
-All 19 tables have RLS enabled with policies for:
+All 39 tables have RLS enabled with policies for:
 - Users can view their own data
 - Users can update their own data
 - Public read access where appropriate
@@ -267,7 +295,9 @@ All 19 tables have RLS enabled with policies for:
 
 ---
 
-### Indexes (103 Total)
+### Indexes (103+ Total)
+
+**Note:** Additional indexes exist on the analytics, moderation, and event tables added in v4.3.0.
 
 **New Composite Indexes in v4.1.0:**
 - `idx_comments_post_parent` - ON comments(post_id, parent_id) - Optimizes threaded comment queries
@@ -295,10 +325,13 @@ All 19 tables have RLS enabled with policies for:
 **Optimistic Locking Triggers (v4.1.0):**
 - `posts_increment_version` - Auto-increments version on post updates
 
+**Analytics & Moderation Triggers (v4.3.0):**
+- Events, user_analytics, platform_analytics, and content_moderation_logs have associated triggers for data capture, scoring calculation, and audit logging.
+
 ---
 
 **Last Updated**: 2026-06-05  
-**Version**: 4.2.0  
+**Version**: 4.3.0  
 **Source**: [supabase/setup/99-master-all-tables.sql](../../../supabase/setup/99-master-all-tables.sql)
 
 [← Back to Docs](../README.md)

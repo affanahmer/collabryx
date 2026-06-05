@@ -17,7 +17,7 @@ Comprehensive security implementation across Collabryx platform.
 
 ## Security Layers
 
-Collabryx implements **5 layers of security**:
+Collabryx implements **6 layers of security**:
 
 | Layer | Protection | Location |
 |-------|------------|----------|
@@ -25,7 +25,8 @@ Collabryx implements **5 layers of security**:
 | **2. CSRF Protection** | Cross-site request forgery prevention | `lib/csrf.ts` |
 | **3. Rate Limiting** | Request throttling | Middleware |
 | **4. Input Validation** | Zod schemas + sanitization | `lib/validations/`, `lib/utils/sanitize.ts` |
-| **5. Database Security** | Row Level Security (RLS) | Supabase policies |
+| **5. Session Management** | Auth state sync, session expiry warning | `proxy.ts`, `app/(public)/auth-sync/` |
+| **6. Database Security** | Row Level Security (RLS) | Supabase policies |
 
 ---
 
@@ -222,9 +223,12 @@ CREATE POLICY "Users can update own profile"
 | Table | Select | Insert | Update | Delete |
 |-------|--------|--------|--------|--------|
 | `profiles` | Authenticated users | Users (own) | Users (own) | ❌ |
-| `posts` | Authenticated | Connected users | Post author | Post author |
+| `posts` | Authenticated | Post author | Post author | Post author |
 | `messages` | Conversation participants | Conversation participants | ❌ | ❌ |
-| `connections` | Authenticated | Authenticated | ❌ | Connection participants |
+| `connections` | Authenticated | Authenticated | Participants | Participants |
+| `notifications` | Recipient only | System | Recipient | Recipient |
+| `profile_embeddings` | Owner only | System | System | ❌ |
+| `audit_logs` | Admins | System | ❌ | ❌ |
 
 ### Service Role Key Protection
 
@@ -370,6 +374,8 @@ headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 - [Next.js Security Best Practices](https://nextjs.org/docs/pages/building-your-application/authentication)
 
 ---
+
+**Last Updated:** 2026-06-05
 
 **Security First!** 🛡️
 

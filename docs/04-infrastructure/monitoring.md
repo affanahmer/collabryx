@@ -250,6 +250,8 @@ The DLQ table (`embedding_dead_letter_queue`) stores failed embeddings for retry
 - Average retry count across all items
 - Age of oldest unprocessed item
 
+> See `diagrams/data-flow-pipelines.md` for the DLQ flow diagram
+
 ---
 
 ## Database Monitoring
@@ -270,6 +272,7 @@ Supabase manages connection pooling automatically. Monitor:
 - **Active connections** — should be < 80% of pool limit
 - **Idle in transaction** — queries left open can exhaust the pool
 - **Connection errors** — "too many clients" errors indicate pool saturation
+- Monitor `search_blocklist` table growth if search abuse is suspected
 
 ### Slow Query Identification
 
@@ -578,6 +581,7 @@ FROM pg_statio_user_tables;
 - [ ] Uptime monitor configured for all services
 - [ ] Log aggregation service connected
 - [ ] Performance budgets documented and shared
+- [ ] `search_blocklist` table populated with prohibited terms
 
 ### Ongoing
 

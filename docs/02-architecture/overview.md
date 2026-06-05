@@ -69,6 +69,7 @@ collabryx/
 │   │   └── auth-sync/       # Auth callback sync
 │   │
 │   ├── api/                 # API routes (20+ endpoints)
+│   │   ├── activity/        # Activity tracking
 │   │   ├── ai/chat/         # AI chat + streaming
 │   │   ├── ai-mentor/       # AI mentor messaging
 │   │   ├── analytics/       # Daily analytics
@@ -78,7 +79,9 @@ collabryx/
 │   │   ├── feed/            # Feed scoring
 │   │   ├── health/          # Health check
 │   │   ├── matches/         # Generate + batch + health
+│   │   ├── moderate/        # Content moderation
 │   │   ├── notifications/   # Cleanup + digest + send
+│   │   ├── search/          # Global search
 │   │   └── upload/          # File upload
 │   │
 │   ├── globals.css          # Global styles and Tailwind v4
@@ -88,7 +91,7 @@ collabryx/
 │   └── not-found.tsx        # 404 page
 │
 ├── components/               # React components
-│   ├── features/            # Feature-specific (14 domains)
+│   ├── features/            # Feature-specific (17 domains)
 │   │   ├── ai-mentor/       # AI mentor streaming
 │   │   ├── analytics/       # Analytics charts
 │   │   ├── assistant/       # AI assistant (chat-input, chat-list, message-bubble)
@@ -124,13 +127,16 @@ collabryx/
 │       ├── query-provider.tsx
 │       └── smooth-scroll-provider.tsx
 │
-├── hooks/                   # Custom React hooks (~20)
+├── hooks/                   # Custom React hooks (28)
 │   ├── use-auth.ts
 │   ├── use-messages.ts
 │   ├── use-matches-query.ts
 │   ├── use-feed.ts
 │   ├── use-connections.ts
-│   └── ... (~20 total)
+│   ├── use-settings.ts
+│   ├── use-posts.ts
+│   ├── use-analytics.ts
+│   └── ... (28 total)
 │
 ├── lib/                     # Library code
 │   ├── actions/             # Server Actions (10)
@@ -702,6 +708,18 @@ export async function updateSession(request: NextRequest) {
 - User conversations
 - Context history
 
+#### `analytics`
+- `user_analytics` - per-user engagement tracking
+- `platform_analytics` - aggregate platform metrics
+
+#### `content_moderation`
+- `content_moderation_logs` - audit trail for flagged content
+- Automated and manual moderation actions
+
+#### `search_blocklist`
+- Prohibited search terms
+- System-managed table (admin-only writes)
+
 ### Row Level Security (RLS)
 
 All tables have RLS policies:
@@ -716,6 +734,11 @@ USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile"
 ON users FOR UPDATE
 USING (auth.uid() = id);
+
+-- Search blocklist is system-managed
+CREATE POLICY "System manages blocklist"
+ON search_blocklist FOR ALL
+USING (is_admin(auth.uid()));
 ```
 
 ---
@@ -811,5 +834,7 @@ export async function createProject(formData: FormData) {
 - [React Query Guides](https://tanstack.com/query/latest/docs)
 
 ---
+
+**Last Updated:** 2026-06-05
 
 [← Back to README](../README.md) | [Diagrams →](./diagrams.md)

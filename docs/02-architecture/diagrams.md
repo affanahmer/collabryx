@@ -1,8 +1,8 @@
 # Architecture Diagrams
 
 **Last Updated:** 2026-06-05  
-**Version:** 1.2.0  
-**Changes:** Updated database schemas to align with 38-table production schema (added profile_visits and user_bookmarks; removed legacy connection_requests).
+**Version:** 1.3.0  
+**Changes:** Updated database schemas to align with 39-table production schema (added profile_visits and user_bookmarks; removed legacy connection_requests).
 
 Visual diagrams illustrating Collabryx system architecture, data flows, and component relationships.
 
@@ -457,6 +457,13 @@ erDiagram
     posts ||--o{ post_impressions: has
     posts ||--o{ user_bookmarks: "referenced in"
     
+    %% ===== SEARCH =====
+    profiles ||--o{ search_blocklist : "blocks terms via"
+    
+    search_blocklist {
+        text word PK
+    }
+    
     comments ||--o{ comment_likes: receives
     comments ||--o{ comments: "replies (parent_id)"
     
@@ -522,6 +529,7 @@ graph TD
         events[events]
         useranal[user_analytics]
         platanal[platform_analytics]
+        searchblocklist[search_blocklist]
     end
     
     profiles --> embeddings
@@ -647,6 +655,7 @@ graph TB
     subgraph L5["Layer 5: Protection"]
         BotDetect[Bot Detection]
         CSRF[CSRF Protection]
+        Tables39[39 Tables Protected]
     end
 
     subgraph L6["Layer 6: Session"]
@@ -694,6 +703,6 @@ graph TD
 
 ---
 
-**Document Version:** 1.2.0  
+**Document Version:** 1.3.0  
 **Last Reviewed:** 2026-06-05  
 **Maintained By:** Architecture Team
