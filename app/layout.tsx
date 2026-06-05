@@ -93,12 +93,12 @@ export default function RootLayout({
   validateEnvOnce()
   
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${spaceGrotesk.variable}`}>
         <head>
           <link rel="preconnect" href="https://api.fontshare.com" crossOrigin="anonymous" />
         </head>
       <body
-        className={`${inter.variable} ${spaceGrotesk.variable} antialiased`}
+        className="antialiased"
         suppressHydrationWarning
       >
           <QueryProvider>
