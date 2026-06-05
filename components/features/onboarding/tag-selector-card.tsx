@@ -16,6 +16,8 @@ interface TagSelectorCardProps {
   title?: string
   showCategories?: boolean
   maxHeight?: number
+  // When true, only one option can be selected at a time
+  singleSelect?: boolean
 }
 
 /**
@@ -50,6 +52,7 @@ export function TagSelectorCard({
   title = "Select Options",
   showCategories = true,
   maxHeight = 400,
+  singleSelect = false,
 }: TagSelectorCardProps) {
   const inputRef = React.useRef<HTMLInputElement>(null)
   const [collapsedCategories, setCollapsedCategories] = React.useState<Set<string>>(new Set())
@@ -85,9 +88,16 @@ export function TagSelectorCard({
 
   const handleToggle = (optionId: string) => {
     if (selected.includes(optionId)) {
+      // Deselect
       onChange(selected.filter((id) => id !== optionId))
     } else {
-      onChange([...selected, optionId])
+      // Select
+      if (singleSelect) {
+        // Replace any existing selection with this one
+        onChange([optionId])
+      } else {
+        onChange([...selected, optionId])
+      }
     }
   }
 

@@ -153,18 +153,18 @@ export function StepInterestsAndGoals() {
                   />
 
                   <div className="min-h-[250px] lg:min-h-[350px]">
-                    <TagSelectorCard
-                      options={goalOptions}
-                      selected={currentGoals}
-                      onChange={(selected) => field.onChange(selected)}
-                      searchValue={goalsSearch}
-                      onSearchChange={setGoalsSearch}
-                      searchPlaceholder="Search goals..."
-                      emptyMessage="No goals match your search."
-                      title="Collaboration Goals"
-                      showCategories={true}
-                      maxHeight={350}
-                    />
+                      <TagSelectorCard
+                        options={goalOptions}
+                        selected={currentGoals}
+                        onChange={(selected) => field.onChange(selected)}
+                        searchValue={goalsSearch}
+                        onSearchChange={setGoalsSearch}
+                        searchPlaceholder="Search goals..."
+                        emptyMessage="No goals match your search."
+                        title="Collaboration Goals"
+                        showCategories={true}
+                        maxHeight={350}
+                      />
                   </div>
                 </div>
               )}
