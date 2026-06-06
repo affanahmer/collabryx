@@ -1,5 +1,5 @@
 /**
- * ============================================================================
+ea * ============================================================================
  * ChatInput — Unified Message Input with @Mentions
  * ============================================================================
  *
@@ -22,7 +22,7 @@ import {
   PromptInputButton,
   PromptInputSubmit,
 } from '@/components/ai-elements/prompt-input'
-import { MentionPopover } from '@/components/features/assistant/mention-popover'
+import { MentionPopover } from '@/components/features/ai-mentor/mention-popover'
 import { useMentions } from '@/hooks/use-mentions'
 import type { ChatStatus } from 'ai'
 import { Sparkles } from 'lucide-react'

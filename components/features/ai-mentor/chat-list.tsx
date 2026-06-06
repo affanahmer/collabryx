@@ -16,7 +16,7 @@
 
 import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import { Loader2, Bot, Sparkles, Lightbulb, Target, ArrowDown } from 'lucide-react'
-import { MessageBubble } from '@/components/features/assistant/message-bubble'
+import { MessageBubble } from '@/components/features/ai-mentor/message-bubble'
 import { Suggestions, Suggestion } from '@/components/ai-elements/suggestion'
 import { GlassCard } from '@/components/shared/glass-card'
 import { cn } from '@/lib/utils'

@@ -586,7 +586,6 @@ export async function deleteSession(sessionId: string) {
   }
 
   revalidatePath('/(auth)/ai-mentor')
-  revalidatePath('/(auth)/assistant')
 
   return {
     success: true,

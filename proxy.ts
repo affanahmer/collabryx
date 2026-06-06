@@ -83,7 +83,7 @@ export async function proxy(request: NextRequest) {
 
     // Protected routes: redirect to login if not authenticated
     const protectedRoutes = [
-        "/dashboard", "/assistant", "/matches", "/messages",
+        "/dashboard", "/ai-mentor", "/matches", "/messages",
         "/my-profile", "/notifications", "/post", "/profile",
         "/requests", "/settings"
     ]

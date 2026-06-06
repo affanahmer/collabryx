@@ -83,7 +83,7 @@ export function SidebarNav({ className, isMobile, ...props }: SidebarNavProps) {
         { title: "Messages", href: "/messages", icon: MessageSquare },
         { title: "Smart Matches", href: "/matches", icon: Sparkles },
         { title: "Notifications", href: "/notifications", icon: Bell },
-        { title: "AI Mentor", href: "/assistant", icon: Bot },
+        { title: "AI Mentor", href: "/ai-mentor", icon: Bot },
     ]
 
     // Secondary navigation — utilities & account (no section label, just a divider)
