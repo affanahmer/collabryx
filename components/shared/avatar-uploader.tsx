@@ -10,6 +10,12 @@ import { toast } from "sonner"
 import { FILE_SIZE_LIMITS, ALLOWED_IMAGE_TYPES } from "@/lib/utils/file-validation"
 import { formatInitials } from "@/lib/utils/format-initials"
 
+function getCSRFToken(): string | null {
+  if (typeof document === "undefined") return null
+  const match = document.cookie.match(/csrf_token=([^;]+)/)
+  return match ? match[1] : null
+}
+
 interface AvatarUploaderProps {
   /** Current avatar URL (if one exists) */
   currentUrl?: string | null
@@ -77,8 +83,12 @@ export function AvatarUploader({
       formData.append("file", file)
       formData.append("type", "avatar")
 
+      const csrfToken = getCSRFToken()
       const response = await fetch("/api/upload", {
         method: "POST",
+        headers: {
+          "X-CSRF-Token": csrfToken || "",
+        },
         body: formData,
       })
 
