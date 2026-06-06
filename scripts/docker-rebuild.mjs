@@ -87,7 +87,7 @@ function stopContainers() {
   log('\n🛑 Stopping existing containers...', 'cyan');
   
   try {
-    execVerbose(`cd "${CONFIG.workerDir}" && docker-compose down --timeout 30`);
+    execVerbose(`cd "${CONFIG.workerDir}" && docker compose down --timeout 30`);
     log('✅ Containers stopped', 'green');
     return true;
   } catch (_error) {
@@ -123,7 +123,7 @@ function buildImage() {
   
   try {
     const startTime = Date.now();
-    execVerbose(`cd "${CONFIG.workerDir}" && docker-compose build`);
+    execVerbose(`cd "${CONFIG.workerDir}" && docker compose build`);
     const buildTime = ((Date.now() - startTime) / 1000).toFixed(1);
     log(`✅ Image built successfully in ${buildTime}s`, 'green');
     return true;
@@ -138,7 +138,7 @@ function startContainers() {
   log('\n🚀 Starting Docker containers...', 'cyan');
   
   try {
-    execVerbose(`cd "${CONFIG.workerDir}" && docker-compose up -d`);
+    execVerbose(`cd "${CONFIG.workerDir}" && docker compose up -d`);
     log('✅ Containers started', 'green');
     return true;
   } catch (error) {
