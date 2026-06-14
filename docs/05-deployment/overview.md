@@ -67,8 +67,11 @@ SUPABASE_SERVICE_ROLE_KEY=your-production-service-role-key
 NEXT_PUBLIC_APP_URL=https://yourdomain.com
 NODE_ENV=production
 
-# Required: Python Worker (Embeddings)
+# Required: Microservice URLs (Python/FastAPI)
 PYTHON_WORKER_URL=https://your-embedding-service.com
+NOTIFICATION_SERVICE_URL=https://your-notification-service.com
+FEED_SERVICE_URL=https://your-feed-service.com
+MATCH_SERVICE_URL=https://your-match-service.com
 
 # Required: AI Providers (at least one)
 AI_PROVIDER_1_NAME=openai
@@ -89,25 +92,42 @@ NEXT_PUBLIC_ENABLE_AI_FEATURES=true
 NEXT_PUBLIC_MAINTENANCE_MODE=false
 ```
 
-### Embeddings System Deployment
+### Microservices Deployment (4 Services)
 
-The embeddings system requires:
+Collabryx runs 4 Python/FastAPI microservices via Docker Compose, replacing the old monolithic Python worker:
 
-1. **Python Worker** - Self-hosted embedding service (Docker)
-2. **Database** - pgvector extension for vector storage
+| Service | Port | Purpose |
+|---------|------|---------|
+| `embedding-service` | `:8000` | Sentence-transformers vector embeddings |
+| `notification-service` | `:8002` | Send, digest, and cleanup notifications |
+| `feed-service` | `:8003` | Thompson Sampling feed scoring |
+| `match-service` | `:8004` | Cosine-similarity + Jaccard match generation |
+
+All 4 services share the `collabryx-network` bridge in `python-worker/docker-compose.yml`.
+
+**Prerequisites:**
+- Docker & Docker Compose installed
+- `python-worker/.env` configured with Supabase credentials
+- pgvector extension enabled in the database
 
 **Quick Deploy:**
 
 ```bash
-# Deploy Python Worker
+# Build and start all 4 services
 cd python-worker
 docker-compose build
-docker push your-registry/collabryx-worker:latest
+docker-compose up -d
 
-# Deploy to platform (see platform-specific guide)
+# Verify each service
+curl http://localhost:8000/health   # embedding-service
+curl http://localhost:8002/health   # notification-service
+curl http://localhost:8003/health   # feed-service
+curl http://localhost:8004/health   # match-service
 ```
 
-See [Python Worker Deployment](../04-infrastructure/python-worker/deployment.md) and [Embeddings System](../04-infrastructure/database/embeddings.md) for detailed instructions.
+**Next.js → Microservice pattern:** API routes call these services via HTTP client classes in `lib/worker-client.ts` (`NotificationClient`, `FeedClient`, `MatchClient`) instead of direct TypeScript imports. The old TS services (`notification-engine.ts`, `feed-scorer.ts`, `match-generator.ts`) have been deleted.
+
+See [Microservices Overview](../04-infrastructure/python-worker/overview.md) and [Embeddings System](../04-infrastructure/database/embeddings.md) for detailed instructions.
 
 ---
 
@@ -332,8 +352,11 @@ SUPABASE_SERVICE_ROLE_KEY=
 NEXT_PUBLIC_APP_URL=
 NODE_ENV=production
 
-# Required: Python Worker (Embeddings)
+# Required: Microservice URLs (Python/FastAPI)
 PYTHON_WORKER_URL=
+NOTIFICATION_SERVICE_URL=
+FEED_SERVICE_URL=
+MATCH_SERVICE_URL=
 
 # Required: AI Providers (Universal Provider System)
 # Configure at least one provider. For production, configure 2+ for failover.
@@ -353,40 +376,48 @@ AI_PROVIDER_1_PRIORITY=1
 # Optional
 ```
 
-### Python Worker Deployment
+### Microservices Deployment (4 Services)
 
-The Python worker generates vector embeddings for semantic matching. Deploy before the Next.js app.
+Collabryx runs 4 Python/FastAPI microservices that handle embeddings, notifications, feed scoring, and match generation. Deploy these before the Next.js app.
 
 **Steps:**
 
-1. **Build Docker image:**
+1. **Build all Docker images:**
    ```bash
    cd python-worker
    docker-compose build
    ```
 
 2. **Deploy to platform:**
-   - **Railway:** Connect GitHub, deploy from `python-worker/` directory
-   - **VPS:** Run `docker-compose up -d`
+   - **Railway / Render:** Connect GitHub, deploy from `python-worker/` directory
+   - **VPS:** Run `docker-compose up -d` to start all 4 services
 
-3. **Configure environment variables:**
+3. **Configure environment variables (shared `python-worker/.env`):**
    ```env
    SUPABASE_URL=https://your-project.supabase.co
    SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
    ALLOWED_ORIGINS=https://your-app.com
    ```
 
-4. **Add to Next.js environment:**
+4. **Add microservice URLs to Next.js environment:**
    ```env
-   PYTHON_WORKER_URL=https://your-worker-url.com
+   PYTHON_WORKER_URL=https://your-embedding-service.com
+   NOTIFICATION_SERVICE_URL=https://your-notification-service.com
+   FEED_SERVICE_URL=https://your-feed-service.com
+   MATCH_SERVICE_URL=https://your-match-service.com
    ```
 
-5. **Verify health:**
+5. **Verify health of all 4 services:**
    ```bash
-   curl https://your-worker-url.com/health
+   curl https://your-embedding-service.com/health
+   curl https://your-notification-service.com/health
+   curl https://your-feed-service.com/health
+   curl https://your-match-service.com/health
    ```
 
-See [Python Worker Deployment Guide](../04-infrastructure/python-worker/deployment.md) for complete instructions.
+**Architecture note:** Next.js API routes call these services via HTTP client classes in `lib/worker-client.ts` (`NotificationClient`, `FeedClient`, `MatchClient`), not via direct TypeScript imports. The old TS service files (`notification-engine.ts`, `feed-scorer.ts`, `match-generator.ts`, `match-generation.ts`) have been deleted — all logic now lives in the Python microservices.
+
+See [Microservices Overview](../04-infrastructure/python-worker/overview.md) for complete instructions.
 
 ---
 

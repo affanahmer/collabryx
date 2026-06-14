@@ -230,13 +230,50 @@ supabase gen types typescript --project-id your-project-id > types/database.type
 
 ---
 
-## Python Worker Commands
+## Microservices Commands
 
-### Start Development Server
+Collabryx runs 4 Python/FastAPI microservices, all managed via `python-worker/docker-compose.yml` on the shared `collabryx-network` bridge.
+
+### Service Port Table
+
+| Service             | Port  | Description                                        |
+|---------------------|-------|----------------------------------------------------|
+| Embedding Service   | 8000  | Sentence Transformers vector embeddings             |
+| Notification Service| 8002  | Send, digest, and cleanup notifications             |
+| Feed Service        | 8003  | Thompson Sampling feed scoring                     |
+| Match Service       | 8004  | Cosine similarity + Jaccard match generation       |
+
+### Start All Services (via Docker Compose)
 
 ```bash
 cd python-worker
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop all services
+docker-compose down
+```
+
+### Start Individual Services (Development)
+
+```bash
+# Embedding Service
+cd python-worker
+uvicorn embedding-service.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Notification Service
+cd python-worker
+uvicorn notification-service.main:app --host 0.0.0.0 --port 8002 --reload
+
+# Feed Service
+cd python-worker
+uvicorn feed-service.main:app --host 0.0.0.0 --port 8003 --reload
+
+# Match Service
+cd python-worker
+uvicorn match-service.main:app --host 0.0.0.0 --port 8004 --reload
 ```
 
 ### Install Dependencies
@@ -246,38 +283,52 @@ cd python-worker
 pip install -r requirements.txt
 ```
 
+### Shared Modules
+
+All four services reuse Python modules from `python-worker/shared/`:
+- `shared/db.py` — Database connection helpers
+- `shared/middleware.py` — Common middleware (CORS, logging, error handling)
+- `shared/logging_config.py` — Unified logging configuration
+
 ---
 
-## Docker Commands
+## Docker Compose Commands
 
-### Build Image
-
-```bash
-docker build -t collabryx .
-```
-
-### Run Container
+### Build All Microservice Images
 
 ```bash
-docker run -p 3000:3000 \
-  -e NEXT_PUBLIC_SUPABASE_URL=your-url \
-  -e NEXT_PUBLIC_SUPABASE_ANON_KEY=your-key \
-  collabryx
+cd python-worker
+docker-compose build
 ```
 
-### Docker Compose
-
-Local development with the Python worker:
+### Start Services
 
 ```bash
 cd python-worker
 docker-compose up -d
+```
 
-# View logs
+### View Logs
+
+```bash
+cd python-worker
 docker-compose logs -f
+```
 
-# Stop services
+### Stop Services
+
+```bash
+cd python-worker
 docker-compose down
+```
+
+### Check Service Health
+
+```bash
+curl http://localhost:8000/health   # Embedding Service
+curl http://localhost:8002/health   # Notification Service
+curl http://localhost:8003/health   # Feed Service
+curl http://localhost:8004/health   # Match Service
 ```
 
 ---
@@ -342,7 +393,7 @@ Set-Alias build "bun run build"
 
 ---
 
-**Last Updated**: 2026-06-05  
-**Version**: 2.1.0
+**Last Updated**: 2026-06-14  
+**Version**: 2.2.0
 
 [← Back to Docs](../README.md) | [Environment Variables →](./environment-variables.md)

@@ -53,7 +53,7 @@ interface MatchScore {
 
 ### Match Service
 
-> **Note**: The actual matching system uses multiple services (`lib/services/matches.ts`, `match-generation.ts`, `match-scores.ts`) with BM25 keyword extraction and feed scoring. This is a simplified illustration.
+> **Note**: The matching algorithm now runs as a dedicated Python microservice on port `:8004`. The old TypeScript services (`match-generator.ts`, `match-generation.ts`) have been ported to Python. The Next.js API route (`/api/matches/generate`) calls the match microservice via `MatchClient` in `lib/worker-client.ts`.
 
 ```typescript
 // lib/services/matches.ts

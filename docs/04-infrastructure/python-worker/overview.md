@@ -1,12 +1,13 @@
-﻿# Python Worker
+﻿# Python Worker Microservice Suite
 
-Core embedding service only. Self-hosted embedding generation for semantic matching.
+Four FastAPI microservices powering semantic matching, notifications, feed scoring, and match generation. All services run via Docker Compose.
 
 ---
 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Service Architecture](#service-architecture)
 - [Setup](#setup)
 - [Development](#development)
 - [Deployment](#deployment)
@@ -17,14 +18,70 @@ Core embedding service only. Self-hosted embedding generation for semantic match
 
 ## Overview
 
-The Python Worker is a FastAPI service that generates vector embeddings using Sentence Transformers. It's used by Collabryx for semantic profile matching.
+The Python Worker suite consists of four FastAPI microservices that power Collabryx's backend AI pipeline. All services run via `python-worker/docker-compose.yml` and share the `collabryx-network` bridge network. A `shared/` directory provides reusable Python modules (`db.py`, `middleware.py`, `logging_config.py`) used across all services.
 
 ### Key Features
 
-- **Model**: `all-MiniLM-L6-v2` (384 dimensions)
-- **Framework**: FastAPI
-- **Performance**: ~100ms per embedding
-- **Scalability**: Stateless, horizontally scalable
+- **Model (embedding-service)**: `all-MiniLM-L6-v2` (384 dimensions)
+- **Framework**: FastAPI (all 4 services)
+- **Orchestration**: Docker Compose with shared `collabryx-network`
+- **Shared Modules**: `shared/db.py`, `shared/middleware.py`, `shared/logging_config.py`
+- **Scalability**: Each service is stateless and horizontally scalable
+
+---
+
+## Service Architecture
+
+All four microservices run together via a single `docker-compose.yml` file in `python-worker/`. They communicate over the `collabryx-network` bridge and are consumed by Next.js API routes through client classes in `@/lib/worker-client.ts`.
+
+### Services Overview
+
+| Service | Port | Image Size | Key Dependencies | Role |
+|---------|------|------------|-----------------|------|
+| `embedding-service` | 8000 | ~2.1 GB | PyTorch, Sentence Transformers | Generate vector embeddings for semantic profile matching |
+| `notification-service` | 8002 | ~200 MB | httpx, supabase | Send and digest notifications |
+| `feed-service` | 8003 | ~180 MB | httpx, supabase | Thompson Sampling feed scoring |
+| `match-service` | 8004 | ~180 MB | httpx, supabase | Cosine similarity + Jaccard match generation |
+
+The `embedding-service` is the only service with PyTorch / Sentence Transformers, accounting for its larger footprint (~2.1 GB). The other three services are lightweight (~180-200 MB each) and do not require torch.
+
+### Directory Layout
+
+```
+python-worker/
+├── docker-compose.yml          # Orchestrates all 4 services
+├── shared/                     # Reusable Python modules
+│   ├── db.py                   # Database helpers
+│   ├── middleware.py            # Shared middleware
+│   └── logging_config.py       # Logging configuration
+├── embed-service/
+│   ├── Dockerfile
+│   ├── main.py
+│   └── requirements.txt
+├── notification-service/
+│   ├── Dockerfile
+│   ├── main.py
+│   └── requirements.txt
+├── feed-service/
+│   ├── Dockerfile
+│   ├── main.py
+│   └── requirements.txt
+├── match-service/
+│   ├── Dockerfile
+│   ├── main.py
+│   └── requirements.txt
+```
+
+### Docker Commands
+
+All services are managed through `bun run docker:*` scripts from the project root:
+
+```bash
+bun run docker:up        # Start all 4 services
+bun run docker:down      # Stop all services
+bun run docker:logs      # View logs from all services
+bun run docker:rebuild   # Rebuild and restart all services
+```
 
 ---
 
@@ -97,23 +154,35 @@ curl -X POST http://localhost:8000/generate-embedding \
 
 ## Deployment
 
-### Docker
+### Docker (All Services)
 
 ```bash
-# Build image
-docker build -t collabryx-embedding-worker .
+# Build all 4 service images
+docker compose -f python-worker/docker-compose.yml build
 
-# Run container
-docker run -p 8000:8000 collabryx-embedding-worker
+# Start all services
+docker compose -f python-worker/docker-compose.yml up -d
+```
+
+For individual service builds (faster iteration):
+
+```bash
+# Build only embedding-service
+docker compose -f python-worker/docker-compose.yml build embedding-service
+
+# Build only a lightweight service
+docker compose -f python-worker/docker-compose.yml build notification-service
 ```
 
 ---
 
 ## API Reference
 
+> **Note:** The endpoints below belong to the **embedding-service** (port 8000). Each microservice has its own set of endpoints — see individual service docs for notification, feed, and match APIs.
+
 ### `GET /`
 
-Service info.
+Service info (embedding-service).
 
 **Response:**
 ```json
@@ -217,12 +286,13 @@ Queue embedding generation from profile data.
 
 **Symptoms:**
 - Worker crashes with OOM
-- Memory > 1GB
+- Memory > 1GB (embedding-service only; other services use ~200MB)
 
 **Solutions:**
 1. Reduce batch size
 2. Use CPU-only mode (slower but less memory)
 3. Increase container memory limit
+4. Note: notification-service, feed-service, and match-service are lightweight (~180-200MB each, no torch)
 
 ### Issue: Slow Embedding Generation
 

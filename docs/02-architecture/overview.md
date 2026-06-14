@@ -147,7 +147,7 @@ collabryx/
 │   ├── errors/              # Error types
 │   ├── prompt/              # AI prompts
 │   ├── rag/                 # RAG pipeline
-│   ├── services/            # Business logic (21 services)
+│   ├── services/            # Business logic (17 services)
 │   ├── supabase/            # Supabase clients (browser + server)
 │   ├── utils/               # Utilities (15)
 │   └── validations/         # Zod schemas (5)
@@ -157,7 +157,7 @@ collabryx/
 │   └── seed-data/           # Database seeders
 │
 ├── docs/                    # Documentation (33 files)
-├── python-worker/           # FastAPI embedding service
+├── python-worker/           # 4 FastAPI microservices (embedding, notification, feed, match)
 ├── supabase/                # Database setup
 ├── public/                  # Static assets
 ├── types/                   # TypeScript types
@@ -375,10 +375,15 @@ LIMIT 10;
 
 #### Components
 
-- **Python Worker**: FastAPI service running Sentence Transformers
+- **Embedding Service** (`:8000`): FastAPI service running Sentence Transformers for vector embedding generation
+- **Notification Service** (`:8002`): FastAPI service handling notification send, digest, and cleanup
+- **Feed Service** (`:8003`): FastAPI service implementing Thompson Sampling feed scoring
+- **Match Service** (`:8004`): FastAPI service computing cosine similarity + Jaccard match generation
 
 - **Frontend**: Progress UI + automatic generation on onboarding
 - **Database**: `profile_embeddings` table with HNSW index
+
+All four services run via `python-worker/docker-compose.yml` on the shared `collabryx-network` Docker bridge. Next.js API routes communicate with them over HTTP using client classes in `lib/worker-client.ts` (`NotificationClient`, `FeedClient`, `MatchClient`).
 
 ### State Management
 

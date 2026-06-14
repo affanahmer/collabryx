@@ -1,9 +1,7 @@
 # Python Worker Development Guide
 
 **For:** Local development  
-**Last Updated:** 2026-06-02
-
-> **Note:** The Python Worker is now focused exclusively on embedding generation using Sentence Transformers. All other worker services have been removed.
+**Last Updated:** 2026-06-14
 
 ---
 
@@ -23,15 +21,23 @@
 cd D:\Projects\collabryx\python-worker
 ```
 
-### 2. Build Docker Image
+### 2. Build Docker Images
 
 ```bash
-docker build -t collabryx-embedding-service .
+# Build all 4 services (from project root)
+cd .. && docker compose build
+
+# Or build from python-worker/ directory
+cd D:\Projects\collabryx\python-worker
+docker compose build
 ```
 
 **Expected Output:**
 ```
-✅ Build successful (~3GB image)
+✅ embedding-service built (~2.1 GB)
+✅ notification-service built (~200 MB)
+✅ feed-service built (~180 MB)
+✅ match-service built (~180 MB)
 ```
 
 ### 3. Configure Environment
@@ -47,27 +53,39 @@ ALLOWED_ORIGINS=http://localhost:3000
 ### 4. Run with Docker Compose
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
+
+This starts all 4 services simultaneously: embedding-service (:8000), notification-service (:8002), feed-service (:8003), and match-service (:8004).
 
 ### 5. Verify Health
 
 ```bash
-# Check container status
-docker-compose ps
+# Check all containers are running
+docker compose ps
 
-# Check health endpoint
-curl http://localhost:8000/health
+# Check all 4 health endpoints
+curl http://localhost:8000/health        # embedding-service
+curl http://localhost:8002/health        # notification-service
+curl http://localhost:8003/health        # feed-service
+curl http://localhost:8004/health        # match-service
 
-# View logs
-docker-compose logs -f
+# View logs from all services
+docker compose logs -f
 ```
 
-**Expected Health Response:**
+**Expected Health Response (embedding-service):**
 ```json
 {
   "status": "healthy",
   "model_loaded": true
+}
+```
+
+**Expected Health Response (lightweight services):**
+```json
+{
+  "status": "healthy"
 }
 ```
 
@@ -228,19 +246,25 @@ Start-Sleep -Seconds 60
 curl http://localhost:8000/health
 ```
 
-### Issue: Port 8000 Already in Use
+### Issue: Port Already in Use
+
+This can affect any of the 4 service ports (8000, 8002, 8003, 8004).
 
 **Solution:**
 ```bash
-# Find process using port 8000
+# Find process using a specific port
 netstat -ano | findstr :8000
+netstat -ano | findstr :8002
+netstat -ano | findstr :8003
+netstat -ano | findstr :8004
 
 # Kill process
 taskkill /PID <PID> /F
 
-# Or change port in docker-compose.yml
+# Or change ports in docker-compose.yml
 ports:
-  - "8001:8000"  # Use port 8001 instead
+  - "8001:8000"  # Map embedding-service to 8001
+  - "8005:8002"  # Map notification-service to 8005
 ```
 
 ---
@@ -250,8 +274,12 @@ ports:
 ### Monitor Resource Usage
 
 ```bash
-# Docker stats
+# Stats for all 4 containers
+docker stats
+
+# Or check a specific service
 docker stats python-worker-embedding-service-1
+docker stats python-worker-notification-service-1
 ```
 
 ### Adjust Worker Count
@@ -284,7 +312,8 @@ docker-compose down -v
 ### Remove Images
 
 ```bash
-docker rmi collabryx-embedding-service
+# Remove all 4 service images
+docker rmi collabryx-embedding-service collabryx-notification-service collabryx-feed-service collabryx-match-service
 ```
 
 ### Remove All Docker Resources

@@ -1,6 +1,6 @@
 # 🐳 Docker Management Scripts
 
-Fully automated Docker container management for the Python Worker Embedding Service.
+Fully automated Docker container management for Collabryx microservices (4 services managed via `python-worker/docker-compose.yml`).
 
 ## 📋 Available Commands
 
@@ -58,8 +58,10 @@ bun run docker:logs -- --tail 200
 bun run docker:health
 ```
 
-**Health check returns:**
+**Health check returns (all 4 services):**
+
 ```json
+// embedding-service (:8000)
 {
   "status": "healthy",
   "model_info": {
@@ -71,6 +73,21 @@ bun run docker:health
   "queue_size": 0,
   "queue_capacity": 100
 }
+```
+
+```json
+// notification-service (:8002)
+{ "status": "healthy", "service": "notification" }
+```
+
+```json
+// feed-service (:8003)
+{ "status": "healthy", "service": "feed" }
+```
+
+```json
+// match-service (:8004)
+{ "status": "healthy", "service": "match" }
 ```
 
 ### Status Check
@@ -217,10 +234,13 @@ bun run docker:restart
 ### Port Already in Use
 
 ```bash
-# Check what's using port 8000
-netstat -ano | findstr :8000
+# Check what's using each microservice port
+netstat -ano | findstr :8000   # embedding-service
+netstat -ano | findstr :8002   # notification-service
+netstat -ano | findstr :8003   # feed-service
+netstat -ano | findstr :8004   # match-service
 
-# Stop other services or change port in docker-compose.yml
+# Stop other services or change ports in python-worker/docker-compose.yml
 ```
 
 ### Container Keeps Crashing
@@ -253,6 +273,17 @@ Edit `python-worker/docker-compose.yml` to customize:
 - Volume mounts
 - Network configuration
 
+## 🗺️ Service Port Map
+
+| Service | Port | Purpose | Client Class |
+|---------|------|---------|--------------|
+| `embedding-service` | `:8000` | Sentence-transformers vector embeddings | — |
+| `notification-service` | `:8002` | Send, digest, and cleanup notifications | `NotificationClient` |
+| `feed-service` | `:8003` | Thompson Sampling feed scoring | `FeedClient` |
+| `match-service` | `:8004` | Cosine-similarity + Jaccard match generation | `MatchClient` |
+
+All services share the `collabryx-network` bridge and are defined in `python-worker/docker-compose.yml`.
+
 ## 🎓 Best Practices
 
 1. **Always use bun scripts** - Don't run docker-compose directly
@@ -264,35 +295,42 @@ Edit `python-worker/docker-compose.yml` to customize:
 ## 🆘 Quick Reference
 
 ```bash
-# Start service
+# Start all services
 bun run docker:up
 
-# Stop service
+# Stop all services
 bun run docker:down
 
-# View logs
+# View logs (all services)
 bun run docker:logs
 
-# Check health
+# View logs for a specific service
+bun run docker:logs -- --service embedding-service
+bun run docker:logs -- --service notification-service
+bun run docker:logs -- --service feed-service
+bun run docker:logs -- --service match-service
+
+# Check health (all services)
 bun run docker:health
 
 # Full status
 bun run docker:status
 
-# Restart
+# Restart all services
 bun run docker:restart
 
-# Rebuild
+# Rebuild all services from scratch
 bun run docker:rebuild
 ```
 
 ## 📚 Related Documentation
 
-- [Python Worker Deployment](../04-infrastructure/python-worker/deployment.md)
+- [Microservices Overview](../04-infrastructure/python-worker/overview.md)
 - [Embedding System](./docs/04-infrastructure/database/embeddings.md)
 - [Infrastructure Overview](./docs/04-infrastructure/overview.md)
+- [Worker Client Library](../../lib/worker-client.ts)
 
 ---
 
-**Last Updated:** 2026-06-02  
-**Version:** 2.0.0 (Fully automated scripts)
+**Last Updated:** 2026-06-14  
+**Version:** 3.0.0 (Collabryx Microservices — 4 services)

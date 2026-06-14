@@ -12,7 +12,7 @@
 | [🏗️ Getting Started](./01-getting-started/installation.md) | Installation, setup, and development workflow |
 | [🏛️ Architecture](./02-architecture/overview.md) | System design, tech stack, data flow |
 | [🎯 Core Features](./03-core-features/) | Matching, messaging, auth, AI assistant, embeddings |
-| [⚙️ Infrastructure](./04-infrastructure/) | Database, Python worker, performance |
+| [⚙️ Infrastructure](./04-infrastructure/) | Database, Python microservices, performance |
 | [🚀 Deployment](./05-deployment/overview.md) | Production deployment, runbook, docker |
 | [🤝 Contributing](./06-contributing/guide.md) | How to contribute, code standards, git workflow |
 | [📖 Reference](./07-reference/) | Environment variables, commands, troubleshooting |
@@ -51,13 +51,13 @@ docs/
 │   │   ├── setup-guide.md           # Database setup instructions
 │   │   └── embeddings.md            # Embedding system deep-dive
 │   └── python-worker/
-│       ├── overview.md              # Python Worker FastAPI service
+│       ├── overview.md              # 4 FastAPI microservices (embedding, notification, feed, match)
 │       ├── deployment.md            # Production deployment guide
 │       └── development.md           # Local development guide
 ├── 05-deployment/
 │   ├── overview.md                  # Production deployment guide
 │   ├── checklist.md                 # Deployment checklist
-│   ├── docker-scripts.md            # Docker management scripts
+│   ├── docker-scripts.md            # Docker & microservices management
 │   └── runbook.md                   # Production runbook
 ├── 06-contributing/
 │   ├── guide.md                     # Full contributing guide

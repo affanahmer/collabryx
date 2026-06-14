@@ -39,11 +39,16 @@ Complete checklist for deploying Collabryx to production.
   - [ ] Verify messages.read_at column exists
   - [ ] Enable Realtime on required tables
 
-- [ ] **Python Worker**
-  - [ ] Build Docker image
-  - [ ] Deploy to Render/Railway
-  - [ ] Configure environment variables
-  - [ ] Test health endpoint: `https://worker-url/health`
+- [ ] **Microservices (4 Python/FastAPI services)**
+  - [ ] Build Docker images via `cd python-worker && docker-compose build`
+  - [ ] Deploy to Render/Railway/VPS
+  - [ ] Configure shared environment variables in `python-worker/.env`
+  - [ ] Test health of all 4 services:
+    - [ ] `https://embedding-service/health` — `:8000`
+    - [ ] `https://notification-service/health` — `:8002`
+    - [ ] `https://feed-service/health` — `:8003`
+    - [ ] `https://match-service/health` — `:8004`
+  - [ ] Verify Next.js env vars set: `PYTHON_WORKER_URL`, `NOTIFICATION_SERVICE_URL`, `FEED_SERVICE_URL`, `MATCH_SERVICE_URL`
 
 ---
 
@@ -110,34 +115,44 @@ Complete checklist for deploying Collabryx to production.
 
 ---
 
-## Python Worker Deployment
+## Microservices Deployment
 
-### Render Deployment
+### Render / Railway Deployment
 
-- [ ] **Create Service**
-  - [ ] Type: Web Service
+Collabryx runs 4 Python/FastAPI microservices defined in `python-worker/docker-compose.yml`. Deploy each as a separate service or use Docker Compose on a VPS.
+
+**Services to deploy:**
+
+| Service | Port | Health Endpoint |
+|---------|------|-----------------|
+| `embedding-service` | `:8000` | `/health` |
+| `notification-service` | `:8002` | `/health` |
+| `feed-service` | `:8003` | `/health` |
+| `match-service` | `:8004` | `/health` |
+
+- [ ] **Create Services**
+  - [ ] Type: Web Service (each)
   - [ ] Docker: Yes
   - [ ] Region: Closest to users
 
-- [ ] **Configuration**
+- [ ] **Configuration (per service)**
   ```yaml
-  name: collabryx-worker
+  name: collabryx-<service-name>     # e.g. collabryx-embedding
   region: oregon
   plan: standard
   dockerContext: ./python-worker
   dockerfilePath: ./python-worker/Dockerfile
   ```
 
-- [ ] **Environment Variables**
+- [ ] **Shared Environment Variables**
   ```env
   SUPABASE_URL=https://xxx.supabase.co
   SUPABASE_SERVICE_ROLE_KEY=xxx
   ALLOWED_ORIGINS=https://collabryx.com
   ```
 
-- [ ] **Health Check**
+- [ ] **Health Checks (each service)**
   - [ ] Endpoint: `/health`
-  - [ ] Path: `/health`
   - [ ] Expected: 200 OK
 
 - [ ] **Auto-Deploy**
@@ -333,6 +348,6 @@ If critical issues occur:
 
 ---
 
-**Last Updated:** March 15, 2026  
-**Version:** 1.0.0  
+**Last Updated:** June 14, 2026  
+**Version:** 2.0.0  
 **Maintained By:** DevOps Team
