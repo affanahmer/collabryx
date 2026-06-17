@@ -85,3 +85,16 @@ media/
 
 # understand-anything generated artifacts
 .understand-anything/
+
+# pdc - notification fanout (Python parallel computing project)
+pdc/**/__pycache__/
+pdc/**/*.pyc
+pdc/**/*.pyo
+pdc/**/*.pyd
+pdc/**/*.so
+pdc/**/data/
+pdc/**/results/*.png
+pdc/**/*.tmp
+pdc/**/*.bak
+pdc/**/*.pth
+pdc/**/*.h5
