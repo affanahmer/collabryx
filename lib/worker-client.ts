@@ -5,11 +5,10 @@
 
 import { config } from '@/lib/config'
 
-// Embedding service URL priority:
-// 1. EMBEDDING_SERVICE_URL (set on Vercel → HF Spaces)
-// 2. NEXT_PUBLIC_WORKER_API_URL (legacy, backward compat)
-// 3. config.embedding.url (Vercel/Docker/local auto-resolve)
-const WORKER_BASE_URL = process.env.EMBEDDING_SERVICE_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || config.embedding.url
+// Embedding service URL — resolved by config based on NODE_ENV:
+//   Production (NODE_ENV=production) → reads EMBEDDING_SERVICE_URL env var
+//   Development                     → uses Docker (host.docker.internal) or localhost
+const WORKER_BASE_URL = config.embedding.url
 
 interface WorkerHealthResponse {
   status: 'healthy' | 'unhealthy'
@@ -123,7 +122,8 @@ interface CleanupResult {
 export class NotificationClient {
   private baseUrl: string
 
-  constructor(baseUrl: string = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:8002') {
+  // Notification service URL — resolved by config based on NODE_ENV
+  constructor(baseUrl: string = config.notification.url) {
     this.baseUrl = baseUrl
   }
 
@@ -208,7 +208,8 @@ interface ScoredPost {
 export class FeedClient {
   private baseUrl: string
 
-  constructor(baseUrl: string = process.env.FEED_SERVICE_URL || 'http://localhost:8003') {
+  // Feed service URL — resolved by config based on NODE_ENV
+  constructor(baseUrl: string = config.feed.url) {
     this.baseUrl = baseUrl
   }
 
@@ -288,7 +289,8 @@ interface BatchGenerateOptions {
 export class MatchClient {
   private baseUrl: string
 
-  constructor(baseUrl: string = process.env.MATCH_SERVICE_URL || 'http://localhost:8004') {
+  // Match service URL — resolved by config based on NODE_ENV
+  constructor(baseUrl: string = config.match.url) {
     this.baseUrl = baseUrl
   }
 

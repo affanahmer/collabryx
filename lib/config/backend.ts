@@ -175,13 +175,13 @@ export function resetCircuitBreaker(): void {
 export async function getBackendConfig(): Promise<BackendConfig> {
   const mode = process.env.BACKEND_MODE as BackendMode || 'auto'
   
-  // Case 2: Running on Vercel (production)
+  // Case 2: Production mode (Vercel deployment)
   // Uses EMBEDDING_SERVICE_URL env var (points to HF Spaces)
-  // Falls back to legacy BACKEND_URL_RENDER for backward compat
-  if (process.env.VERCEL) {
+  // ONLY activates when NODE_ENV=production — dev/preview uses Docker/localhost
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL) {
     const embeddingUrl = process.env.EMBEDDING_SERVICE_URL || process.env.BACKEND_URL_RENDER
     if (!embeddingUrl) {
-      console.warn('⚠️ Vercel deployment detected but EMBEDDING_SERVICE_URL not set')
+      console.warn('⚠️ Production but EMBEDDING_SERVICE_URL not set')
       return {
         endpoint: null,
         mode: 'render',
@@ -364,11 +364,12 @@ export async function withBackendHealth<T>(
 
 /**
  * Per-microservice URL resolution.
- * Priority: env var → Vercel → Docker → localhost
+ * Priority: production env var → Docker → localhost
+ * CRITICAL: Only reads remote service URLs when NODE_ENV=production.
+ * In dev/preview, always falls back to Docker or localhost.
  */
 function resolveServiceUrl(envVar: string | undefined, dockerPort: string, localPort: string): string {
-  if (envVar) return envVar
-  if (process.env.VERCEL === '1') return `http://localhost:${localPort}` // fallback — must set env var
+  if (process.env.NODE_ENV === 'production' && envVar) return envVar
   if (process.env.IN_DOCKER_CONTAINER === 'true') return `http://host.docker.internal:${dockerPort}`
   return `http://localhost:${localPort}`
 }

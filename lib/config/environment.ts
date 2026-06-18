@@ -6,14 +6,18 @@
 /**
  * Environment Configuration
  * Resolves microservice URLs based on deployment context:
- *   - Vercel → uses dedicated env vars (EMBEDDING_SERVICE_URL, etc.)
+ *   - Production (NODE_ENV=production) → uses dedicated remote service URLs
  *   - Docker  → uses host.docker.internal:{port}
  *   - Local   → uses localhost:{port}
+ *
+ * CRITICAL: Remote service URLs (EMBEDDING_SERVICE_URL, etc.) are
+ * ONLY used when NODE_ENV=production. In dev/preview/local mode,
+ * the app always uses Docker or localhost — even if the env var is set.
+ * This prevents accidental routing to production services during dev.
  */
 
 const isProduction = process.env.NODE_ENV === 'production'
 const isDevelopment = !isProduction
-const isVercel = process.env.VERCEL === '1'
 
 // Local fallback ports for each microservice
 const PORTS = {
@@ -24,9 +28,9 @@ const PORTS = {
 } as const
 
 function resolveServiceUrl(envVar: string | undefined, dockerPort: string, localPort: string): string {
-  // Priority: 1. Explicit env var → 2. Vercel specific → 3. Docker → 4. Local
-  if (envVar) return envVar
-  if (isVercel) return `http://localhost:${localPort}` // fallback — real URL must be set on Vercel
+  // Priority: 1. Production env var → 2. Docker → 3. Local
+  // Only read the env var in production — dev always uses Docker/localhost
+  if (isProduction && envVar) return envVar
   if (process.env.IN_DOCKER_CONTAINER === 'true') return `http://host.docker.internal:${dockerPort}`
   return `http://localhost:${localPort}`
 }
@@ -35,20 +39,19 @@ export const config = {
   environment: isProduction ? 'production' : 'development',
   isProduction,
   isDevelopment,
-  isVercel,
 
   supabase: {
     url: process.env.NEXT_PUBLIC_SUPABASE_URL ?? (() => {
-      if (!isVercel) console.warn('⚠️ NEXT_PUBLIC_SUPABASE_URL is not set')
+      console.warn('⚠️ NEXT_PUBLIC_SUPABASE_URL is not set')
       return ''
     })(),
     anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? (() => {
-      if (!isVercel) console.warn('⚠️ NEXT_PUBLIC_SUPABASE_ANON_KEY is not set')
+      console.warn('⚠️ NEXT_PUBLIC_SUPABASE_ANON_KEY is not set')
       return ''
     })(),
   },
 
-  /** Embedding service (WorkerClient) — runs on HF Spaces */
+  /** Embedding service — runs on HF Spaces in production */
   embedding: {
     url: resolveServiceUrl(
       process.env.EMBEDDING_SERVICE_URL || process.env.NEXT_PUBLIC_WORKER_API_URL,
@@ -60,13 +63,15 @@ export const config = {
 
   /** Backward-compat alias: worker → embedding */
   worker: {
-    url: process.env.EMBEDDING_SERVICE_URL || process.env.NEXT_PUBLIC_WORKER_API_URL ||
-        (process.env.IN_DOCKER_CONTAINER === 'true' ? 'http://host.docker.internal:8000' : 'http://localhost:8000'),
-    healthUrl: (process.env.EMBEDDING_SERVICE_URL || process.env.NEXT_PUBLIC_WORKER_API_URL ||
-        (process.env.IN_DOCKER_CONTAINER === 'true' ? 'http://host.docker.internal:8000' : 'http://localhost:8000')) + '/health',
+    url: isProduction
+      ? (process.env.EMBEDDING_SERVICE_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || `http://localhost:${PORTS.embedding}`)
+      : (process.env.IN_DOCKER_CONTAINER === 'true' ? 'http://host.docker.internal:8000' : 'http://localhost:8000'),
+    healthUrl: isProduction
+      ? ((process.env.EMBEDDING_SERVICE_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || `http://localhost:${PORTS.embedding}`) + '/health')
+      : ((process.env.IN_DOCKER_CONTAINER === 'true' ? 'http://host.docker.internal:8000' : 'http://localhost:8000') + '/health'),
   },
 
-  /** Notification service — runs on Render free tier */
+  /** Notification service — runs on Render free tier in production */
   notification: {
     url: resolveServiceUrl(
       process.env.NOTIFICATION_SERVICE_URL,
@@ -76,7 +81,7 @@ export const config = {
     healthUrl: (process.env.NOTIFICATION_SERVICE_URL || `http://localhost:${PORTS.notification}`) + '/health',
   },
 
-  /** Feed scoring service — runs on Render free tier */
+  /** Feed scoring service — runs on Render free tier in production */
   feed: {
     url: resolveServiceUrl(
       process.env.FEED_SERVICE_URL,
@@ -86,7 +91,7 @@ export const config = {
     healthUrl: (process.env.FEED_SERVICE_URL || `http://localhost:${PORTS.feed}`) + '/health',
   },
 
-  /** Match generation service — runs on Render free tier */
+  /** Match generation service — runs on Render free tier in production */
   match: {
     url: resolveServiceUrl(
       process.env.MATCH_SERVICE_URL,
@@ -98,7 +103,7 @@ export const config = {
 
   features: {
     enableRealtime: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
-    enableWorker: Boolean(process.env.EMBEDDING_SERVICE_URL || process.env.NEXT_PUBLIC_WORKER_API_URL || !isProduction),
+    enableWorker: Boolean(isProduction ? (process.env.EMBEDDING_SERVICE_URL || process.env.NEXT_PUBLIC_WORKER_API_URL) : true),
   },
 } as const
 

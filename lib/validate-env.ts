@@ -9,7 +9,12 @@ const EnvSchema = z.object({
   BACKEND_MODE: z.enum(['auto', 'docker', 'render', 'edge-only']).optional(),
   BACKEND_URL_DOCKER: z.string().url().optional(),
   BACKEND_URL_RENDER: z.string().url().optional(), // deprecated — use EMBEDDING_SERVICE_URL
+  // EMBEDDING_SERVICE_URL is only used when NODE_ENV=production (Vercel)
+  // In dev/preview, the app always uses Docker or localhost
   EMBEDDING_SERVICE_URL: z.string().url().optional(),
+  NOTIFICATION_SERVICE_URL: z.string().url().optional(),
+  FEED_SERVICE_URL: z.string().url().optional(),
+  MATCH_SERVICE_URL: z.string().url().optional(),
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
 })
