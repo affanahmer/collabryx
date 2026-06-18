@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
       .eq("id", uid)
       .single();
 
-    const result = userProfile?.role === "admin" || process.env.DEVELOPMENT_MODE === "true";
+    const result = userProfile?.role === "admin" || process.env.NODE_ENV !== 'production';
     
     // Evict old entries if cache grows
     if (globalAdminCache.size >= 100) {

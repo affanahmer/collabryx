@@ -10,18 +10,13 @@ import type { Profile, UserSkill, UserExperience, UserProject } from "@/types/da
 // ===========================================
 // ENVIRONMENT CONFIGURATION
 // ===========================================
+// NOTE: We use NODE_ENV as the single source of truth for dev vs prod.
+// - NODE_ENV=development → dev mode is ON (test user, dev UI, etc.)
+// - NODE_ENV=production  → dev mode is OFF (hardened for deployment)
+// - DEBUG and SKIP_EMAIL_VERIFICATION remain separate toggles
+//   (DEBUG for logging verbosity, SKIP_EMAIL_VERIFICATION for CI/testing)
 
-/**
- * Normalize development mode value to handle different config formats
- * Accepts: "true", "testing", "development" (case-insensitive)
- */
-const normalizeDevMode = (value: string | undefined): boolean => {
-  if (!value) return false
-  const normalized = value.toLowerCase().trim()
-  return normalized === "true" || normalized === "testing" || normalized === "development"
-}
-
-const DEVELOPMENT_MODE = normalizeDevMode(process.env.DEVELOPMENT_MODE)
+const DEVELOPMENT_MODE = process.env.NODE_ENV !== 'production'
 const DEBUG_ENABLED = process.env.DEBUG === "true" || process.env.DEBUG === "1"
 const ENABLE_PERFORMANCE_LOGS = process.env.ENABLE_PERFORMANCE_LOGS === "true"
 const LOG_LEVEL = process.env.LOG_LEVEL || "info"
@@ -46,17 +41,15 @@ const TEST_USER_PASSWORD = "test123"
 if (typeof window !== 'undefined' && (DEVELOPMENT_MODE || DEBUG_ENABLED)) {
   console.log(`
 ╔════════════════════════════════════════════════════════╗
-║           DEVELOPMENT MODE CONFIGURATION               ║
+║           ENVIRONMENT CONFIGURATION                    ║
 ╠════════════════════════════════════════════════════════╣
 ║  NODE_ENV:          ${process.env.NODE_ENV?.padEnd(30)}║
-║  DEVELOPMENT_MODE:  ${String(process.env.DEVELOPMENT_MODE)?.padEnd(30)}║
 ║  DEBUG:             ${String(process.env.DEBUG)?.padEnd(30)}║
 ║  LOG_LEVEL:         ${LOG_LEVEL.padEnd(30)}║
 ║  PERF_LOGS:         ${String(ENABLE_PERFORMANCE_LOGS).padEnd(30)}║
 ║  SKIP_EMAIL_VERIFY: ${String(SKIP_EMAIL_VERIFICATION).padEnd(30)}║
-║  NEXT_PUBLIC_SKIP:  ${String(process.env.NEXT_PUBLIC_SKIP_EMAIL_VERIFICATION)?.padEnd(30) || "(unset)".padEnd(30)}║
 ║                                                          ║
-║  Dev Mode Active:   ${String(DEVELOPMENT_MODE).padEnd(30)}║
+║  Dev Features:      ${String(DEVELOPMENT_MODE).padEnd(30)}║
 ║  Debug Enabled:     ${String(DEBUG_ENABLED).padEnd(30)}║
 ║  Skip Email Verify: ${String(SKIP_EMAIL_VERIFICATION).padEnd(30)}║
 ╚════════════════════════════════════════════════════════╝
@@ -72,12 +65,6 @@ if (typeof window !== 'undefined' && (DEVELOPMENT_MODE || DEBUG_ENABLED)) {
  */
 function validateEnvironment(): void {
   const warnings: string[] = []
-  
-  // Check DEVELOPMENT_MODE value
-  const devModeValue = process.env.DEVELOPMENT_MODE
-  if (devModeValue && !normalizeDevMode(devModeValue) && devModeValue.toLowerCase() !== "false") {
-    warnings.push(`DEVELOPMENT_MODE="${devModeValue}" is not a recognized value. Use: "true", "testing", "development", or "false"`)
-  }
   
   // Check for missing critical vars in development
   if (DEVELOPMENT_MODE && !process.env.NEXT_PUBLIC_SUPABASE_URL) {
@@ -288,12 +275,17 @@ export const TEST_USER: DevelopmentUser = {
 /**
  * Check if running in development mode
  * 
- * Returns true when DEVELOPMENT_MODE environment variable is set to:
- * - "true" (case-insensitive)
- * - "testing" (case-insensitive)
- * - "development" (case-insensitive)
+ * Returns true when NODE_ENV is NOT 'production'.
+ * This is the single source of truth — no separate DEVELOPMENT_MODE variable.
  * 
- * @returns boolean indicating if development mode is active
+ * In development (NODE_ENV=development):
+ *   - Test user is auto-created
+ *   - Onboarding can use test user credentials
+ *   - Admin bypass is enabled for batch operations
+ *   - Dev UI badges are shown
+ * 
+ * In production (NODE_ENV=production):
+ *   - All dev features are disabled (security hardening)
  */
 export function isDevelopmentMode(): boolean {
   return DEVELOPMENT_MODE
@@ -347,7 +339,6 @@ export function getDevelopmentConfig(): {
   isEmailVerificationSkipped: boolean
   logLevel: string
   nodeEnv: string | undefined
-  developmentModeValue: string | undefined
   skipEmailVerificationValue: string | undefined
   skipEmailVerificationPublicValue: string | undefined
 } {
@@ -358,7 +349,6 @@ export function getDevelopmentConfig(): {
     isEmailVerificationSkipped: SKIP_EMAIL_VERIFICATION,
     logLevel: LOG_LEVEL,
     nodeEnv: process.env.NODE_ENV,
-    developmentModeValue: process.env.DEVELOPMENT_MODE,
     skipEmailVerificationValue: process.env.SKIP_EMAIL_VERIFICATION,
     skipEmailVerificationPublicValue: process.env.NEXT_PUBLIC_SKIP_EMAIL_VERIFICATION,
   }
@@ -380,7 +370,7 @@ export async function getOrCreateTestUser(): Promise<{
 
   devLog("dev-mode", "Getting or creating test user", {
     email: TEST_USER_EMAIL,
-    mode: process.env.DEVELOPMENT_MODE,
+    mode: process.env.NODE_ENV,
   })
 
   const supabase = createClient()

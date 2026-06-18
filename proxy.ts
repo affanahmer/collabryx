@@ -4,16 +4,11 @@ import { checkBot, shouldBlockBot } from "@/lib/bot-detection"
 import { setCSRFToken } from "@/lib/csrf"
 
 /**
- * Normalize DEVELOPMENT_MODE to handle different config formats.
- * Accepts: "true", "testing", "development" (case-insensitive).
- * Mirrors lib/services/development.ts normalizeDevMode for proxy.ts use
- * (can't import client-side module in middleware).
+ * Check if running in development mode.
+ * Uses NODE_ENV as single source of truth (set by Next.js/Vercel).
  */
 function isDevMode(): boolean {
-    const value = process.env.DEVELOPMENT_MODE
-    if (!value) return false
-    const normalized = value.toLowerCase().trim()
-    return normalized === "true" || normalized === "testing" || normalized === "development"
+    return process.env.NODE_ENV !== 'production'
 }
 
 export async function proxy(request: NextRequest) {
