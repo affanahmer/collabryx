@@ -1,0 +1,42 @@
+# Dependabot configuration for Collabryx
+# This project uses Bun as its package manager — Dependabot scans bun.lock.
+# https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  - package-ecosystem: "bun"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/New_York"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "security"
+    groups:
+      nextjs:
+        patterns:
+          - "next*"
+          - "@next/*"
+      react:
+        patterns:
+          - "react*"
+          - "@types/react*"
+      supabase:
+        patterns:
+          - "@supabase/*"
+    ignore:
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "pip"
+    directory: "/python-worker/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "python"
