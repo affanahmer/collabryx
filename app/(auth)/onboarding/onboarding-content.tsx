@@ -349,6 +349,16 @@ export default function OnboardingPage() {
                     toast.error("Please select at least one role")
                     return
                 }
+
+                // Logical compatibility check
+                if (roles.includes('student')) {
+                    const incompatible = roles.filter(r => r === 'professional' || r === 'mentor' || r === 'investor')
+                    if (incompatible.length > 0) {
+                        toast.error(`A student cannot also be a ${incompatible.join(', ')}`)
+                        return
+                    }
+                }
+
                 setCurrentStep(2)
                 return
             } else if (currentStep === 2) {

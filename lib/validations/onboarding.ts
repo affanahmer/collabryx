@@ -158,6 +158,15 @@ export const roleSelectionSchema = z.object({
   roles: z
     .array(z.enum(ROLES))
     .min(1, "Select at least one role that describes you"),
+}).refine((data) => {
+  if (data.roles.includes('student')) {
+    const hasIncompatible = data.roles.some(r => r === 'professional' || r === 'mentor' || r === 'investor')
+    return !hasIncompatible
+  }
+  return true
+}, {
+  message: "A student cannot also be a professional, mentor, or investor",
+  path: ["roles"]
 })
 
 export type RoleSelectionData = z.infer<typeof roleSelectionSchema>
@@ -270,6 +279,15 @@ export const onboardingDataSchemaObject = z.object({
 })
 
 export const onboardingDataSchema = onboardingDataSchemaObject.refine((data) => {
+  if (data.roles?.includes('student')) {
+    const hasIncompatible = data.roles.some(r => r === 'professional' || r === 'mentor' || r === 'investor')
+    return !hasIncompatible
+  }
+  return true
+}, {
+  message: "A student cannot also be a professional, mentor, or investor",
+  path: ["roles"]
+}).refine((data) => {
   if (data.roles?.includes('investor')) {
     const checkMin = data.check_size_min
     const checkMax = data.check_size_max
@@ -319,6 +337,15 @@ export function validateOnboardingData(
   }
 
   const data = result.data
+  if (data.roles?.includes('student')) {
+    const hasIncompatible = data.roles.some(r => r === 'professional' || r === 'mentor' || r === 'investor')
+    if (hasIncompatible) {
+      return {
+        success: false,
+        errors: ["roles: A student cannot also be a professional, mentor, or investor"]
+      }
+    }
+  }
   if (data.roles?.includes('investor')) {
     const checkMin = data.check_size_min
     const checkMax = data.check_size_max
