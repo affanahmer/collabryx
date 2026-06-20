@@ -171,6 +171,15 @@ class MatchesSeeder(BaseSeeder):
             else "Potential for collaboration"
         )
 
+        # Calculate complementary scoring dimensions (2026-06-10)
+        skill_gap_score_val = min(100, len(unique_matched_skills) * 30) if unique_matched_skills else 0
+        has_cross_domain = False
+        if unique_user_skills or unique_matched_skills:
+            user_cats = set(config.SKILL_TO_CATEGORY.get(s.lower(), "") for s in unique_user_skills)
+            matched_cats = set(config.SKILL_TO_CATEGORY.get(s.lower(), "") for s in unique_matched_skills)
+            has_cross_domain = bool(user_cats and matched_cats and user_cats != matched_cats)
+        role_complementarity_score_val = random.randint(40, 95) if has_cross_domain else random.randint(10, 40)
+
         score_data = {
             "suggestion_id": suggestion_id,
             "semantic_similarity": round(semantic_similarity, 4),
@@ -178,17 +187,19 @@ class MatchesSeeder(BaseSeeder):
             "complementary_score": complementary_score,
             "shared_interests": shared_interest_score,
             "activity_match": round(activity_match, 4),
+            "skill_gap_score": skill_gap_score_val,
+            "role_complementarity_score": role_complementarity_score_val,
             "overall_score": round(overall_score, 4),
-            "model_version": "rule-based-v1",
+            "model_version": "rule-based-v2-complementary",
             "model_config": {
                 "weights": {
-                    "semantic_similarity": 0.35,
-                    "skills_overlap": 0.30,
-                    "complementary_score": 0.15,
-                    "shared_interests": 0.10,
-                    "activity_match": 0.10,
+                    "skill_gap": 0.35,
+                    "role_complementarity": 0.25,
+                    "complementary": 0.20,
+                    "semantic": 0.10,
+                    "interests": 0.10,
                 },
-                "version": "v1",
+                "version": "v2-complementary",
             },
             "overlapping_skills": overlapping_skills
             if overlapping_skills

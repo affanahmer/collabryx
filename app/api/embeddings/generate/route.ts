@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getBackendConfig } from "@/lib/config/backend";
 import { validateCSRFRequest, requiresCSRF } from "@/lib/csrf";
-import { constructSemanticText } from "@/lib/services/embeddings";
+import { constructSemanticText } from "@/lib/embeddings/construct-text";
 
 export const runtime = "edge"
 

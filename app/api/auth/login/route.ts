@@ -4,7 +4,10 @@ import { z } from 'zod'
 import { rateLimit } from '@/lib/rate-limit'
 import { createClient } from '@/lib/supabase/server'
 import { logger } from '@/lib/logger'
-import { isEmailVerificationSkipped } from '@/lib/services/development'
+// Inline: check if email verification is skipped in dev mode
+function isEmailVerificationSkipped(): boolean {
+  return process.env.NEXT_PUBLIC_SKIP_EMAIL_VERIFICATION === 'true'
+}
 
 // In-memory store for failed login attempts
 const failedAttempts = new Map<string, {

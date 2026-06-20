@@ -55,7 +55,8 @@ import { getProviderRegistry } from '@/lib/ai/providers/registry'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { rateLimit } from '@/lib/rate-limit'
-import { CircuitBreaker } from '@/lib/services/circuit-breaker'
+import { z } from 'zod'
+import { CircuitBreaker } from '@/lib/circuit-breaker'
 import { sanitizeAIMessage, sanitizeMessages, sanitizeFileAttachment } from '@/lib/utils/ai-sanitize'
 import type { Message } from '@/lib/ai/providers/base'
 import type { StartupContext } from '@/lib/rag/types'
@@ -194,11 +195,28 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { userId, sessionId: clientSessionId, messages, query, preferredProvider, otherUserIds, startupContext, files, mentionedUserIds } = body
 
-    if (!userId) {
-      return NextResponse.json({ error: 'userId is required' }, { status: 400 })
+    const StreamSchema = z.object({
+      userId: z.string().min(1, "userId is required"),
+      sessionId: z.string().optional(),
+      messages: z.array(z.any()).optional(),
+      query: z.string().optional(),
+      preferredProvider: z.string().optional(),
+      otherUserIds: z.array(z.string()).optional(),
+      startupContext: z.any().optional(),
+      files: z.array(z.any()).optional(),
+      mentionedUserIds: z.array(z.string()).optional(),
+    })
+
+    const parsed = StreamSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || 'Invalid input' },
+        { status: 400 }
+      )
     }
+
+    const { userId, sessionId: clientSessionId, messages, query, preferredProvider, otherUserIds, startupContext, files, mentionedUserIds } = parsed.data
 
     // Authenticate
     const supabase = await createClient()

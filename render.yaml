@@ -6,6 +6,13 @@
 #   - HF Spaces (free):   Embedding service (Sentence Transformers)
 #   - Supabase (free):    PostgreSQL database
 #   - Render (3 free):    Notification, Feed, Match microservices
+#
+# ── Manual setup required ──────────────────────────────────────────
+# Variables with `sync: false` must be set in the Render Dashboard:
+#   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (for each service)
+# These are NOT populated by the Blueprint and will cause 502 errors
+# if left empty. Set them via Dashboard → Environment → Secret Files.
+# ───────────────────────────────────────────────────────────────────
 
 services:
   # ─────────────────────────────────────────────
@@ -16,7 +23,7 @@ services:
     env: docker
     region: oregon
     plan: free
-    dockerfilePath: ./python-worker/notification-service/Dockerfile
+    dockerfilePath: ./deploy/render/notification-service.Dockerfile
     rootDir: .
     branch: main
     healthCheckPath: /health
@@ -40,7 +47,7 @@ services:
     env: docker
     region: oregon
     plan: free
-    dockerfilePath: ./python-worker/feed-service/Dockerfile
+    dockerfilePath: ./deploy/render/feed-service.Dockerfile
     rootDir: .
     branch: main
     healthCheckPath: /health
@@ -64,7 +71,7 @@ services:
     env: docker
     region: oregon
     plan: free
-    dockerfilePath: ./python-worker/match-service/Dockerfile
+    dockerfilePath: ./deploy/render/match-service.Dockerfile
     rootDir: .
     branch: main
     healthCheckPath: /health

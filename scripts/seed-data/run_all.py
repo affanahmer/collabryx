@@ -37,6 +37,9 @@ def run_seeder(name, seeder):
     time.sleep(1)
 
 from seeders.connections_seeder import ConnectionsSeeder
+from seeders.profile_visits_seeder import ProfileVisitsSeeder
+from seeders.user_bookmarks_seeder import UserBookmarksSeeder
+from seeders.complementary_pairs_seeder import ComplementaryPairsSeeder
 
 run_seeder("Posts (with comments/reactions)", lambda: PostsSeeder(client).seed(limit=300))
 run_seeder("Connections", lambda: ConnectionsSeeder(client).seed(limit=500))
@@ -45,5 +48,8 @@ run_seeder("Conversations", lambda: ConversationsSeeder(client).seed(limit=150))
 run_seeder("Messages", lambda: MessagesSeeder(client).seed())
 run_seeder("Notifications", lambda: NotificationsSeeder(client).seed(count=100))
 run_seeder("Mentor Sessions", lambda: MentorSeeder(client).seed(count=50))
+run_seeder("Profile Visits", lambda: ProfileVisitsSeeder(client).seed(visits_per_user=3))
+run_seeder("User Bookmarks", lambda: UserBookmarksSeeder(client).seed(bookmarks_per_user=3))
+run_seeder("Complementary Pairs", lambda: ComplementaryPairsSeeder(client).seed())
 
 client.close()

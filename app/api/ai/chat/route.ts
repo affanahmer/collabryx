@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { assembleAndBuildPrompt } from '@/lib/rag/context-assembler'
 import { getProviderRegistry } from '@/lib/ai/providers/registry'
 import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
 import { rateLimit } from '@/lib/rate-limit'
 import type { AssemblerOptions } from '@/lib/rag/context-assembler'
 import type { StartupContext } from '@/lib/rag/types'
@@ -24,14 +25,27 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { userId, sessionId, messages, query, preferredProvider, otherUserIds, startupContext, limit = 10 } = body
 
-    if (!userId) {
+    const ChatSchema = z.object({
+      userId: z.string().min(1, "userId is required"),
+      sessionId: z.string().optional(),
+      messages: z.array(z.any()).optional().default([]),
+      query: z.string().optional(),
+      preferredProvider: z.string().optional(),
+      otherUserIds: z.array(z.string()).optional(),
+      startupContext: z.any().optional(),
+      limit: z.number().int().min(1).max(100).optional().default(10),
+    })
+
+    const parsed = ChatSchema.safeParse(body)
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'userId is required' },
+        { error: parsed.error.issues[0]?.message || 'Invalid input' },
         { status: 400 }
       )
     }
+
+    const { userId, sessionId, messages, query, preferredProvider, otherUserIds, startupContext, limit = 10 } = parsed.data
 
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()

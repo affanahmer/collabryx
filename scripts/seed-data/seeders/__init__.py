@@ -23,4 +23,7 @@ __all__ = [
     "user_analytics_seeder",
     "platform_analytics_seeder",
     "embedding_dead_letter_queue_seeder",
+    "profile_visits_seeder",
+    "user_bookmarks_seeder",
+    "complementary_pairs_seeder",
 ]

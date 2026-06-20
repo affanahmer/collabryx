@@ -10,10 +10,10 @@ env:
   BUN_VERSION: '1'
   NODE_OPTIONS: --max-old-space-size=8192
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  # Supabase env vars for build-time static generation (placeholder values)
-  NEXT_PUBLIC_SUPABASE_URL: https://placeholder-for-build.supabase.co
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key-for-build-only
-  SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key-for-build-only
+  # Supabase env vars for build-time — set these as GitHub Secrets
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
 
 jobs:
   typecheck:
@@ -26,6 +26,11 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
@@ -34,6 +39,9 @@ jobs:
 
       - name: Type check
         run: bun run typecheck
+
+      - name: Lint
+        run: bun run lint
 
   build:
     runs-on: ubuntu-latest
@@ -45,6 +53,11 @@ jobs:
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
 
       - name: Install dependencies
         run: bun install --frozen-lockfile

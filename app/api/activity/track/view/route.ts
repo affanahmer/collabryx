@@ -15,6 +15,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,11 +30,20 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const viewedId: string | undefined = body?.viewed_id
 
-    if (!viewedId || typeof viewedId !== "string") {
-      return NextResponse.json({ error: "viewed_id is required" }, { status: 400 })
+    const ActivitySchema = z.object({
+      viewed_id: z.string().uuid("Invalid user ID format"),
+    })
+
+    const parsed = ActivitySchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message || 'viewed_id is required' },
+        { status: 400 }
+      )
     }
+
+    const viewedId = parsed.data.viewed_id
 
     // Cannot track self-views
     if (user.id === viewedId) {

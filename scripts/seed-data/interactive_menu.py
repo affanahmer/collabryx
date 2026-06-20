@@ -26,6 +26,9 @@ from seeders.messages_seeder import MessagesSeeder
 from seeders.notifications_seeder import NotificationsSeeder
 from seeders.mentor_seeder import MentorSeeder
 from seeders.embeddings_seeder import EmbeddingsSeeder
+from seeders.profile_visits_seeder import ProfileVisitsSeeder
+from seeders.user_bookmarks_seeder import UserBookmarksSeeder
+from seeders.complementary_pairs_seeder import ComplementaryPairsSeeder
 
 
 def get_arrow_key():
@@ -222,6 +225,9 @@ def seed_everything(http):
         ("Messages", lambda: MessagesSeeder(http).seed()),
         ("Notifications", lambda: NotificationsSeeder(http).seed(count=100)),
         ("Mentor", lambda: MentorSeeder(http).seed(count=50)),
+        ("Profile Visits", lambda: ProfileVisitsSeeder(http).seed(visits_per_user=3)),
+        ("User Bookmarks", lambda: UserBookmarksSeeder(http).seed(bookmarks_per_user=3)),
+        ("Complementary Pairs", lambda: ComplementaryPairsSeeder(http).seed()),
     ]
 
     for name, action in modules:
@@ -237,7 +243,11 @@ def seed_everything(http):
 
 def check_db_status(http):
     print(Fore.YELLOW + "\nDatabase Status:" + Style.RESET_ALL)
-    tables = ["profiles", "posts", "connections", "conversations", "messages"]
+    tables = [
+        "profiles", "posts", "connections", "conversations", "messages",
+        "profile_visits", "user_bookmarks", "complementary_pairs",
+        "match_suggestions", "notifications", "ai_mentor_sessions",
+    ]
     for table in tables:
         try:
             resp = http.get(
@@ -300,6 +310,9 @@ def run_interactive_seeder():
         {"label": "Seed Messages"},
         {"label": "Seed Notifications"},
         {"label": "Seed Mentor Sessions"},
+        {"label": "Seed Profile Visits"},
+        {"label": "Seed User Bookmarks"},
+        {"label": "Seed Complementary Pairs"},
         {
             "label": "Generate Embeddings",
             "warning": "NOT RECOMMENDED - Use Docker instead",
@@ -320,11 +333,14 @@ def run_interactive_seeder():
         5: lambda: MessagesSeeder(http).seed(),
         6: lambda: NotificationsSeeder(http).seed(count=100),
         7: lambda: MentorSeeder(http).seed(count=50),
-        8: lambda: run_embeddings_with_warning(http),
-        10: lambda: seed_everything(http),
-        11: lambda: check_db_status(http),
-        12: lambda: check_worker(),
-        13: lambda: None,
+        8: lambda: ProfileVisitsSeeder(http).seed(visits_per_user=3),
+        9: lambda: UserBookmarksSeeder(http).seed(bookmarks_per_user=3),
+        10: lambda: ComplementaryPairsSeeder(http).seed(),
+        11: lambda: run_embeddings_with_warning(http),
+        13: lambda: seed_everything(http),
+        14: lambda: check_db_status(http),
+        15: lambda: check_worker(),
+        16: lambda: None,
     }
 
     while True:

@@ -17,7 +17,7 @@
 # EVERYTHING ELSE IS AUTOMATIC:
 #   - Domain routing via ${DOMAIN} env var in Traefik labels
 #   - HTTPS/SSL auto via Let's Encrypt (websecure entrypoint)
-#   - Volume auto-created (collabryx-model-cache)
+#   - Volume defined below for model persistence
 #   - All service URLs resolve via Docker internal DNS
 # =============================================================================
 
@@ -248,3 +248,7 @@ services:
 networks:
   dokploy-network:
     external: true
+
+volumes:
+  collabryx-model-cache:
+    driver: local

@@ -78,6 +78,11 @@ class SeedConfig:
         == "true"
     )
 
+    # New seeders for migration-added tables
+    SEED_PROFILE_VISITS: bool = os.getenv("SEED_PROFILE_VISITS", "true").lower() == "true"
+    SEED_BOOKMARKS: bool = os.getenv("SEED_BOOKMARKS", "true").lower() == "true"
+    SEED_COMPLEMENTARY_PAIRS: bool = os.getenv("SEED_COMPLEMENTARY_PAIRS", "true").lower() == "true"
+
     # =========================================================================
     # SEED LIMITS (as strings to support "-1" and ranges)
     # =========================================================================
@@ -265,7 +270,46 @@ class SeedConfig:
     ]
 
     # =========================================================================
-    # COMPANY NAMES (for experience)
+    # ROLES (for multi-role system - added 2026-06-15)
+    # =========================================================================
+    ROLES: List[str] = [
+        "student",
+        "investor",
+        "founder",
+        "professional",
+        "mentor",
+    ]
+
+    # =========================================================================
+    # SKILL CATEGORIES (for complementary matching - added 2026-06-10)
+    # =========================================================================
+    SKILL_CATEGORIES: dict = {
+        "frontend": ["React", "Vue", "Angular", "Svelte", "Next.js", "Nuxt.js", "TypeScript", "JavaScript", "UI/UX Design", "Figma", "Sketch", "Adobe XD"],
+        "backend": ["Node.js", "Django", "FastAPI", "Flask", "Spring Boot", "Go", "Rust", "Python", "Java", "GraphQL", "REST API", "gRPC"],
+        "database": ["PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch", "SQL"],
+        "devops": ["AWS", "Azure", "GCP", "Docker", "Kubernetes", "Terraform", "CI/CD", "DevOps", "Linux", "Git"],
+        "mobile": ["iOS Development", "Android Development", "React Native", "Flutter"],
+        "ai_ml": ["Machine Learning", "Deep Learning", "NLP", "Computer Vision", "Data Science", "Data Engineering", "TensorFlow", "PyTorch"],
+        "data": ["Data Analytics", "Business Intelligence", "Tableau", "Power BI", "Spark", "Hadoop", "Data Visualization"],
+        "security": ["Cybersecurity", "Network Security", "Penetration Testing", "Cryptography", "Cloud Security"],
+        "blockchain": ["Blockchain", "Solidity", "Web3.js", "Smart Contracts", "DeFi", "Ethereum", "Rust"],
+        "gaming": ["Unity", "Unreal Engine", "C++", "C#", "3D Graphics", "Game Design", "Blender"],
+        "design": ["UI/UX Design", "Figma", "Sketch", "Adobe XD", "Graphic Design"],
+        "business": ["Product Management", "Leadership", "Project Management", "Agile", "Scrum"],
+        "marketing": ["Content Marketing", "Growth Hacking", "Social Media", "SEO", "Analytics"],
+        "other": ["Leadership", "Communication", "Teamwork", "Problem Solving", "Critical Thinking", "Creativity", "Adaptability", "Time Management", "Mentorship", "Public Speaking", "Writing"],
+    }
+
+    # =========================================================================
+    # SKILL → CATEGORY MAPPING (reverse lookup)
+    # =========================================================================
+    SKILL_TO_CATEGORY: dict = {}
+    for _cat, _skills in SKILL_CATEGORIES.items():
+        for _skill in _skills:
+            SKILL_TO_CATEGORY[_skill.lower()] = _cat
+
+    # =========================================================================
+    # COMPANIES (for experience)
     # =========================================================================
     COMPANIES = [
         "Google",
