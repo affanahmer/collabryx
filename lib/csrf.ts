@@ -138,13 +138,11 @@ export async function enforceCSRF(request: Request): Promise<Response | null> {
   const cookieToken = cookieStore.get(CSRF_COOKIE_NAME)?.value ?? null
 
   if (!cookieToken) {
-    if (!csrfToken || !validateCSRFToken(csrfToken)) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid CSRF token' }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-    return null
+    // Double-submit pattern requires both cookie and header — missing cookie always fails
+    return new Response(
+      JSON.stringify({ error: 'Invalid CSRF token' }),
+      { status: 403, headers: { 'Content-Type': 'application/json' } }
+    )
   }
 
   const isValid = await validateCSRFRequest(csrfToken, cookieToken)

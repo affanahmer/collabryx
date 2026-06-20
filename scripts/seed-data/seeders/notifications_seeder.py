@@ -147,6 +147,13 @@ class NotificationsSeeder(BaseSeeder):
                 else 100
             )
 
+        # Fetch user IDs if not provided
+        if user_ids is None:
+            user_ids = self.fetch_user_ids()
+            if not user_ids:
+                print(f"{Fore.RED}  ✗ No users found. Seed profiles first.{Style.RESET_ALL}")
+                return 0
+
         print(
             f"\n{Fore.YELLOW}⏳ Loading existing notifications for duplicate checking...{Style.RESET_ALL}"
         )

@@ -5,9 +5,8 @@
 #   Stage 1 (builder) — Install deps, typecheck, build
 #   Stage 2 (runner)  — Minimal production image
 #
-# NOTE: Next.js config (next.config.ts) is READ-ONLY per AGENTS.md
-# so we do NOT add output: 'standalone'. Instead we run next start
-# directly with the built .next output directory.
+# NOTE: output: 'standalone' is enabled in next.config.ts
+# The standalone output is used for the production Docker image
 # =============================================================================
 
 # ── Stage 1: Builder ───────────────────────────────────────────────────────────
@@ -52,22 +51,13 @@ FROM node:22-slim AS runner
 
 WORKDIR /app
 
-# Install curl for healthcheck
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
-
 # Create non-root user
 RUN useradd --create-home --shell /bin/bash appuser
 
-# Copy built app + node_modules (needed for next start)
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./
+# Copy standalone build output (minimal — only required files)
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.ts ./
-COPY --from=builder /app/tsconfig.json ./
 
 # Set ownership
 RUN chown -R appuser:appuser /app
@@ -78,13 +68,11 @@ USER appuser
 ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
-ENV BUN_INSTALL="/home/appuser/.bun"
-ENV PATH="/home/appuser/.bun/bin:$PATH"
 
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"
+    CMD node -e "require('http').get('http://localhost:3000/api/health', r => process.exit(r.statusCode === 200 ? 0 : 1))"
 
-# Start Next.js production server
-CMD ["node", "node_modules/next/dist/bin/next", "start"]
+# Start Next.js production server (standalone entry point)
+CMD ["node", "server.js"]

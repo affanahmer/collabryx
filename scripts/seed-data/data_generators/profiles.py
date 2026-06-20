@@ -92,8 +92,13 @@ def generate_bio(industry: str, experience_years: int, is_founder: bool = False)
     return bio
 
 
+def get_skill_category(skill_name: str) -> str:
+    """Map a skill name to its category for complementary matching"""
+    return config.SKILL_TO_CATEGORY.get(skill_name.lower(), "other")
+
+
 def generate_skills(industry: str, count: int = None) -> List[Dict[str, Any]]:
-    """Generate skills relevant to the industry"""
+    """Generate skills relevant to the industry, with skill_category for complementary matching"""
     if count is None:
         count = random.randint(5, 10)
 
@@ -313,6 +318,7 @@ def generate_skills(industry: str, count: int = None) -> List[Dict[str, Any]]:
                     ["beginner", "intermediate", "advanced", "expert"]
                 ),
                 "is_primary": i < 3,  # First 3 skills are primary
+                "skill_category": get_skill_category(skill),  # For complementary matching
             }
         )
 
@@ -577,6 +583,47 @@ def generate_looking_for() -> List[str]:
     return random.choice(templates["looking_for"])
 
 
+def generate_role_specific_fields(roles: list, full_name: str, industry: str) -> Dict[str, Any]:
+    """Generate role-specific profile fields based on selected roles"""
+    fields = {}
+    from data_generators.names import generate_name
+
+    if "student" in roles:
+        fields["major"] = random.choice(["Computer Science", "Engineering", "Business", "Design", "Data Science", "Mathematics"])
+        fields["graduation_year"] = random.randint(2025, 2028)
+        fields["looking_for_team"] = random.random() < 0.7
+        fields["project_interests"] = random.sample(config.INDUSTRIES, random.randint(1, 3))
+
+    if "investor" in roles:
+        fields["check_size_min"] = random.choice([10000, 25000, 50000, 100000, 250000])
+        fields["check_size_max"] = fields["check_size_min"] * random.randint(2, 10)
+        fields["stage_focus"] = random.sample(["pre_seed", "seed", "series_a", "series_b"], random.randint(1, 3))
+        fields["sectors"] = random.sample(config.INDUSTRIES, random.randint(1, 4))
+        fields["portfolio_url"] = f"https://portfolio.{full_name.lower().replace(' ', '')}.com" if random.random() < 0.6 else None
+        fields["investment_history_count"] = random.randint(0, 20)
+        fields["accredited_investor"] = random.random() < 0.4
+
+    if "founder" in roles or "professional" in roles:
+        fields["company_name"] = random.choice(config.COMPANIES)
+        fields["company_stage"] = random.choice(["idea", "pre_seed", "seed", "early", "growth"])
+        fields["company_role"] = random.choice(["Founder", "CEO", "CTO", "COO", "Head of Engineering", "Product Lead"])
+        fields["team_size"] = random.randint(1, 50)
+        if "founder" in roles:
+            fields["fundraising_stage"] = random.choice(["not_raising", "pre_seed", "seed", "series_a", "series_b"])
+        fields["hiring_needs"] = random.sample([
+            "Software Engineer", "Product Manager", "Designer", "Marketing Lead",
+            "Data Scientist", "Sales Rep", "Customer Success"
+        ], random.randint(0, 3))
+        fields["open_to_mentoring"] = random.random() < 0.4
+
+    if "mentor" in roles:
+        fields["mentoring_areas"] = random.sample(config.INDUSTRIES, random.randint(1, 3))
+        fields["mentoring_format"] = random.choice(["one_on_one", "group", "async", "any"])
+        fields["mentoring_availability_hours"] = random.choice([2, 4, 6, 8, 10, 15])
+
+    return fields
+
+
 def generate_complete_profile(
     industry: str, is_student: bool = False
 ) -> Dict[str, Any]:
@@ -599,6 +646,24 @@ def generate_complete_profile(
         years_experience = random.randint(2, 15)
         headline = generate_headline(industry)
 
+    # Generate roles (multi-role support - new in 2026-06-15)
+    if is_student:
+        role_pool = ["student"]
+        if random.random() < 0.3:
+            role_pool.append("founder")
+        if random.random() < 0.2:
+            role_pool.append("mentor")
+    else:
+        role_pool = [random.choice(["founder", "professional", "investor"])]
+        if random.random() < 0.25:
+            role_pool.append("mentor")
+        if random.random() < 0.15:
+            role_pool.append("student")
+    roles = list(set(role_pool))
+
+    # Generate role-specific fields
+    role_fields = generate_role_specific_fields(roles, full_name, industry)
+
     # Generate all profile components
     profile = {
         "email": email,
@@ -616,20 +681,23 @@ def generate_complete_profile(
         else None,
         "collaboration_readiness": random.choice(
             ["available", "open", "available", "available"]
-        ),  # Weighted towards available
-        "is_verified": random.random() < 0.3,  # 30% verified
+        ),
+        "is_verified": random.random() < 0.3,
         "verification_type": random.choice(["student", "faculty", "alumni"])
         if random.random() < 0.3
         else None,
         "university": random.choice(config.UNIVERSITIES)
         if random.random() < 0.4
         else None,
-        "profile_completion": 0,  # Will be calculated after adding skills, etc.
+        "profile_completion": 0,
         "looking_for": generate_looking_for(),
         "onboarding_completed": True,
         "industry": industry,
         "is_student": is_student,
         "years_experience": years_experience,
+        # Multi-role fields (2026-06-15)
+        "roles": roles,
+        **role_fields,
     }
 
     # =========================================================================

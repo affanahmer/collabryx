@@ -1,7 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { createClient } from "@/lib/supabase/server"
-import { devLog, isDebugEnabled } from "@/lib/services/development"
+// Inline development debug utilities — avoids deprecated @/lib/services path
+function isDebugEnabled(): boolean {
+  return process.env.NODE_ENV !== 'production'
+}
+function devLog(category: string, message: string, data?: unknown): void {
+  if (process.env.NODE_ENV === 'production') return
+  const timestamp = new Date().toISOString().split('T')[1]?.slice(0, -1) ?? ''
+  const prefix = `[${timestamp}] [DEV:${category.toUpperCase()}]`
+  if (data !== undefined) {
+    console.log(`${prefix} ${message}`, data)
+  } else {
+    console.log(`${prefix} ${message}`)
+  }
+}
 
 /**
  * CSRF Protection Note:

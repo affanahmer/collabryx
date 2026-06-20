@@ -180,6 +180,16 @@ class ProfilesSeeder:
         (onboarding_completed=false), PATCH it with full data. Otherwise skip.
         """
         try:
+            role_fields = {}
+            for field in ["roles", "major", "graduation_year", "looking_for_team", "project_interests",
+                          "check_size_min", "check_size_max", "stage_focus", "sectors",
+                          "portfolio_url", "investment_history_count", "accredited_investor",
+                          "company_name", "company_stage", "company_role", "team_size",
+                          "fundraising_stage", "hiring_needs", "open_to_mentoring",
+                          "mentoring_areas", "mentoring_format", "mentoring_availability_hours"]:
+                if field in profile_data and profile_data[field] is not None:
+                    role_fields[field] = profile_data[field]
+
             profile = {
                 "id": user_id,
                 "email": profile_data["email"],
@@ -198,33 +208,13 @@ class ProfilesSeeder:
                 "profile_completion": profile_data["profile_completion"],
                 "looking_for": profile_data["looking_for"],
                 "onboarding_completed": profile_data["onboarding_completed"],
-                # SOCIAL URL FIELDS - Added to fix incomplete profile seeding
-                # ------------------------------------------------------------------
-                # WHY: The profiles table schema includes four social link columns
-                # (github_url, linkedin_url, twitter_url, portfolio_url) that were
-                # defined in the database schema and in the TypeScript types but were
-                # never populated by any seeder. The original ProfilesSeeder only
-                # wrote the 16 core fields from the generate_complete_profile dict
-                # and silently ignored the rest. This meant that even after seeding
-                # 500+ profiles, these columns remained NULL for every single row.
-                #
-                # Impact: Downstream features that depend on social links (the profile
-                # header component, user card grids, connection suggestion panels, and
-                # the onboarding flow) could not be properly tested because there was
-                # never any social data to render. UI states like "partial social links"
-                # or "no social links" were impossible to validate without manually
-                # editing database rows.
-                #
-                # Fix: The data generator (profiles.py) now produces random social URLs
-                # with realistic fill rates per platform. The seeder must extract these
-                # from the generated profile dict and include them in the REST API
-                # POST/PATCH payload so they actually reach the database. Without this
-                # change, the data in the generator would be generated and immediately
-                # discarded — computed but never persisted.
+                # Social URLs
                 "github_url": profile_data.get("github_url"),
                 "linkedin_url": profile_data.get("linkedin_url"),
                 "twitter_url": profile_data.get("twitter_url"),
                 "portfolio_url": profile_data.get("portfolio_url"),
+                # Multi-role fields (2026-06-15)
+                **role_fields,
             }
 
             # Check if profile exists but is incomplete — update it
@@ -324,6 +314,7 @@ class ProfilesSeeder:
                     "skill_name": skill["skill_name"],
                     "proficiency": skill["proficiency"],
                     "is_primary": skill["is_primary"],
+                    "skill_category": skill.get("skill_category"),  # For complementary matching
                 }
                 for skill in skills
             ]

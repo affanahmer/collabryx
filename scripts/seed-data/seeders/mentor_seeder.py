@@ -150,7 +150,7 @@ class MentorSeeder(BaseSeeder):
         except:
             pass
 
-    def seed(self, user_ids: List[str], count: int = None) -> int:
+    def seed(self, user_ids: List[str] = None, count: int = None) -> int:
         """Seed AI mentor sessions (incremental - skips existing)"""
 
         # Reset stats
@@ -162,6 +162,13 @@ class MentorSeeder(BaseSeeder):
                 if config.LIMIT_MENTOR_SESSIONS != "-1"
                 else 50
             )
+
+        # Fetch user IDs if not provided
+        if user_ids is None:
+            user_ids = self.fetch_user_ids()
+            if not user_ids:
+                print(f"{Fore.RED}  ✗ No users found. Seed profiles first.{Style.RESET_ALL}")
+                return 0
 
         print(
             f"\n{Fore.YELLOW}⏳ Loading existing sessions for duplicate checking...{Style.RESET_ALL}"

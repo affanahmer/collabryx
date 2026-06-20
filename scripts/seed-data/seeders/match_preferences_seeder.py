@@ -110,6 +110,7 @@ class MatchPreferencesSeeder(BaseSeeder):
                 "min_match_percentage": min_match_percentage,
                 "interested_in_types": interested_in_types,
                 "availability_match": availability_match,
+                "role_matching_enabled": random.random() < 0.75,  # 75% have role matching on
             }
 
             result = self.create_single("match_preferences", preference)

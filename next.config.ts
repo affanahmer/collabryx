@@ -3,6 +3,7 @@ import withBundleAnalyzer from '@next/bundle-analyzer'
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  output: 'standalone',
   // Image optimization
   images: {
     remotePatterns: [

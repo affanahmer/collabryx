@@ -71,18 +71,8 @@ class UserAnalyticsSeeder(BaseSeeder):
         # ---- Engagement scores (0-100) ----
         engagement_score = round(min(100, activity * 100 * random.uniform(0.7, 1.3)), 2)
         influence_score = round(min(100, (total_connections * 0.5 + total_reactions_received * 0.3 + total_posts * 0.2) / max(1, total_connections) * 10), 2)
+        total_reactions_given = max(0, int(activity * random.randint(1, 100)))
         contribution_score = round(min(100, (total_posts * 0.3 + total_comments * 0.2 + total_reactions_given * 0.1) * 2), 2)
-
-        # Cap all scores at 100
-        engagement_score = min(100, engagement_score)
-        influence_score = min(100, influence_score)
-        contribution_score = min(100, contribution_score)
-
-        # ---- Timestamps ----
-        last_active_at = now - timedelta(
-            hours=random.randint(0, 24 * 7),
-            minutes=random.randint(0, 59),
-        )
 
         # ---- Match acceptance rate ----
         if total_matches_received > 0:
@@ -93,8 +83,6 @@ class UserAnalyticsSeeder(BaseSeeder):
             match_acceptance_rate = 0.0
 
         # ---- Compute engagement & influence using the DB formulas ----
-        # Engagement = min(views/10, 1)*25 + min(matches_accepted/5, 1)*25
-        #              + min(connections/10, 1)*25 + min(reactions/20, 1)*25
         computed_engagement = round(min(
             min(total_profile_views / 10, 1) * 25
             + min(total_matches_accepted / 5, 1) * 25
@@ -103,9 +91,6 @@ class UserAnalyticsSeeder(BaseSeeder):
             100
         ))
 
-        # Influence = min(views/200, 1)*25 + min(connections/100, 1)*25
-        #             + min(posts/50, 1)*15 + min(reactions/200, 1)*15
-        #             + min(matches_accepted/20, 1)*20
         computed_influence = round(min(
             min(total_profile_views / 200, 1) * 25
             + min(total_connections / 100, 1) * 25

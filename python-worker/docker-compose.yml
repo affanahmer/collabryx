@@ -192,7 +192,3 @@ services:
 networks:
   collabryx-network:
     driver: bridge
-
-volumes:
-  collabryx-data:
-    driver: local
