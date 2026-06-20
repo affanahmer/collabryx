@@ -24,7 +24,7 @@ Deploy all 5 services (Next.js + 4 Python microservices) on your self-hosted Dok
 | **Provider** | GitHub/GitLab/Bitbucket |
 | **Repository** | `your-username/collabryx` |
 | **Branch** | `main` |
-| **Compose path** | `deploy/dokploy/docker-compose.yml` |
+| **Compose path** | `./docker-compose.yml` (root of repo) |
 | **Compose type** | `docker-compose` |
 
 ### 2. Paste Environment Variables
